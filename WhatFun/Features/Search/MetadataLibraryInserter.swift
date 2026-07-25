@@ -51,12 +51,12 @@ struct MetadataLibraryInserter {
         let item = LibraryItem(
             id: itemID,
             mediaKind: draft.mediaKind,
-            title: draft.title.isEmpty ? "Untitled" : draft.title,
+            title: persistedTitle(for: draft),
             subtitle: draft.subtitle,
             createdAt: date
         )
         item.summary = draft.summary
-        item.creatorLine = draft.creators.isEmpty ? nil : draft.creators.joined(separator: ", ")
+        item.creatorLine = creatorLine(for: draft)
         item.releaseYear = draft.releaseYear
         item.pageCount = draft.pageCount
         item.runtimeSeconds = draft.runtimeSeconds
@@ -101,6 +101,131 @@ struct MetadataLibraryInserter {
             if let privateCredentialKey {
                 try? await credentials.removeValue(for: privateCredentialKey)
             }
+            throw error
+        }
+    }
+
+    /// Applies provider details after the search result has already been saved.
+    /// Scalar fields are only replaced while they still equal the search payload,
+    /// so edits made while the request was in flight always win.
+    func mergeDetails(
+        into item: LibraryItem,
+        searchResult: MetadataSearchResult,
+        details: MetadataItemDetails,
+        attribution: MetadataAttribution?,
+        at date: Date = .now
+    ) throws {
+        // Do not roll unrelated pending UI edits into this background save.
+        guard !context.hasChanges, item.trashedAt == nil else { return }
+
+        let baseline = MetadataDomainMapper.makeDraft(
+            result: searchResult,
+            attribution: attribution
+        )
+        let enriched = MetadataDomainMapper.makeDraft(
+            result: searchResult,
+            details: details,
+            attribution: attribution
+        )
+        guard let providerReference = (item.externalReferences ?? []).first(where: {
+            baseline.duplicateKey.matches(
+                providerRaw: $0.providerRaw,
+                recordKindRaw: $0.recordKindRaw,
+                externalID: $0.externalID
+            )
+        }) else { return }
+
+        let baselineTitle = persistedTitle(for: baseline)
+        let enrichedTitle = persistedTitle(for: enriched)
+        let baselineCreatorLine = creatorLine(for: baseline)
+        let enrichedCreatorLine = creatorLine(for: enriched)
+        let canMergeCreators = item.creatorLine == baselineCreatorLine
+
+        let relevantMemberships = (item.facetMemberships ?? []).filter {
+            $0.facet?.kind == .genre || $0.facet?.kind == .platform
+        }
+        let baselineFacetKeys = Set(baseline.facets.map(facetKey))
+        let currentFacetKeys = Set(relevantMemberships.compactMap { membership in
+            membership.facet.map { facetKey(kind: $0.kind, name: $0.name) }
+        })
+        let canMergeFacets = currentFacetKeys == baselineFacetKeys &&
+            relevantMemberships.allSatisfy {
+                $0.sourceRaw == RecordSource.metadataProvider.rawValue
+            }
+        let missingFacets = canMergeFacets
+            ? enriched.facets.filter { !currentFacetKeys.contains(facetKey($0)) }
+            : []
+
+        do {
+            if item.title == baselineTitle, enrichedTitle != baselineTitle {
+                let canUpdateSortTitle = item.sortTitle == baselineTitle
+                item.setTitle(enrichedTitle)
+                if canUpdateSortTitle {
+                    item.sortTitle = enrichedTitle
+                }
+            }
+            if item.subtitle == baseline.subtitle, enriched.subtitle != baseline.subtitle {
+                item.subtitle = enriched.subtitle
+            }
+            if item.summary == baseline.summary, enriched.summary != baseline.summary {
+                item.summary = enriched.summary
+            }
+            if canMergeCreators, enrichedCreatorLine != baselineCreatorLine {
+                item.creatorLine = enrichedCreatorLine
+            }
+            if item.releaseYear == baseline.releaseYear,
+               enriched.releaseYear != baseline.releaseYear
+            {
+                item.releaseYear = enriched.releaseYear
+            }
+            if item.pageCount == baseline.pageCount, enriched.pageCount != baseline.pageCount {
+                item.pageCount = enriched.pageCount
+            }
+            if item.runtimeSeconds == baseline.runtimeSeconds,
+               enriched.runtimeSeconds != baseline.runtimeSeconds
+            {
+                item.runtimeSeconds = enriched.runtimeSeconds
+            }
+
+            if canMergeCreators {
+                attachCredits(to: item, names: enriched.creators, at: date)
+            }
+            if !missingFacets.isEmpty {
+                var newlyCreatedFacets = [Facet]()
+                var newlyCreatedMemberships = [ItemFacetMembership]()
+                try attachFacets(
+                    to: item,
+                    facets: missingFacets,
+                    at: date,
+                    newlyCreatedFacets: &newlyCreatedFacets,
+                    newlyCreatedMemberships: &newlyCreatedMemberships
+                )
+            }
+            mergeArtwork(
+                for: item,
+                baseline: baseline,
+                enriched: enriched,
+                at: date
+            )
+
+            let baselineSourceURL = baseline.sourceURL?.absoluteString
+            let enrichedSourceURL = enriched.sourceURL?.absoluteString
+            if providerReference.canonicalURLString == baselineSourceURL,
+               enrichedSourceURL != baselineSourceURL
+            {
+                providerReference.canonicalURLString = enrichedSourceURL
+            }
+            providerReference.lastFetchedAt = date
+            providerReference.attributionText = attribution?.label
+            providerReference.attributionURLString = attribution?.url.absoluteString
+            providerReference.updatedAt = date
+            item.metadataLastRefreshedAt = date
+            item.updatedAt = date
+            try context.save()
+        } catch {
+            // The context was clean on entry and this synchronous MainActor
+            // transaction cannot interleave with another mutation.
+            context.rollback()
             throw error
         }
     }
@@ -207,12 +332,18 @@ struct MetadataLibraryInserter {
     }
 
     private func attachCredits(to item: LibraryItem, names: [String], at date: Date) {
-        let credits = names.enumerated().map { index, name in
+        let existingCredits = item.credits ?? []
+        var knownNames = Set(existingCredits.map { LibraryItem.normalize($0.name) })
+        let missingNames = names.filter { name in
+            knownNames.insert(LibraryItem.normalize(name)).inserted
+        }
+        let firstSortOrder = (existingCredits.map(\.sortOrder).max() ?? -1) + 1
+        let credits = missingNames.enumerated().map { index, name in
             Credit(
                 ownerItem: item,
                 name: name,
                 roleRaw: "creator",
-                sortOrder: index,
+                sortOrder: firstSortOrder + index,
                 createdAt: date
             )
         }
@@ -235,6 +366,7 @@ struct MetadataLibraryInserter {
         newlyCreatedMemberships: inout [ItemFacetMembership]
     ) throws {
         var memberships = [ItemFacetMembership]()
+        let firstSortOrder = ((item.facetMemberships ?? []).map(\.sortOrder).max() ?? -1) + 1
 
         for (index, facetDraft) in facets.enumerated() {
             let kindRaw = facetDraft.kind.rawValue
@@ -259,7 +391,7 @@ struct MetadataLibraryInserter {
                 item: item,
                 facet: facet,
                 source: .metadataProvider,
-                sortOrder: index,
+                sortOrder: firstSortOrder + index,
                 createdAt: date
             )
             context.insert(membership)
@@ -276,6 +408,50 @@ struct MetadataLibraryInserter {
         if !missingMemberships.isEmpty {
             item.facetMemberships = (item.facetMemberships ?? []) + missingMemberships
         }
+    }
+
+    private func mergeArtwork(
+        for item: LibraryItem,
+        baseline: MetadataItemDraft,
+        enriched: MetadataItemDraft,
+        at date: Date
+    ) {
+        let baselineURL = baseline.artworkURL?.absoluteString
+        guard let enrichedURL = enriched.artworkURL?.absoluteString,
+              enrichedURL != baselineURL
+        else { return }
+
+        if let preferredArtworkID = item.preferredArtworkID,
+           let artwork = (item.artworkAssets ?? []).first(where: { $0.id == preferredArtworkID })
+        {
+            guard artwork.kind == .providerRemote,
+                  artwork.providerRaw == baseline.provider.rawValue,
+                  artwork.remoteURLString == baselineURL
+            else { return }
+            artwork.remoteURLString = enrichedURL
+            artwork.cacheKey = ArtworkRepository.hash(enrichedURL)
+            artwork.attributionText = enriched.attribution?.label
+            artwork.attributionURLString = enriched.attribution?.url.absoluteString
+            artwork.updatedAt = date
+        } else if baselineURL == nil {
+            attachArtwork(to: item, draft: enriched, at: date)
+        }
+    }
+
+    private func persistedTitle(for draft: MetadataItemDraft) -> String {
+        draft.title.isEmpty ? "Untitled" : draft.title
+    }
+
+    private func creatorLine(for draft: MetadataItemDraft) -> String? {
+        draft.creators.isEmpty ? nil : draft.creators.joined(separator: ", ")
+    }
+
+    private func facetKey(_ draft: MetadataFacetDraft) -> String {
+        facetKey(kind: draft.kind, name: draft.name)
+    }
+
+    private func facetKey(kind: FacetKind, name: String) -> String {
+        "\(kind.rawValue):\(LibraryItem.normalize(name))"
     }
 
     private func attachCreatedEvent(to item: LibraryItem, at date: Date) {

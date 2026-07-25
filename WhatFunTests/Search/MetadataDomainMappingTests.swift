@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import Testing
 @testable import WhatFun
 
@@ -143,16 +144,173 @@ struct MetadataDomainMappingTests {
     }
 }
 
+@Suite("Metadata background enrichment", .serialized)
+@MainActor
+struct MetadataBackgroundEnrichmentTests {
+    @Test("Details merge into an item created immediately from search")
+    func mergesDetailsAfterInsertion() async throws {
+        let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let inserter = MetadataLibraryInserter(
+            context: context,
+            credentials: InMemoryCredentialStore()
+        )
+        let search = makeResult(
+            provider: .rawg,
+            externalID: "3498",
+            mediaType: .game,
+            title: "GTA V",
+            genres: ["Action"],
+            platforms: ["PC"]
+        )
+        let enriched = makeResult(
+            provider: .rawg,
+            externalID: "3498",
+            mediaType: .game,
+            title: "Grand Theft Auto V",
+            creators: ["Rockstar North"],
+            overview: "An open-world crime epic.",
+            genres: ["Action", "Adventure"],
+            platforms: ["PC", "PlayStation 5"],
+            durationMinutes: 90,
+            coverImageURL: URL(string: "https://images.example.com/gta-v.jpg")
+        )
+        let details = MetadataItemDetails(
+            result: enriched,
+            websiteURL: nil,
+            facts: [],
+            artworkURLs: []
+        )
+        let insertedAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let enrichedAt = insertedAt.addingTimeInterval(10)
+
+        let insertion = try await inserter.insert(
+            result: search,
+            details: nil,
+            attribution: nil,
+            at: insertedAt
+        )
+
+        #expect(insertion.wasInserted)
+        #expect(insertion.item.title == "GTA V")
+        #expect(insertion.item.creatorLine == nil)
+        #expect(insertion.item.runtimeSeconds == nil)
+
+        try inserter.mergeDetails(
+            into: insertion.item,
+            searchResult: search,
+            details: details,
+            attribution: nil,
+            at: enrichedAt
+        )
+
+        let facetNames = Set((insertion.item.facetMemberships ?? []).compactMap(\.facet?.name))
+        #expect(insertion.item.title == "Grand Theft Auto V")
+        #expect(insertion.item.normalizedTitle == "grand theft auto v")
+        #expect(insertion.item.sortTitle == "Grand Theft Auto V")
+        #expect(insertion.item.creatorLine == "Rockstar North")
+        #expect(insertion.item.summary == "An open-world crime epic.")
+        #expect(insertion.item.runtimeSeconds == 5_400)
+        #expect(insertion.item.credits?.map(\.name) == ["Rockstar North"])
+        #expect(facetNames == ["Action", "Adventure", "PC", "PlayStation 5"])
+        #expect(insertion.item.preferredArtwork?.remoteURLString == "https://images.example.com/gta-v.jpg")
+        #expect(insertion.item.metadataLastRefreshedAt == enrichedAt)
+    }
+
+    @Test("Background details preserve edits made after the immediate insert")
+    func preservesUserEdits() async throws {
+        let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let inserter = MetadataLibraryInserter(
+            context: context,
+            credentials: InMemoryCredentialStore()
+        )
+        let search = makeResult(
+            provider: .rawg,
+            externalID: "3498",
+            mediaType: .game,
+            title: "GTA V",
+            genres: ["Action"],
+            platforms: ["PC"]
+        )
+        let enriched = makeResult(
+            provider: .rawg,
+            externalID: "3498",
+            mediaType: .game,
+            title: "Grand Theft Auto V",
+            creators: ["Rockstar North"],
+            overview: "Provider summary",
+            genres: ["Action", "Adventure"],
+            platforms: ["PC", "PlayStation 5"],
+            durationMinutes: 90,
+            coverImageURL: URL(string: "https://images.example.com/provider.jpg")
+        )
+        let insertion = try await inserter.insert(
+            result: search,
+            details: nil,
+            attribution: nil
+        )
+        let item = insertion.item
+
+        item.setTitle("My Custom Title")
+        item.summary = "My notes"
+        item.creatorLine = "My Creator"
+        let personalGenre = Facet(kind: .genre, name: "Personal")
+        let personalMembership = ItemFacetMembership(
+            item: item,
+            facet: personalGenre,
+            source: .manual
+        )
+        let personalArtwork = ArtworkAsset(
+            ownerItem: item,
+            kind: .userImage,
+            imageData: Data([0x01])
+        )
+        context.insert(personalGenre)
+        context.insert(personalMembership)
+        context.insert(personalArtwork)
+        item.facetMemberships = (item.facetMemberships ?? []) + [personalMembership]
+        item.artworkAssets = (item.artworkAssets ?? []) + [personalArtwork]
+        item.preferredArtworkID = personalArtwork.id
+        try context.save()
+
+        try inserter.mergeDetails(
+            into: item,
+            searchResult: search,
+            details: MetadataItemDetails(
+                result: enriched,
+                websiteURL: nil,
+                facts: [],
+                artworkURLs: []
+            ),
+            attribution: nil
+        )
+
+        let facetNames = Set((item.facetMemberships ?? []).compactMap(\.facet?.name))
+        #expect(item.title == "My Custom Title")
+        #expect(item.summary == "My notes")
+        #expect(item.creatorLine == "My Creator")
+        #expect(item.runtimeSeconds == 5_400)
+        #expect((item.credits ?? []).isEmpty)
+        #expect(!facetNames.contains("Adventure"))
+        #expect(!facetNames.contains("PlayStation 5"))
+        #expect(item.preferredArtworkID == personalArtwork.id)
+        #expect(item.preferredArtwork?.kind == .userImage)
+    }
+}
+
 private func makeResult(
     provider: MetadataProviderID,
     externalID: String,
     mediaType: MetadataMediaType,
     title: String,
     creators: [String] = [],
+    overview: String? = nil,
     genres: [String] = [],
     platforms: [String] = [],
     durationMinutes: Int? = nil,
-    feedURL: URL? = nil
+    feedURL: URL? = nil,
+    coverImageURL: URL? = nil
 ) -> MetadataSearchResult {
     MetadataSearchResult(
         id: MetadataResultID(provider: provider, externalID: externalID),
@@ -160,9 +318,9 @@ private func makeResult(
         title: title,
         subtitle: nil,
         creators: creators,
-        overview: nil,
+        overview: overview,
         releaseYear: nil,
-        coverImageURL: nil,
+        coverImageURL: coverImageURL,
         thumbnailImageURL: nil,
         sourceURL: nil,
         feedURL: feedURL,

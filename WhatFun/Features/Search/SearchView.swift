@@ -392,42 +392,53 @@ struct SearchView: View {
         addingKey = duplicateKey
 
         Task { @MainActor in
-            defer { addingKey = nil }
             let provider = services.metadata.catalog.providers.first { $0.id == result.id.provider }
-            let details: MetadataItemDetails?
-            if let provider {
-                do {
-                    details = try await provider.details(for: result)
-                } catch is CancellationError {
-                    return
-                } catch {
-                    // Search metadata is enough to create a useful local record;
-                    // detail enrichment can be retried during a later refresh.
-                    details = nil
-                }
-            } else {
-                details = nil
-            }
-
+            let insertion: MetadataInsertionResult
             do {
-                let insertion = try await MetadataLibraryInserter(
+                // Persist the useful search payload before asking the provider
+                // for optional details, so network latency cannot block add.
+                insertion = try await MetadataLibraryInserter(
                     context: modelContext,
                     credentials: services.credentials
                 ).insert(
                     result: result,
-                    details: details,
+                    details: nil,
                     attribution: provider?.attribution,
                     beforeSave: onAddItem
                 )
-                addedKeys.insert(duplicateKey)
-                successfulAdds += 1
-                if presentation == .library {
-                    onOpenItem(insertion.item.id)
-                }
             } catch is CancellationError {
                 // Leaving Search should stop quietly.
+                addingKey = nil
+                return
             } catch {
+                addingKey = nil
                 addFailure = SearchAddFailure(message: error.localizedDescription)
+                return
+            }
+
+            addedKeys.insert(duplicateKey)
+            successfulAdds += 1
+            addingKey = nil
+            if presentation == .library {
+                onOpenItem(insertion.item.id)
+            }
+
+            guard insertion.wasInserted, let provider else { return }
+            do {
+                let details = try await provider.details(for: result)
+                try MetadataLibraryInserter(
+                    context: modelContext,
+                    credentials: services.credentials
+                ).mergeDetails(
+                    into: insertion.item,
+                    searchResult: result,
+                    details: details,
+                    attribution: provider.attribution
+                )
+            } catch {
+                // The item is already safely stored and visible. Detail
+                // enrichment is best-effort and must never turn add into a
+                // failure after the fact.
             }
         }
     }
