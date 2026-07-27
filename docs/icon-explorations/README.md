@@ -27,7 +27,15 @@ Same pinwheel language and ember ramp, with the petal tips re-carved so the true
 negative space forms a play button, a camera aperture, a five-point rating star, or a
 heart. `gen_b_centers.py` regenerates the set.
 
-## d-star — round 2, the chosen direction
+## e-pinwheel — round 4, A1v2 at Apple icon-grid size
+
+The ember-v2 pinwheel rescaled to the HIG icon-grid circle (≈762px footprint on the
+1024 canvas, corner peaks kissing the 768px reference ring) in five value-disciplined
+palettes: ember (control), rebalanced ocean, analogous golden→raspberry→plum, a
+greyscale-matched six-hue spectrum, and twilight periwinkle→indigo on warm paper.
+Each in light and dark; `gen_e.py` regenerates the set (`MARK_SCALE = 0.80`).
+
+## d-star — round 2, the star direction
 
 The rating-star mark developed further after review: the five cards now physically lap
 each other (deepest closes the loop over the lightest, one deliberate seam), the mark is
