@@ -27,6 +27,14 @@ Same pinwheel language and ember ramp, with the petal tips re-carved so the true
 negative space forms a play button, a camera aperture, a five-point rating star, or a
 heart. `gen_b_centers.py` regenerates the set.
 
+## f-vivid — round 5, saturated multi-hue
+
+The monochromatic ramps retired after review. Five multi-hue schemes on the E
+construction with chroma pushed up, the value band biased deeper (no pale cards),
+and yellow excluded: vivid spectrum, sunset (burnt coral→indigo, the analogous fix),
+retro pop (complementary seams), jewel, and neon dusk. Greyscale-checked per scheme,
+etch depth re-tuned for the saturation. `gen_f.py` regenerates the set.
+
 ## e-pinwheel — round 4, A1v2 at Apple icon-grid size
 
 The ember-v2 pinwheel rescaled to the HIG icon-grid circle (≈762px footprint on the
