@@ -27,6 +27,15 @@ Same pinwheel language and ember ramp, with the petal tips re-carved so the true
 negative space forms a play button, a camera aperture, a five-point rating star, or a
 heart. `gen_b_centers.py` regenerates the set.
 
+## g-spectrum — round 6, vivid spectrum refined
+
+Six variants converging on the vivid-spectrum scheme, all with glyphs moved 10%
+inward: the F1 control, a brighter "backlit candy" hue tuning, the bright hues on a
+porcelain (non-beige) ground, a radial gradient ground with a luminous centre, an
+explicit star glow behind the petals, and a combo (bright hues + porcelain + subtle
+warm star-core) — the designer's pick. A/B testing confirmed the cream ground's
+yellow cast was dirtying the cool hues. `gen_g.py` regenerates the set.
+
 ## f-vivid — round 5, saturated multi-hue
 
 The monochromatic ramps retired after review. Five multi-hue schemes on the E
