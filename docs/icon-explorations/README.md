@@ -27,6 +27,17 @@ Same pinwheel language and ember ramp, with the petal tips re-carved so the true
 negative space forms a play button, a camera aperture, a five-point rating star, or a
 heart. `gen_b_centers.py` regenerates the set.
 
+## h-winner — round 7, the winner spec
+
+The bright spectrum finalised: rim glow geometry-locked to the star's edges (no radial
+blob — visible on porcelain in light, wash-free on the new ink-navy `#0D1430` dark
+ground), star interior a different colour from the ground, an optional subtle porcelain
+gradient, and an alternative coral glow colourway. `geometry.json` exports the complete
+icon geometry (petal/glyph/star paths, transforms, deboss recipe, palettes, glow specs)
+and `gen_h.py` rebuilds every SVG from it byte-identically. `../configurator.html` is a
+self-contained interactive tuner built on that JSON: rotate the petal colours, switch
+appearance, adjust grounds and glow, and download the composed SVG.
+
 ## g-spectrum — round 6, vivid spectrum refined
 
 Six variants converging on the vivid-spectrum scheme, all with glyphs moved 10%

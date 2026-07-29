@@ -1,0 +1,800 @@
+<title>WhatFun Icon Configurator</title>
+<style>
+:root{
+  --ground:#F1F0EB; --card:#FAF9F6; --ink:#231F1A; --muted:#7D766A;
+  --line:#DFDAD0; --accent:#C8492B; --tile:#EDEBE4; --code:#68615517;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --ground:#151310; --card:#1D1A17; --ink:#ECE7DF; --muted:#98907F;
+    --line:#2E2A24; --accent:#E87048; --tile:#232019; --code:#98907F33; }
+}
+:root[data-theme="dark"]{ --ground:#151310; --card:#1D1A17; --ink:#ECE7DF; --muted:#98907F;
+  --line:#2E2A24; --accent:#E87048; --tile:#232019; --code:#98907F33; }
+:root[data-theme="light"]{ --ground:#F1F0EB; --card:#FAF9F6; --ink:#231F1A; --muted:#7D766A;
+  --line:#DFDAD0; --accent:#C8492B; --tile:#EDEBE4; --code:#68615517; }
+html{background:var(--ground)}
+body{margin:0;color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:36px 24px 80px}
+h1{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;font-size:clamp(26px,4vw,36px);font-weight:600;margin:0;text-wrap:balance}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:8px}
+.lede{color:var(--muted);max-width:62ch;margin:10px 0 28px}
+.layout{display:grid;grid-template-columns:minmax(320px,1fr) 340px;gap:28px;align-items:start}
+@media(max-width:820px){.layout{grid-template-columns:1fr}}
+.stage{display:flex;flex-direction:column;gap:16px;align-items:center}
+.main-preview{width:min(100%,520px);border-radius:24%;overflow:hidden;box-shadow:0 12px 40px #0003;line-height:0}
+.main-preview svg{width:100%;height:auto;display:block}
+.minis{display:flex;gap:24px;align-items:flex-end}
+.mini{display:flex;flex-direction:column;align-items:center;gap:6px}
+.mini .frame{border-radius:22%;overflow:hidden;box-shadow:0 3px 10px #0004;line-height:0}
+.mini span{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:20px}
+.group{display:flex;flex-direction:column;gap:8px}
+.group>label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.seg{display:flex;background:var(--tile);border-radius:9px;padding:3px;gap:3px;flex-wrap:wrap}
+.seg button{flex:1;border:0;background:transparent;color:var(--muted);font:600 13px system-ui;padding:7px 10px;border-radius:7px;cursor:pointer;white-space:nowrap}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px #0002}
+.seg button:focus-visible,.rot button:focus-visible,.dl:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.rot{display:flex;align-items:center;gap:10px}
+.rot button{border:1px solid var(--line);background:var(--card);color:var(--ink);width:34px;height:34px;border-radius:9px;font-size:16px;cursor:pointer}
+.dots{display:flex;gap:6px;flex:1;justify-content:center}
+.dots i{width:18px;height:18px;border-radius:50%;border:2px solid transparent;display:inline-block;cursor:pointer}
+.dots i.on{border-color:var(--ink)}
+.rot-label{font-size:12.5px;color:var(--muted);text-align:center}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.slider-row{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted)}
+.slider-row output{min-width:34px;text-align:right;font-variant-numeric:tabular-nums}
+input[type=color]{width:34px;height:28px;border:1px solid var(--line);border-radius:6px;background:var(--card);padding:1px;cursor:pointer}
+.color-row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.dl{border:0;background:var(--accent);color:#fff;font:600 14px system-ui;padding:11px 16px;border-radius:9px;cursor:pointer}
+.dl:hover{filter:brightness(1.07)}
+.readout{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--muted);background:var(--code);border-radius:8px;padding:10px 12px;line-height:1.7;overflow-x:auto}
+.hidden{display:none !important}
+</style>
+<div class="wrap">
+  <div class="eyebrow">WhatFun &middot; icon configurator &middot; round 7</div>
+  <h1>Tune the winner</h1>
+  <p class="lede">The bright-spectrum pinwheel, live. Rotate which colour sits on the top card, switch
+  appearance, tune the background and the star's rim glow &mdash; then download the exact SVG of what
+  you're seeing. Geometry is identical to the shipped <code>h-winner</code> files.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <div class="main-preview" id="main-preview"></div>
+      <div class="minis">
+        <div class="mini"><div class="frame" id="mini-180" style="width:180px;height:180px"></div><span>Home screen</span></div>
+        <div class="mini"><div class="frame" id="mini-64" style="width:64px;height:64px"></div><span>64 px</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="group">
+        <label>Appearance</label>
+        <div class="seg" id="seg-mode">
+          <button data-v="light" class="on">Light</button>
+          <button data-v="dark">Dark</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <label>Rotate colours</label>
+        <div class="rot">
+          <button id="rot-prev" aria-label="Rotate colours left">&#8634;</button>
+          <div class="dots" id="dots"></div>
+          <button id="rot-next" aria-label="Rotate colours right">&#8635;</button>
+        </div>
+        <div class="rot-label" id="rot-label"></div>
+      </div>
+
+      <div class="group" id="grp-bg-light">
+        <label>Background &middot; light</label>
+        <div class="seg" id="seg-bgl">
+          <button data-v="flat" class="on">Flat porcelain</button>
+          <button data-v="grad">Radial gradient</button>
+        </div>
+        <div class="slider-row" id="row-grad">
+          <span>Depth</span>
+          <input type="range" id="grad-depth" min="0" max="100" value="45" aria-label="Gradient depth">
+          <output id="grad-out">45</output>
+        </div>
+      </div>
+
+      <div class="group hidden" id="grp-bg-dark">
+        <label>Background &middot; dark</label>
+        <div class="seg" id="seg-bgd">
+          <button data-v="#0D1430" class="on">Ink navy</button>
+          <button data-v="#122048">Bluer navy</button>
+          <button data-v="#131417">Neutral</button>
+        </div>
+        <div class="color-row"><input type="color" id="bgd-custom" value="#0D1430" aria-label="Custom dark background"><span>Custom</span></div>
+      </div>
+
+      <div class="group">
+        <label>Star glow</label>
+        <div class="seg" id="seg-glow">
+          <button data-v="amber" class="on">Amber</button>
+          <button data-v="coral">Coral</button>
+          <button data-v="custom">Custom</button>
+          <button data-v="off">Off</button>
+        </div>
+        <div class="color-row hidden" id="row-glow-custom"><input type="color" id="glow-custom" value="#F0A93C" aria-label="Custom glow colour"><span>Glow colour</span></div>
+        <div class="slider-row" id="row-glow-int">
+          <span>Intensity</span>
+          <input type="range" id="glow-int" min="0" max="100" value="100" aria-label="Glow intensity">
+          <output id="glow-out">100</output>
+        </div>
+      </div>
+
+      <button class="dl" id="download">Download this SVG</button>
+      <div class="readout" id="readout"></div>
+    </div>
+  </div>
+</div>
+<script>
+const GEO = {
+  "canvas": {
+    "width": 1024,
+    "height": 1024,
+    "viewBox": "0 0 1024 1024"
+  },
+  "mark": {
+    "scale": 0.8,
+    "transform": "translate(512 512) scale(0.8) translate(-512 -512)",
+    "note": "everything except the background rect lives inside this group"
+  },
+  "petal": {
+    "d": "M 512.0 418.0 L 392.9 249.3 L 394.4 61.2 L 734.1 115.0 L 677.4 294.3 Z",
+    "fill_and_stroke": "petal colour on both",
+    "stroke_width": 44,
+    "stroke_linejoin": "round",
+    "transforms": [
+      "rotate(0 512 512)",
+      "rotate(60 512 512)",
+      "rotate(120 512 512)",
+      "rotate(180 512 512)",
+      "rotate(240 512 512)",
+      "rotate(300 512 512)"
+    ]
+  },
+  "star": {
+    "d": "M 494.0 430.7 L 496.9 434.0 L 500.4 436.7 L 504.3 438.6 L 508.6 439.7 L 512.9 440.0 L 517.3 439.4 L 521.4 437.9 L 525.2 435.6 L 610.7 373.6 L 573.4 455.8 L 572.0 459.9 L 571.4 464.3 L 571.7 468.7 L 572.9 472.9 L 574.8 476.8 L 577.6 480.3 L 580.9 483.1 L 584.7 485.2 L 681.2 528.3 L 591.4 537.1 L 587.1 537.9 L 583.0 539.6 L 579.4 542.0 L 576.3 545.2 L 573.9 548.8 L 572.3 552.9 L 571.5 557.2 L 571.6 561.6 L 582.5 666.7 L 530.0 593.3 L 527.1 590.0 L 523.6 587.3 L 519.7 585.4 L 515.4 584.3 L 511.1 584.0 L 506.7 584.6 L 502.6 586.1 L 498.8 588.4 L 413.3 650.4 L 450.6 568.2 L 452.0 564.1 L 452.6 559.7 L 452.3 555.3 L 451.1 551.1 L 449.2 547.2 L 446.4 543.7 L 443.1 540.9 L 439.3 538.8 L 342.8 495.7 L 432.6 486.9 L 436.9 486.1 L 441.0 484.4 L 444.6 482.0 L 447.7 478.8 L 450.1 475.2 L 451.7 471.1 L 452.5 466.8 L 452.4 462.4 L 441.5 357.3 Z",
+    "points": [
+      [
+        494.0,
+        430.7
+      ],
+      [
+        496.9,
+        434.0
+      ],
+      [
+        500.4,
+        436.7
+      ],
+      [
+        504.3,
+        438.6
+      ],
+      [
+        508.6,
+        439.7
+      ],
+      [
+        512.9,
+        440.0
+      ],
+      [
+        517.3,
+        439.4
+      ],
+      [
+        521.4,
+        437.9
+      ],
+      [
+        525.2,
+        435.6
+      ],
+      [
+        610.7,
+        373.6
+      ],
+      [
+        573.4,
+        455.8
+      ],
+      [
+        572.0,
+        459.9
+      ],
+      [
+        571.4,
+        464.3
+      ],
+      [
+        571.7,
+        468.7
+      ],
+      [
+        572.9,
+        472.9
+      ],
+      [
+        574.8,
+        476.8
+      ],
+      [
+        577.6,
+        480.3
+      ],
+      [
+        580.9,
+        483.1
+      ],
+      [
+        584.7,
+        485.2
+      ],
+      [
+        681.2,
+        528.3
+      ],
+      [
+        591.4,
+        537.1
+      ],
+      [
+        587.1,
+        537.9
+      ],
+      [
+        583.0,
+        539.6
+      ],
+      [
+        579.4,
+        542.0
+      ],
+      [
+        576.3,
+        545.2
+      ],
+      [
+        573.9,
+        548.8
+      ],
+      [
+        572.3,
+        552.9
+      ],
+      [
+        571.5,
+        557.2
+      ],
+      [
+        571.6,
+        561.6
+      ],
+      [
+        582.5,
+        666.7
+      ],
+      [
+        530.0,
+        593.3
+      ],
+      [
+        527.1,
+        590.0
+      ],
+      [
+        523.6,
+        587.3
+      ],
+      [
+        519.7,
+        585.4
+      ],
+      [
+        515.4,
+        584.3
+      ],
+      [
+        511.1,
+        584.0
+      ],
+      [
+        506.7,
+        584.6
+      ],
+      [
+        502.6,
+        586.1
+      ],
+      [
+        498.8,
+        588.4
+      ],
+      [
+        413.3,
+        650.4
+      ],
+      [
+        450.6,
+        568.2
+      ],
+      [
+        452.0,
+        564.1
+      ],
+      [
+        452.6,
+        559.7
+      ],
+      [
+        452.3,
+        555.3
+      ],
+      [
+        451.1,
+        551.1
+      ],
+      [
+        449.2,
+        547.2
+      ],
+      [
+        446.4,
+        543.7
+      ],
+      [
+        443.1,
+        540.9
+      ],
+      [
+        439.3,
+        538.8
+      ],
+      [
+        342.8,
+        495.7
+      ],
+      [
+        432.6,
+        486.9
+      ],
+      [
+        436.9,
+        486.1
+      ],
+      [
+        441.0,
+        484.4
+      ],
+      [
+        444.6,
+        482.0
+      ],
+      [
+        447.7,
+        478.8
+      ],
+      [
+        450.1,
+        475.2
+      ],
+      [
+        451.7,
+        471.1
+      ],
+      [
+        452.5,
+        466.8
+      ],
+      [
+        452.4,
+        462.4
+      ],
+      [
+        441.5,
+        357.3
+      ]
+    ],
+    "note": "exact negative-space cutout: petal tip edges offset by stroke/2, valleys at the round-join tip arcs, spikes at adjacent-edge intersections. Pre-mark-scale coords; render inside mark.transform."
+  },
+  "glyphs": {
+    "shapes": {
+      "book": [
+        {
+          "kind": "fill",
+          "d": "M 0 -34 C -20 -50 -60 -55 -86 -46 L -86 38 C -60 29 -20 32 0 47 C 20 32 60 29 86 38 L 86 -46 C 60 -55 20 -50 0 -34 Z M -13 -20 C -27 -31 -50 -36 -68 -33 L -68 21 C -50 18 -27 21 -13 29 Z M 13 -20 C 27 -31 50 -36 68 -33 L 68 21 C 50 18 27 21 13 29 Z"
+        }
+      ],
+      "film": [
+        {
+          "kind": "fill",
+          "d": "M -54 -78 L 54 -78 Q 66 -78 66 -66 L 66 66 Q 66 78 54 78 L -54 78 Q -66 78 -66 66 L -66 -66 Q -66 -78 -54 -78 Z M -28 -46 L 28 -46 Q 32 -46 32 -42 L 32 42 Q 32 46 28 46 L -28 46 Q -32 46 -32 42 L -32 -42 Q -32 -46 -28 -46 Z M -55 -66 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M -55 -36 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M -55 -6 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M -55 24 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M -55 54 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M 43 -66 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M 43 -36 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M 43 -6 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M 43 24 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M 43 54 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z"
+        }
+      ],
+      "tv": [
+        {
+          "kind": "stroke",
+          "d": "M 0 -30 L -30 -64 M 0 -30 L 28 -64",
+          "width": 13,
+          "linecap": "round"
+        },
+        {
+          "kind": "fill",
+          "d": "M -68 -28 L 68 -28 Q 84 -28 84 -12 L 84 50 Q 84 66 68 66 L -68 66 Q -84 66 -84 50 L -84 -12 Q -84 -28 -68 -28 Z M -62 -12 L 34 -12 Q 40 -12 40 -6 L 40 44 Q 40 50 34 50 L -62 50 Q -68 50 -68 44 L -68 -6 Q -68 -12 -62 -12 Z M 62 -4 a 7 7 0 1 0 0.0001 0 Z M 62 16 a 7 7 0 1 0 0.0001 0 Z M 62 36 a 7 7 0 1 0 0.0001 0 Z"
+        }
+      ],
+      "pad": [
+        {
+          "kind": "fill",
+          "d": "M -44 -40 L 44 -40 Q 84 -40 84 0 Q 84 40 44 40 L -44 40 Q -84 40 -84 0 Q -84 -40 -44 -40 Z M -51 -21 L -37 -21 L -37 -7 L -23 -7 L -23 7 L -37 7 L -37 21 L -51 21 L -51 7 L -65 7 L -65 -7 L -51 -7 Z M 44 -22 a 8 8 0 1 0 0.0001 0 Z M 60 -3 a 8 8 0 1 0 0.0001 0 Z M 28 -3 a 8 8 0 1 0 0.0001 0 Z M 44 16 a 8 8 0 1 0 0.0001 0 Z"
+        }
+      ],
+      "mic": [
+        {
+          "kind": "stroke",
+          "d": "M -46 -34 A 46 46 0 0 0 46 -34 M 0 11 L 0 44 M -27 50 L 27 50",
+          "width": 13,
+          "linecap": "round"
+        },
+        {
+          "kind": "fill",
+          "d": "M -26 -50 Q -26 -76 0 -76 Q 26 -76 26 -50 L 26 -30 Q 26 -4 0 -4 Q -26 -4 -26 -30 Z M -14 -56 L 14 -56 Q 18 -56 18 -52 Q 18 -48 14 -48 L -14 -48 Q -18 -48 -18 -52 Q -18 -56 -14 -56 Z M -14 -40 L 14 -40 Q 18 -40 18 -36 Q 18 -32 14 -32 L -14 -32 Q -18 -32 -18 -36 Q -18 -40 -14 -40 Z"
+        }
+      ],
+      "app": [
+        {
+          "kind": "fill",
+          "d": "M -20 -64 L 20 -64 C 52 -64 64 -52 64 -20 L 64 20 C 64 52 52 64 20 64 L -20 64 C -52 64 -64 52 -64 20 L -64 -20 C -64 -52 -52 -64 -20 -64 Z M -14 -47 L 14 -47 C 38 -47 47 -38 47 -14 L 47 14 C 47 38 38 47 14 47 L -14 47 C -38 47 -47 38 -47 14 L -47 -14 C -47 -38 -38 -47 -14 -47 Z M 0 -10 a 10 10 0 1 0 0.0001 0 Z"
+        }
+      ]
+    },
+    "order": [
+      "app",
+      "film",
+      "mic",
+      "pad",
+      "tv",
+      "book"
+    ],
+    "jitter_deg": [
+      -4,
+      5,
+      -6,
+      4,
+      -5,
+      6
+    ],
+    "anchor": [
+      543.8,
+      217.5
+    ],
+    "transforms": [
+      "rotate(0 512 512) translate(543.8 217.5) rotate(-4)",
+      "rotate(60 512 512) translate(543.8 217.5) rotate(-55)",
+      "rotate(120 512 512) translate(543.8 217.5) rotate(-126)",
+      "rotate(180 512 512) translate(543.8 217.5) rotate(-176)",
+      "rotate(240 512 512) translate(543.8 217.5) rotate(-245)",
+      "rotate(300 512 512) translate(543.8 217.5) rotate(-294)"
+    ],
+    "note": "colour via currentColor on each primitive; transforms are pre-mark-scale"
+  },
+  "deboss": {
+    "layers": [
+      {
+        "role": "highlight",
+        "offset": [
+          0,
+          3
+        ],
+        "tint": "lighten"
+      },
+      {
+        "role": "shadow",
+        "offset": [
+          0,
+          -3
+        ],
+        "tint": "darken_sh"
+      },
+      {
+        "role": "main",
+        "offset": [
+          0,
+          0
+        ],
+        "tint": "darken_fill"
+      }
+    ],
+    "amounts": {
+      "light": {
+        "darken_fill": 0.13,
+        "lighten": 0.22,
+        "darken_sh": 0.3
+      },
+      "dark": {
+        "darken_fill": 0.16,
+        "lighten": 0.18,
+        "darken_sh": 0.34
+      }
+    },
+    "mixing": "linear sRGB mix toward #FFFFFF (lighten) / #000000 (darken)"
+  },
+  "hues": {
+    "order_note": "petal 0 = top squircle, then clockwise: film, mic, pad, tv, book",
+    "light": [
+      "#4A63E4",
+      "#9550D6",
+      "#E0339B",
+      "#F04A32",
+      "#E2621F",
+      "#12A38C"
+    ],
+    "dark": [
+      "#5A73F2",
+      "#A560E5",
+      "#EE45AC",
+      "#F85B41",
+      "#EF6E2A",
+      "#16B69D"
+    ]
+  },
+  "backgrounds": {
+    "light_porcelain": "#F1F2EF",
+    "light_gradient": {
+      "type": "radial",
+      "cx": 0.5,
+      "cy": 0.5,
+      "r": 0.72,
+      "stops": [
+        [
+          0,
+          "#F8F8F4"
+        ],
+        [
+          1,
+          "#E9EAE5"
+        ]
+      ]
+    },
+    "dark_navy": "#0D1430",
+    "dark_navy_rejected": "#122048"
+  },
+  "rim_glow": {
+    "geometry": "star.d stroked, fill none, blurred; drawn behind the petals inside mark.transform so only the inner half of the blur shows in the cutout. Interior: star.d filled, scaled about (512,512) by interior_scale so its edge hides under the petals.",
+    "interior_scale": 1.05,
+    "light": {
+      "interior_fill": "#FAEDD3",
+      "stroke": "#F0A93C",
+      "stroke_width": 24,
+      "blur_std": 8,
+      "opacity": 0.95
+    },
+    "dark": {
+      "interior_fill": "#1B2138",
+      "stroke": "#FFB347",
+      "stroke_width": 22,
+      "blur_std": 8,
+      "opacity": 0.9
+    },
+    "alt": {
+      "light": {
+        "interior_fill": "#FBE9E2",
+        "stroke": "#FF5A3C",
+        "stroke_width": 24,
+        "blur_std": 8,
+        "opacity": 0.9
+      },
+      "dark": {
+        "interior_fill": "#241B33",
+        "stroke": "#FF6B8A",
+        "stroke_width": 22,
+        "blur_std": 8,
+        "opacity": 0.85
+      }
+    }
+  },
+  "schemes": {
+    "01-rim-glow": {
+      "light": {
+        "bg": "porcelain",
+        "glow": "main"
+      },
+      "dark": {
+        "bg": "navy",
+        "glow": "main"
+      }
+    },
+    "02-gradient": {
+      "light": {
+        "bg": "gradient",
+        "glow": "main"
+      }
+    },
+    "03-alt-glow": {
+      "light": {
+        "bg": "porcelain",
+        "glow": "alt"
+      },
+      "dark": {
+        "bg": "navy",
+        "glow": "alt"
+      }
+    }
+  }
+};
+
+const HUE_NAMES = ["Indigo","Violet","Magenta","Vermilion","Burnt orange","Teal"];
+const GLYPH_ORDER = GEO.glyphs.order; // e.g. ["app","film","mic","pad","tv","book"]
+
+const state = {
+  mode: "light",
+  rot: 0,
+  bgLight: "flat",
+  gradDepth: 45,
+  bgDark: "#0D1430",
+  glow: "amber",
+  glowCustom: "#F0A93C",
+  glowInt: 100,
+};
+
+// ---------- colour math (linear sRGB mix, matching the generator) ----------
+function hex2rgb(h){ h=h.replace("#",""); return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16)); }
+function rgb2hex(r){ return "#"+r.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,"0")).join("").toUpperCase(); }
+function mix(hex, target, t){ const a=hex2rgb(hex), b=hex2rgb(target); return rgb2hex(a.map((v,i)=>v+(b[i]-v)*t)); }
+const lighten=(h,t)=>mix(h,"#FFFFFF",t), darken=(h,t)=>mix(h,"#000000",t);
+
+// ---------- SVG construction ----------
+const NS="http://www.w3.org/2000/svg";
+function el(name, attrs, parent){
+  const e=document.createElementNS(NS,name);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+
+function buildSVG(){
+  const m = state.mode, hues = GEO.hues[m], amounts = GEO.deboss.amounts[m];
+  const svg = el("svg",{xmlns:NS,width:1024,height:1024,viewBox:GEO.canvas.viewBox});
+  const defs = el("defs",{},svg);
+  const filt = el("filter",{id:"cfg-blur",x:"-30%",y:"-30%",width:"160%",height:"160%"},defs);
+  el("feGaussianBlur",{stdDeviation:GEO.rim_glow[m].blur_std},filt);
+
+  for(const name in GEO.glyphs.shapes){
+    const g = el("g",{id:"cfg-g-"+name},defs);
+    for(const shape of GEO.glyphs.shapes[name]){
+      if(shape.kind==="fill") el("path",{fill:"currentColor","fill-rule":"evenodd",d:shape.d},g);
+      else el("path",{fill:"none",stroke:"currentColor","stroke-width":shape.stroke_width||13,"stroke-linecap":"round",d:shape.d},g);
+    }
+  }
+
+  // background
+  let bgFill;
+  if(m==="light"){
+    if(state.bgLight==="grad"){
+      const t = state.gradDepth/100;
+      const grad = el("radialGradient",{id:"cfg-bg",cx:.5,cy:.5,r:GEO.backgrounds.light_gradient.r},defs);
+      el("stop",{offset:0,"stop-color":"#F8F8F4"},grad);
+      el("stop",{offset:1,"stop-color":mix("#F8F8F4","#DCDED6",t)},grad);
+      bgFill="url(#cfg-bg)";
+    } else bgFill=GEO.backgrounds.light_porcelain;
+  } else bgFill=state.bgDark;
+  el("rect",{width:1024,height:1024,fill:bgFill},svg);
+
+  const mark = el("g",{transform:GEO.mark.transform},svg);
+
+  // glow (interior + rim), behind petals
+  if(state.glow!=="off"){
+    let spec;
+    if(state.glow==="amber") spec = {...GEO.rim_glow[m]};
+    else if(state.glow==="coral") spec = {...GEO.rim_glow.alt[m]};
+    else {
+      const c = state.glowCustom;
+      spec = {...GEO.rim_glow[m], stroke:c,
+        interior_fill: m==="light" ? mix(c,"#FFFFFF",0.82) : mix(c, state.bgDark, 0.82)};
+    }
+    const op = spec.opacity * state.glowInt/100;
+    if(op>0.005){
+      el("path",{d:GEO.star.d,fill:spec.interior_fill,
+        transform:`translate(512 512) scale(${GEO.rim_glow.interior_scale}) translate(-512 -512)`,
+        opacity:Math.min(1,state.glowInt/100*1.4)},mark);
+      el("path",{d:GEO.star.d,fill:"none",stroke:spec.stroke,"stroke-width":spec.stroke_width,
+        "stroke-linejoin":"round",opacity:op,filter:"url(#cfg-blur)"},mark);
+    }
+  }
+
+  // petals
+  for(let i=0;i<6;i++){
+    const hue = hues[(i+state.rot)%6];
+    el("path",{d:GEO.petal.d,fill:hue,stroke:hue,"stroke-width":GEO.petal.stroke_width,
+      "stroke-linejoin":GEO.petal.stroke_linejoin,transform:GEO.petal.transforms[i]},mark);
+  }
+
+  // glyphs (three-layer deboss)
+  for(let i=0;i<6;i++){
+    const hue = hues[(i+state.rot)%6];
+    const g = el("g",{transform:GEO.glyphs.transforms[i]},mark);
+    const name = GLYPH_ORDER[i];
+    el("use",{href:"#cfg-g-"+name,y:3,color:lighten(hue,amounts.lighten)},g);
+    el("use",{href:"#cfg-g-"+name,y:-3,color:darken(hue,amounts.darken_sh)},g);
+    el("use",{href:"#cfg-g-"+name,color:darken(hue,amounts.darken_fill)},g);
+  }
+  return svg;
+}
+
+// ---------- render + UI ----------
+function render(){
+  const svg = buildSVG();
+  for(const id of ["main-preview","mini-180","mini-64"]){
+    const host = document.getElementById(id);
+    host.replaceChildren(svg.cloneNode(true));
+    const s = host.querySelector("svg");
+    s.removeAttribute("width"); s.removeAttribute("height");
+    s.style.width="100%"; s.style.height="100%"; s.style.display="block";
+  }
+  // dots
+  const hues = GEO.hues[state.mode];
+  const dots = document.getElementById("dots");
+  dots.replaceChildren(...hues.map((_,k)=>{
+    const i=document.createElement("i");
+    i.style.background = hues[k];
+    i.className = k===state.rot ? "on" : "";
+    i.title = HUE_NAMES[k]+" on top";
+    i.onclick = ()=>{ state.rot=k; render(); };
+    return i;
+  }));
+  document.getElementById("rot-label").textContent =
+    "Top card: " + HUE_NAMES[state.rot];
+  // visibility
+  document.getElementById("grp-bg-light").classList.toggle("hidden",state.mode!=="light");
+  document.getElementById("grp-bg-dark").classList.toggle("hidden",state.mode!=="dark");
+  document.getElementById("row-grad").classList.toggle("hidden",state.bgLight!=="grad");
+  document.getElementById("row-glow-custom").classList.toggle("hidden",state.glow!=="custom");
+  document.getElementById("row-glow-int").classList.toggle("hidden",state.glow==="off");
+  // readout
+  const rHues = [0,1,2,3,4,5].map(i=>GEO.hues[state.mode][(i+state.rot)%6]);
+  const bg = state.mode==="light" ? (state.bgLight==="grad"?"radial "+state.gradDepth+"%":GEO.backgrounds.light_porcelain) : state.bgDark;
+  const glow = state.glow==="off"?"off":(state.glow==="custom"?state.glowCustom:state.glow)+" "+state.glowInt+"%";
+  document.getElementById("readout").textContent =
+    "petals " + rHues.join(" ") + "\nbg " + bg + " · glow " + glow;
+}
+
+function segWire(id, key, cb){
+  const seg=document.getElementById(id);
+  seg.addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    seg.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+    state[key]=b.dataset.v; if(cb) cb(b.dataset.v); render();
+  });
+}
+segWire("seg-mode","mode");
+segWire("seg-bgl","bgLight");
+segWire("seg-bgd","bgDark");
+segWire("seg-glow","glow");
+document.getElementById("bgd-custom").addEventListener("input",e=>{
+  state.bgDark=e.target.value.toUpperCase();
+  document.querySelectorAll("#seg-bgd button").forEach(x=>x.classList.remove("on"));
+  render();
+});
+document.getElementById("glow-custom").addEventListener("input",e=>{ state.glowCustom=e.target.value.toUpperCase(); render(); });
+document.getElementById("grad-depth").addEventListener("input",e=>{
+  state.gradDepth=+e.target.value; document.getElementById("grad-out").value=e.target.value; render();
+});
+document.getElementById("glow-int").addEventListener("input",e=>{
+  state.glowInt=+e.target.value; document.getElementById("glow-out").value=e.target.value; render();
+});
+document.getElementById("rot-prev").onclick=()=>{ state.rot=(state.rot+5)%6; render(); };
+document.getElementById("rot-next").onclick=()=>{ state.rot=(state.rot+1)%6; render(); };
+document.getElementById("download").onclick=()=>{
+  const svg=buildSVG();
+  const blob=new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(svg)],{type:"image/svg+xml"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`whatfun-icon-${state.mode}-rot${state.rot}.svg`;
+  a.click(); URL.revokeObjectURL(a.href);
+};
+render();
+</script>
