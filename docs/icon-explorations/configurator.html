@@ -14,48 +14,62 @@
   --line:#DFDAD0; --accent:#C8492B; --tile:#EDEBE4; --code:#68615517; }
 html{background:var(--ground)}
 body{margin:0;color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-.wrap{max-width:1100px;margin:0 auto;padding:36px 24px 80px}
+.wrap{max-width:1160px;margin:0 auto;padding:36px 24px 80px}
 h1{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;font-size:clamp(26px,4vw,36px);font-weight:600;margin:0;text-wrap:balance}
 .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:8px}
 .lede{color:var(--muted);max-width:62ch;margin:10px 0 28px}
-.layout{display:grid;grid-template-columns:minmax(320px,1fr) 340px;gap:28px;align-items:start}
-@media(max-width:820px){.layout{grid-template-columns:1fr}}
-.stage{display:flex;flex-direction:column;gap:16px;align-items:center}
-.main-preview{width:min(100%,520px);border-radius:24%;overflow:hidden;box-shadow:0 12px 40px #0003;line-height:0}
+.layout{display:grid;grid-template-columns:minmax(300px,1fr) 380px;gap:28px;align-items:start}
+@media(max-width:840px){.layout{grid-template-columns:1fr}}
+.stage{display:flex;flex-direction:column;gap:16px;align-items:center;position:sticky;top:16px}
+@media(max-width:840px){.stage{position:static}}
+.main-preview{width:min(100%,480px);border-radius:24%;overflow:hidden;box-shadow:0 12px 40px #0003;line-height:0}
 .main-preview svg{width:100%;height:auto;display:block}
 .minis{display:flex;gap:24px;align-items:flex-end}
 .mini{display:flex;flex-direction:column;align-items:center;gap:6px}
 .mini .frame{border-radius:22%;overflow:hidden;box-shadow:0 3px 10px #0004;line-height:0}
 .mini span{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:20px}
-.group{display:flex;flex-direction:column;gap:8px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:18px}
+.group{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:14px}
+.group:first-child{border-top:0;padding-top:0}
 .group>label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:600}
 .seg{display:flex;background:var(--tile);border-radius:9px;padding:3px;gap:3px;flex-wrap:wrap}
-.seg button{flex:1;border:0;background:transparent;color:var(--muted);font:600 13px system-ui;padding:7px 10px;border-radius:7px;cursor:pointer;white-space:nowrap}
+.seg button{flex:1;border:0;background:transparent;color:var(--muted);font:600 12.5px system-ui;padding:7px 8px;border-radius:7px;cursor:pointer;white-space:nowrap}
 .seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px #0002}
-.seg button:focus-visible,.rot button:focus-visible,.dl:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.rot{display:flex;align-items:center;gap:10px}
-.rot button{border:1px solid var(--line);background:var(--card);color:var(--ink);width:34px;height:34px;border-radius:9px;font-size:16px;cursor:pointer}
-.dots{display:flex;gap:6px;flex:1;justify-content:center}
-.dots i{width:18px;height:18px;border-radius:50%;border:2px solid transparent;display:inline-block;cursor:pointer}
-.dots i.on{border-color:var(--ink)}
-.rot-label{font-size:12.5px;color:var(--muted);text-align:center}
-input[type=range]{width:100%;accent-color:var(--accent)}
-.slider-row{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted)}
-.slider-row output{min-width:34px;text-align:right;font-variant-numeric:tabular-nums}
-input[type=color]{width:34px;height:28px;border:1px solid var(--line);border-radius:6px;background:var(--card);padding:1px;cursor:pointer}
-.color-row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
-.dl{border:0;background:var(--accent);color:#fff;font:600 14px system-ui;padding:11px 16px;border-radius:9px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.pal{display:flex;flex-wrap:wrap;gap:6px}
+.pal button{display:flex;gap:0;border:2px solid var(--line);border-radius:8px;overflow:hidden;padding:0;cursor:pointer;background:none}
+.pal button.on{border-color:var(--ink)}
+.pal i{width:13px;height:26px;display:inline-block}
+.pal span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.chips{display:flex;gap:6px;justify-content:space-between}
+.chip{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+.chip button{width:100%;aspect-ratio:1;max-width:44px;border-radius:10px;border:2px solid transparent;cursor:pointer}
+.chip button.sel{border-color:var(--ink);box-shadow:0 0 0 2px var(--card) inset}
+.chip input[type=color]{width:100%;max-width:44px;height:16px;border:1px solid var(--line);border-radius:4px;padding:0;background:var(--card);cursor:pointer}
+.chip em{font-style:normal;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.rot{display:flex;align-items:center;gap:10px;justify-content:center}
+.rot button{border:1px solid var(--line);background:var(--card);color:var(--ink);width:32px;height:32px;border-radius:9px;font-size:15px;cursor:pointer}
+.hint{font-size:11.5px;color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0}
+.slider-row{display:grid;grid-template-columns:92px 1fr 40px;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.slider-row output{text-align:right;font-variant-numeric:tabular-nums}
+input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(--card);padding:1px;cursor:pointer}
+.color-row{display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.color-row label{display:flex;align-items:center;gap:6px}
+.color-row input[type=color]{width:32px;height:26px}
+.btn-row{display:flex;gap:8px}
+.dl{flex:1;border:0;background:var(--accent);color:#fff;font:600 14px system-ui;padding:11px 16px;border-radius:9px;cursor:pointer}
 .dl:hover{filter:brightness(1.07)}
-.readout{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--muted);background:var(--code);border-radius:8px;padding:10px 12px;line-height:1.7;overflow-x:auto}
+.ghost{border:1px solid var(--line);background:var(--card);color:var(--muted);font:600 13px system-ui;padding:11px 14px;border-radius:9px;cursor:pointer}
+.readout{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--muted);background:var(--code);border-radius:8px;padding:10px 12px;line-height:1.7;overflow-x:auto;white-space:pre}
 .hidden{display:none !important}
 </style>
 <div class="wrap">
-  <div class="eyebrow">WhatFun &middot; icon configurator &middot; round 7</div>
-  <h1>Tune the winner</h1>
-  <p class="lede">The bright-spectrum pinwheel, live. Rotate which colour sits on the top card, switch
-  appearance, tune the background and the star's rim glow &mdash; then download the exact SVG of what
-  you're seeing. Geometry is identical to the shipped <code>h-winner</code> files.</p>
+  <div class="eyebrow">WhatFun &middot; icon configurator &middot; v2</div>
+  <h1>The full mixing desk</h1>
+  <p class="lede">Palettes from every round, per-petal colour control with click-to-swap, independent
+  glow and star-centre colours, and shape sliders for the whole mark. Download the exact SVG of what
+  you compose.</p>
 
   <div class="layout">
     <div class="stage">
@@ -76,55 +90,70 @@ input[type=color]{width:34px;height:28px;border:1px solid var(--line);border-rad
       </div>
 
       <div class="group">
-        <label>Rotate colours</label>
+        <label>Palette</label>
+        <div class="pal" id="pal"></div>
+        <div class="chips" id="chips"></div>
         <div class="rot">
           <button id="rot-prev" aria-label="Rotate colours left">&#8634;</button>
-          <div class="dots" id="dots"></div>
+          <span class="hint" id="rot-label"></span>
           <button id="rot-next" aria-label="Rotate colours right">&#8635;</button>
         </div>
-        <div class="rot-label" id="rot-label"></div>
+        <div class="hint">Click a swatch, then another, to swap those two petals&rsquo; colours (swaps in both modes). The small strip under each swatch edits that petal&rsquo;s colour directly.</div>
       </div>
 
       <div class="group" id="grp-bg-light">
         <label>Background &middot; light</label>
         <div class="seg" id="seg-bgl">
-          <button data-v="flat" class="on">Flat porcelain</button>
+          <button data-v="flat" class="on">Flat</button>
           <button data-v="grad">Radial gradient</button>
         </div>
-        <div class="slider-row" id="row-grad">
-          <span>Depth</span>
-          <input type="range" id="grad-depth" min="0" max="100" value="45" aria-label="Gradient depth">
-          <output id="grad-out">45</output>
-        </div>
+        <div class="color-row"><label><input type="color" id="bgl-color" value="#F1F2EF">Ground</label></div>
+        <div class="slider-row" id="row-grad"><span>Depth</span><input type="range" id="grad-depth" min="0" max="100" value="45"><output id="grad-depth-o">45</output></div>
       </div>
 
       <div class="group hidden" id="grp-bg-dark">
         <label>Background &middot; dark</label>
         <div class="seg" id="seg-bgd">
           <button data-v="#0D1430" class="on">Ink navy</button>
-          <button data-v="#122048">Bluer navy</button>
+          <button data-v="#122048">Bluer</button>
           <button data-v="#131417">Neutral</button>
         </div>
-        <div class="color-row"><input type="color" id="bgd-custom" value="#0D1430" aria-label="Custom dark background"><span>Custom</span></div>
+        <div class="color-row"><label><input type="color" id="bgd-color" value="#0D1430">Custom</label></div>
       </div>
 
       <div class="group">
         <label>Star glow</label>
         <div class="seg" id="seg-glow">
-          <button data-v="amber" class="on">Amber</button>
-          <button data-v="coral">Coral</button>
-          <button data-v="custom">Custom</button>
+          <button data-v="on" class="on">On</button>
           <button data-v="off">Off</button>
         </div>
-        <div class="color-row hidden" id="row-glow-custom"><input type="color" id="glow-custom" value="#F0A93C" aria-label="Custom glow colour"><span>Glow colour</span></div>
-        <div class="slider-row" id="row-glow-int">
-          <span>Intensity</span>
-          <input type="range" id="glow-int" min="0" max="100" value="100" aria-label="Glow intensity">
-          <output id="glow-out">100</output>
+        <div id="glow-ctrls">
+          <div class="color-row" style="margin-bottom:6px">
+            <label><input type="color" id="glow-color">Glow</label>
+            <label><input type="color" id="int-color">Star centre</label>
+          </div>
+          <div class="slider-row"><span>Intensity</span><input type="range" id="glow-int" min="0" max="100" value="100"><output id="glow-int-o">100</output></div>
+          <div class="slider-row"><span>Width</span><input type="range" id="glow-w" min="4" max="56" value="24"><output id="glow-w-o">24</output></div>
+          <div class="slider-row"><span>Blur</span><input type="range" id="glow-b" min="1" max="22" value="8"><output id="glow-b-o">8</output></div>
         </div>
       </div>
 
-      <button class="dl" id="download">Download this SVG</button>
+      <div class="group">
+        <label>Shape</label>
+        <div class="slider-row"><span>Mark scale</span><input type="range" id="s-scale" min="55" max="100" value="80"><output id="s-scale-o">80</output></div>
+        <div class="slider-row"><span>Rotation</span><input type="range" id="s-rot" min="-45" max="45" value="0"><output id="s-rot-o">0</output></div>
+        <div class="slider-row"><span>Star size</span><input type="range" id="s-spread" min="-25" max="70" value="0"><output id="s-spread-o">0</output></div>
+        <div class="slider-row"><span>Corner round</span><input type="range" id="s-corner" min="6" max="90" value="44"><output id="s-corner-o">44</output></div>
+        <div class="slider-row"><span>Glyph size</span><input type="range" id="s-gsize" min="40" max="140" value="100"><output id="s-gsize-o">100</output></div>
+        <div class="slider-row"><span>Glyph position</span><input type="range" id="s-gpos" min="60" max="125" value="100"><output id="s-gpos-o">100</output></div>
+        <div class="slider-row"><span>Hand tilt</span><input type="range" id="s-jit" min="0" max="250" value="100"><output id="s-jit-o">100</output></div>
+        <div class="slider-row"><span>Emboss depth</span><input type="range" id="s-emb" min="0" max="220" value="100"><output id="s-emb-o">100</output></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="dl" id="download">Download SVG</button>
+        <button class="ghost" id="reset">Reset</button>
+      </div>
       <div class="readout" id="readout"></div>
     </div>
   </div>
@@ -627,173 +656,219 @@ const GEO = {
   }
 };
 
-const HUE_NAMES = ["Indigo","Violet","Magenta","Vermilion","Burnt orange","Teal"];
-const GLYPH_ORDER = GEO.glyphs.order; // e.g. ["app","film","mic","pad","tv","book"]
+const PALETTES = [
+  { name:"Bright spectrum",
+    light:["#4A63E4","#9550D6","#E0339B","#F04A32","#E2621F","#12A38C"],
+    dark:["#5A73F2","#A560E5","#EE45AC","#F85B41","#EF6E2A","#16B69D"] },
+  { name:"Poster ink",
+    light:["#4257C2","#8244B5","#C22B85","#D8402E","#BC4F1C","#0E7D6C"],
+    dark:["#4E63D1","#9153C4","#D13A96","#E44E3A","#CC5C26","#159180"] },
+  { name:"Sunset",
+    light:["#D4562F","#D8404C","#C92F67","#A82E82","#7C3193","#462D8C"],
+    dark:["#DD6136","#E04B55","#D43A72","#B43A8E","#8A3FA1","#54389E"] },
+  { name:"Retro pop",
+    light:["#40578F","#A84D1C","#16766F","#B33A2B","#2E6B33","#AF2D6E"],
+    dark:["#46609F","#C4602A","#1C857D","#C44730","#377B3C","#C23A7D"] },
+  { name:"Jewel",
+    light:["#1D4E9E","#B01E42","#0C7048","#8C4E1B","#71399C","#8A2433"],
+    dark:["#2A5FB5","#C22A50","#12855C","#A05E22","#8348B0","#9C2E3E"] },
+  { name:"Neon dusk",
+    light:["#2C55C0","#D6248E","#0A8278","#C63F26","#6931B8","#B01E55"],
+    dark:["#3D66D4","#E93AA2","#0E968A","#E85A3C","#7B42CC","#C22C66"] },
+];
+const PETAL_LABELS = ["Top","Film","Mic","Pad","TV","Book"];
+const PETAL_ANGLES = [0,60,120,180,240,300];
+const ANCHOR = GEO.glyphs.anchor, JITTER = GEO.glyphs.jitter_deg, ORDER = GEO.glyphs.order;
+const STAR_R0 = 154; // approx mean star radius for glow scaling under spread
 
-const state = {
-  mode: "light",
-  rot: 0,
-  bgLight: "flat",
-  gradDepth: 45,
-  bgDark: "#0D1430",
-  glow: "amber",
-  glowCustom: "#F0A93C",
-  glowInt: 100,
-};
+function defaults(){
+  return {
+    mode:"light", pal:0,
+    colors:{ light:[...PALETTES[0].light], dark:[...PALETTES[0].dark] },
+    swapSel:null,
+    bgLight:"flat", bglColor:"#F1F2EF", gradDepth:45, bgDark:"#0D1430",
+    glowOn:true,
+    glowColor:{ light:GEO.rim_glow.light.stroke, dark:GEO.rim_glow.dark.stroke },
+    intColor:{ light:GEO.rim_glow.light.interior_fill, dark:GEO.rim_glow.dark.interior_fill },
+    glowInt:100, glowW:24, glowB:8,
+    scale:80, rot:0, spread:0, corner:44, gsize:100, gpos:100, jit:100, emb:100,
+  };
+}
+let S = defaults();
 
-// ---------- colour math (linear sRGB mix, matching the generator) ----------
 function hex2rgb(h){ h=h.replace("#",""); return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16)); }
 function rgb2hex(r){ return "#"+r.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,"0")).join("").toUpperCase(); }
-function mix(hex, target, t){ const a=hex2rgb(hex), b=hex2rgb(target); return rgb2hex(a.map((v,i)=>v+(b[i]-v)*t)); }
-const lighten=(h,t)=>mix(h,"#FFFFFF",t), darken=(h,t)=>mix(h,"#000000",t);
+function mix(hex,t2,t){ const a=hex2rgb(hex), b=hex2rgb(t2); return rgb2hex(a.map((v,i)=>v+(b[i]-v)*t)); }
+const lighten=(h,t)=>mix(h,"#FFFFFF",Math.min(1,t)), darken=(h,t)=>mix(h,"#000000",Math.min(1,t));
 
-// ---------- SVG construction ----------
 const NS="http://www.w3.org/2000/svg";
-function el(name, attrs, parent){
-  const e=document.createElementNS(NS,name);
-  for(const k in attrs) e.setAttribute(k,attrs[k]);
-  if(parent) parent.appendChild(e);
-  return e;
-}
+function el(n,a,p){ const e=document.createElementNS(NS,n); for(const k in a) e.setAttribute(k,a[k]); if(p) p.appendChild(e); return e; }
 
 function buildSVG(){
-  const m = state.mode, hues = GEO.hues[m], amounts = GEO.deboss.amounts[m];
-  const svg = el("svg",{xmlns:NS,width:1024,height:1024,viewBox:GEO.canvas.viewBox});
-  const defs = el("defs",{},svg);
-  const filt = el("filter",{id:"cfg-blur",x:"-30%",y:"-30%",width:"160%",height:"160%"},defs);
-  el("feGaussianBlur",{stdDeviation:GEO.rim_glow[m].blur_std},filt);
-
+  const m=S.mode, hues=S.colors[m], base=GEO.deboss.amounts[m], embF=S.emb/100;
+  const svg=el("svg",{xmlns:NS,width:1024,height:1024,viewBox:GEO.canvas.viewBox});
+  const defs=el("defs",{},svg);
+  const filt=el("filter",{id:"cfg-blur",x:"-40%",y:"-40%",width:"180%",height:"180%"},defs);
+  el("feGaussianBlur",{stdDeviation:S.glowB},filt);
   for(const name in GEO.glyphs.shapes){
-    const g = el("g",{id:"cfg-g-"+name},defs);
-    for(const shape of GEO.glyphs.shapes[name]){
-      if(shape.kind==="fill") el("path",{fill:"currentColor","fill-rule":"evenodd",d:shape.d},g);
-      else el("path",{fill:"none",stroke:"currentColor","stroke-width":shape.stroke_width||13,"stroke-linecap":"round",d:shape.d},g);
+    const g=el("g",{id:"cfg-g-"+name},defs);
+    for(const sh of GEO.glyphs.shapes[name]){
+      if(sh.kind==="fill") el("path",{fill:"currentColor","fill-rule":"evenodd",d:sh.d},g);
+      else el("path",{fill:"none",stroke:"currentColor","stroke-width":sh.stroke_width||13,"stroke-linecap":"round",d:sh.d},g);
     }
   }
-
-  // background
   let bgFill;
   if(m==="light"){
-    if(state.bgLight==="grad"){
-      const t = state.gradDepth/100;
-      const grad = el("radialGradient",{id:"cfg-bg",cx:.5,cy:.5,r:GEO.backgrounds.light_gradient.r},defs);
-      el("stop",{offset:0,"stop-color":"#F8F8F4"},grad);
-      el("stop",{offset:1,"stop-color":mix("#F8F8F4","#DCDED6",t)},grad);
+    if(S.bgLight==="grad"){
+      const t=S.gradDepth/100;
+      const grad=el("radialGradient",{id:"cfg-bg",cx:.5,cy:.5,r:GEO.backgrounds.light_gradient.r},defs);
+      el("stop",{offset:0,"stop-color":lighten(S.bglColor,0.55)},grad);
+      el("stop",{offset:1,"stop-color":mix(S.bglColor,"#B9BCB0",t*0.55)},grad);
       bgFill="url(#cfg-bg)";
-    } else bgFill=GEO.backgrounds.light_porcelain;
-  } else bgFill=state.bgDark;
+    } else bgFill=S.bglColor;
+  } else bgFill=S.bgDark;
   el("rect",{width:1024,height:1024,fill:bgFill},svg);
 
-  const mark = el("g",{transform:GEO.mark.transform},svg);
+  const markT=`translate(512 512) scale(${S.scale/100}) translate(-512 -512)`+(S.rot? ` rotate(${S.rot} 512 512)`:"");
+  const mark=el("g",{transform:markT},svg);
 
-  // glow (interior + rim), behind petals
-  if(state.glow!=="off"){
-    let spec;
-    if(state.glow==="amber") spec = {...GEO.rim_glow[m]};
-    else if(state.glow==="coral") spec = {...GEO.rim_glow.alt[m]};
-    else {
-      const c = state.glowCustom;
-      spec = {...GEO.rim_glow[m], stroke:c,
-        interior_fill: m==="light" ? mix(c,"#FFFFFF",0.82) : mix(c, state.bgDark, 0.82)};
-    }
-    const op = spec.opacity * state.glowInt/100;
-    if(op>0.005){
-      el("path",{d:GEO.star.d,fill:spec.interior_fill,
-        transform:`translate(512 512) scale(${GEO.rim_glow.interior_scale}) translate(-512 -512)`,
-        opacity:Math.min(1,state.glowInt/100*1.4)},mark);
-      el("path",{d:GEO.star.d,fill:"none",stroke:spec.stroke,"stroke-width":spec.stroke_width,
-        "stroke-linejoin":"round",opacity:op,filter:"url(#cfg-blur)"},mark);
-    }
+  if(S.glowOn && S.glowInt>0){
+    const starScale=(STAR_R0+S.spread)/STAR_R0;
+    el("path",{d:GEO.star.d,fill:S.intColor[m],
+      transform:`translate(512 512) scale(${(GEO.rim_glow.interior_scale*starScale).toFixed(4)}) translate(-512 -512)`,
+      opacity:Math.min(1,S.glowInt/100*1.4)},mark);
+    el("path",{d:GEO.star.d,fill:"none",stroke:S.glowColor[m],"stroke-width":S.glowW,
+      "stroke-linejoin":"round",opacity:(GEO.rim_glow[m].opacity*S.glowInt/100).toFixed(3),
+      transform:`translate(512 512) scale(${starScale.toFixed(4)}) translate(-512 -512)`,
+      filter:"url(#cfg-blur)"},mark);
   }
-
-  // petals
   for(let i=0;i<6;i++){
-    const hue = hues[(i+state.rot)%6];
-    el("path",{d:GEO.petal.d,fill:hue,stroke:hue,"stroke-width":GEO.petal.stroke_width,
-      "stroke-linejoin":GEO.petal.stroke_linejoin,transform:GEO.petal.transforms[i]},mark);
+    el("path",{d:GEO.petal.d,fill:hues[i],stroke:hues[i],"stroke-width":S.corner,
+      "stroke-linejoin":"round",transform:`rotate(${PETAL_ANGLES[i]} 512 512) translate(0 ${-S.spread})`},mark);
   }
-
-  // glyphs (three-layer deboss)
+  const k=S.gpos/100, gs=S.gsize/100*0.8/0.8;
   for(let i=0;i<6;i++){
-    const hue = hues[(i+state.rot)%6];
-    const g = el("g",{transform:GEO.glyphs.transforms[i]},mark);
-    const name = GLYPH_ORDER[i];
-    el("use",{href:"#cfg-g-"+name,y:3,color:lighten(hue,amounts.lighten)},g);
-    el("use",{href:"#cfg-g-"+name,y:-3,color:darken(hue,amounts.darken_sh)},g);
-    el("use",{href:"#cfg-g-"+name,color:darken(hue,amounts.darken_fill)},g);
+    const ax=512+(ANCHOR[0]-512)*k, ay=512+(ANCHOR[1]-512)*k;
+    const jit=(JITTER[i]*S.jit/100).toFixed(2);
+    const g=el("g",{transform:`rotate(${PETAL_ANGLES[i]} 512 512) translate(0 ${-S.spread}) translate(${ax.toFixed(1)} ${ay.toFixed(1)}) rotate(${-PETAL_ANGLES[i]+ +jit}) scale(${(S.gsize/100).toFixed(3)})`},mark);
+    const hue=hues[i], name=ORDER[i];
+    el("use",{href:"#cfg-g-"+name,y:3,color:lighten(hue,base.lighten*embF)},g);
+    el("use",{href:"#cfg-g-"+name,y:-3,color:darken(hue,base.darken_sh*embF)},g);
+    el("use",{href:"#cfg-g-"+name,color:darken(hue,base.darken_fill*embF)},g);
   }
   return svg;
 }
 
-// ---------- render + UI ----------
 function render(){
-  const svg = buildSVG();
+  const svg=buildSVG();
   for(const id of ["main-preview","mini-180","mini-64"]){
-    const host = document.getElementById(id);
+    const host=document.getElementById(id);
     host.replaceChildren(svg.cloneNode(true));
-    const s = host.querySelector("svg");
+    const s=host.querySelector("svg");
     s.removeAttribute("width"); s.removeAttribute("height");
     s.style.width="100%"; s.style.height="100%"; s.style.display="block";
   }
-  // dots
-  const hues = GEO.hues[state.mode];
-  const dots = document.getElementById("dots");
-  dots.replaceChildren(...hues.map((_,k)=>{
-    const i=document.createElement("i");
-    i.style.background = hues[k];
-    i.className = k===state.rot ? "on" : "";
-    i.title = HUE_NAMES[k]+" on top";
-    i.onclick = ()=>{ state.rot=k; render(); };
-    return i;
+  // palette buttons
+  const pal=document.getElementById("pal");
+  pal.replaceChildren(...PALETTES.map((p,i)=>{
+    const b=document.createElement("button");
+    b.className=i===S.pal?"on":"";
+    b.title=p.name;
+    b.append(...p[S.mode].map(h=>{ const sq=document.createElement("i"); sq.style.background=h; return sq; }));
+    const sr=document.createElement("span"); sr.textContent=p.name; b.append(sr);
+    b.onclick=()=>{ S.pal=i; S.colors={light:[...p.light],dark:[...p.dark]}; S.swapSel=null; render(); };
+    return b;
   }));
-  document.getElementById("rot-label").textContent =
-    "Top card: " + HUE_NAMES[state.rot];
-  // visibility
-  document.getElementById("grp-bg-light").classList.toggle("hidden",state.mode!=="light");
-  document.getElementById("grp-bg-dark").classList.toggle("hidden",state.mode!=="dark");
-  document.getElementById("row-grad").classList.toggle("hidden",state.bgLight!=="grad");
-  document.getElementById("row-glow-custom").classList.toggle("hidden",state.glow!=="custom");
-  document.getElementById("row-glow-int").classList.toggle("hidden",state.glow==="off");
-  // readout
-  const rHues = [0,1,2,3,4,5].map(i=>GEO.hues[state.mode][(i+state.rot)%6]);
-  const bg = state.mode==="light" ? (state.bgLight==="grad"?"radial "+state.gradDepth+"%":GEO.backgrounds.light_porcelain) : state.bgDark;
-  const glow = state.glow==="off"?"off":(state.glow==="custom"?state.glowCustom:state.glow)+" "+state.glowInt+"%";
-  document.getElementById("readout").textContent =
-    "petals " + rHues.join(" ") + "\nbg " + bg + " · glow " + glow;
+  // chips
+  const chips=document.getElementById("chips");
+  chips.replaceChildren(...S.colors[S.mode].map((h,i)=>{
+    const d=document.createElement("div"); d.className="chip";
+    const b=document.createElement("button");
+    b.style.background=h;
+    b.className=S.swapSel===i?"sel":"";
+    b.title=PETAL_LABELS[i]+" petal — click two swatches to swap";
+    b.onclick=()=>{
+      if(S.swapSel===null){ S.swapSel=i; }
+      else if(S.swapSel===i){ S.swapSel=null; }
+      else {
+        for(const md of ["light","dark"]){
+          const c=S.colors[md]; [c[S.swapSel],c[i]]=[c[i],c[S.swapSel]];
+        }
+        S.swapSel=null;
+      }
+      render();
+    };
+    const inp=document.createElement("input");
+    inp.type="color"; inp.value=h;
+    inp.setAttribute("aria-label",PETAL_LABELS[i]+" petal colour");
+    inp.oninput=e=>{ S.colors[S.mode][i]=e.target.value.toUpperCase(); render(); };
+    const em=document.createElement("em"); em.textContent=PETAL_LABELS[i];
+    d.append(b,inp,em);
+    return d;
+  }));
+  document.getElementById("rot-label").textContent="rotate all";
+  document.getElementById("grp-bg-light").classList.toggle("hidden",S.mode!=="light");
+  document.getElementById("grp-bg-dark").classList.toggle("hidden",S.mode!=="dark");
+  document.getElementById("row-grad").classList.toggle("hidden",S.bgLight!=="grad");
+  document.getElementById("glow-ctrls").classList.toggle("hidden",!S.glowOn);
+  document.getElementById("glow-color").value=S.glowColor[S.mode];
+  document.getElementById("int-color").value=S.intColor[S.mode];
+  const bg=S.mode==="light"?(S.bgLight==="grad"?S.bglColor+" radial "+S.gradDepth+"%":S.bglColor):S.bgDark;
+  document.getElementById("readout").textContent=
+    "petals "+S.colors[S.mode].join(" ")+"\nbg "+bg+
+    "\nglow "+(S.glowOn?S.glowColor[S.mode]+" centre "+S.intColor[S.mode]+" int "+S.glowInt+" w "+S.glowW+" blur "+S.glowB:"off")+
+    "\nscale "+S.scale+"% rot "+S.rot+"° star "+(S.spread>=0?"+":"")+S.spread+" corner "+S.corner+
+    "\nglyphs "+S.gsize+"% pos "+S.gpos+"% tilt "+S.jit+"% emboss "+S.emb+"%";
 }
 
-function segWire(id, key, cb){
+function segWire(id,fn){
   const seg=document.getElementById(id);
   seg.addEventListener("click",e=>{
     const b=e.target.closest("button"); if(!b) return;
     seg.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
-    state[key]=b.dataset.v; if(cb) cb(b.dataset.v); render();
+    fn(b.dataset.v); render();
   });
 }
-segWire("seg-mode","mode");
-segWire("seg-bgl","bgLight");
-segWire("seg-bgd","bgDark");
-segWire("seg-glow","glow");
-document.getElementById("bgd-custom").addEventListener("input",e=>{
-  state.bgDark=e.target.value.toUpperCase();
+segWire("seg-mode",v=>S.mode=v);
+segWire("seg-bgl",v=>S.bgLight=v);
+segWire("seg-bgd",v=>{ S.bgDark=v; document.getElementById("bgd-color").value=v; });
+segWire("seg-glow",v=>S.glowOn=v==="on");
+document.getElementById("bgl-color").addEventListener("input",e=>{ S.bglColor=e.target.value.toUpperCase(); render(); });
+document.getElementById("bgd-color").addEventListener("input",e=>{
+  S.bgDark=e.target.value.toUpperCase();
   document.querySelectorAll("#seg-bgd button").forEach(x=>x.classList.remove("on"));
   render();
 });
-document.getElementById("glow-custom").addEventListener("input",e=>{ state.glowCustom=e.target.value.toUpperCase(); render(); });
-document.getElementById("grad-depth").addEventListener("input",e=>{
-  state.gradDepth=+e.target.value; document.getElementById("grad-out").value=e.target.value; render();
-});
-document.getElementById("glow-int").addEventListener("input",e=>{
-  state.glowInt=+e.target.value; document.getElementById("glow-out").value=e.target.value; render();
-});
-document.getElementById("rot-prev").onclick=()=>{ state.rot=(state.rot+5)%6; render(); };
-document.getElementById("rot-next").onclick=()=>{ state.rot=(state.rot+1)%6; render(); };
+document.getElementById("glow-color").addEventListener("input",e=>{ S.glowColor[S.mode]=e.target.value.toUpperCase(); render(); });
+document.getElementById("int-color").addEventListener("input",e=>{ S.intColor[S.mode]=e.target.value.toUpperCase(); render(); });
+for(const [id,key] of [["grad-depth","gradDepth"],["glow-int","glowInt"],["glow-w","glowW"],["glow-b","glowB"],
+  ["s-scale","scale"],["s-rot","rot"],["s-spread","spread"],["s-corner","corner"],
+  ["s-gsize","gsize"],["s-gpos","gpos"],["s-jit","jit"],["s-emb","emb"]]){
+  const inp=document.getElementById(id);
+  inp.addEventListener("input",e=>{ S[key]=+e.target.value; document.getElementById(id+"-o").value=e.target.value; render(); });
+}
+document.getElementById("rot-prev").onclick=()=>{ for(const md of ["light","dark"]) S.colors[md].unshift(S.colors[md].pop()); render(); };
+document.getElementById("rot-next").onclick=()=>{ for(const md of ["light","dark"]) S.colors[md].push(S.colors[md].shift()); render(); };
+document.getElementById("reset").onclick=()=>{
+  S=defaults();
+  for(const [id,val] of [["grad-depth",45],["glow-int",100],["glow-w",24],["glow-b",8],["s-scale",80],["s-rot",0],
+    ["s-spread",0],["s-corner",44],["s-gsize",100],["s-gpos",100],["s-jit",100],["s-emb",100]]){
+    document.getElementById(id).value=val; document.getElementById(id+"-o").value=val;
+  }
+  document.getElementById("bgl-color").value="#F1F2EF";
+  document.getElementById("bgd-color").value="#0D1430";
+  document.querySelectorAll("#seg-mode button").forEach(x=>x.classList.toggle("on",x.dataset.v==="light"));
+  document.querySelectorAll("#seg-bgl button").forEach(x=>x.classList.toggle("on",x.dataset.v==="flat"));
+  document.querySelectorAll("#seg-bgd button").forEach(x=>x.classList.toggle("on",x.dataset.v==="#0D1430"));
+  document.querySelectorAll("#seg-glow button").forEach(x=>x.classList.toggle("on",x.dataset.v==="on"));
+  render();
+};
 document.getElementById("download").onclick=()=>{
   const svg=buildSVG();
   const blob=new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(svg)],{type:"image/svg+xml"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download=`whatfun-icon-${state.mode}-rot${state.rot}.svg`;
+  a.download=`whatfun-icon-${S.mode}.svg`;
   a.click(); URL.revokeObjectURL(a.href);
 };
 render();
