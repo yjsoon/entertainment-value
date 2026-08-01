@@ -96,18 +96,20 @@ struct MarkDoneView: View {
                             displayedComponents: [.date, .hourAndMinute]
                         )
 
-                        if selectedUnit?.unitKind != .tvEpisode {
-                            Picker("Rating", selection: $ratingHalfSteps) {
-                                Text("Not Rated").tag(Int?.none)
-                                ForEach(1 ... 10, id: \.self) { halfSteps in
-                                    Text("\(Double(halfSteps) / 2, format: .number.precision(.fractionLength(1))) stars")
-                                        .tag(Int?.some(halfSteps))
+                        DisclosureGroup("Add a rating or note (optional)") {
+                            if selectedUnit?.unitKind != .tvEpisode {
+                                Picker("Rating", selection: $ratingHalfSteps) {
+                                    Text("Not Rated").tag(Int?.none)
+                                    ForEach(1 ... 10, id: \.self) { halfSteps in
+                                        Text("\(Double(halfSteps) / 2, format: .number.precision(.fractionLength(1))) stars")
+                                            .tag(Int?.some(halfSteps))
+                                    }
                                 }
                             }
-                        }
 
-                        TextField("Completion note (optional)", text: $note, axis: .vertical)
-                            .lineLimit(2 ... 6)
+                            TextField("Completion note", text: $note, axis: .vertical)
+                                .lineLimit(2 ... 6)
+                        }
                     }
                 } else {
                     ContentUnavailableView(

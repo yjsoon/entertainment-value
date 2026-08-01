@@ -23,8 +23,6 @@ struct LibraryView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 20) {
-                MediaFilterBar(selection: $mediaFilter)
-
                 if visibleItems.isEmpty {
                     ContentUnavailableView {
                         Label(emptyTitle, systemImage: "books.vertical")
@@ -78,6 +76,10 @@ struct LibraryView: View {
             }
 
             ToolbarSpacer(.fixed, placement: .topBarTrailing)
+
+            ToolbarItem(placement: .topBarTrailing) {
+                MediaFilterMenu(selection: $mediaFilter)
+            }
 
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Add Item", systemImage: "plus") {

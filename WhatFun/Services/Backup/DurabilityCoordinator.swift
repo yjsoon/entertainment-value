@@ -13,12 +13,24 @@ final class DurabilityCoordinator {
     /// stable name. Shared so the automatic and manual paths stay in lockstep.
     static func backupPreferences(
         gridStyle: String,
-        defaultReminderHour: Int
+        defaultReminderHour: Int,
+        focusPeriod: HistoryPeriod
     ) -> [String: String] {
         [
             "library.grid-style": gridStyle,
             "reminders.default-hour": String(defaultReminderHour),
+            HistoryPeriod.preferenceKey: focusPeriod.rawValue,
         ]
+    }
+
+    /// Returns a backup's focus preference only when it is one the current app
+    /// understands. Callers can leave their current choice intact for legacy or
+    /// malformed backups by only applying a non-nil value.
+    static func restoredFocusPeriod(from preferences: [String: String]) -> HistoryPeriod? {
+        guard let storedValue = preferences[HistoryPeriod.preferenceKey] else {
+            return nil
+        }
+        return HistoryPeriod(rawValue: storedValue)
     }
 
     private let bridge: SwiftDataArchiveBridge

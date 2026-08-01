@@ -27,7 +27,8 @@ struct DurabilityCoordinatorTests {
         )
         let preferences = DurabilityCoordinator.backupPreferences(
             gridStyle: "grid",
-            defaultReminderHour: 21
+            defaultReminderHour: 21,
+            focusPeriod: .week
         )
 
         let url = try await coordinator.writeDailyBackup(preferences: preferences)
@@ -36,8 +37,24 @@ struct DurabilityCoordinatorTests {
         #expect(envelope.preferences == preferences)
         #expect(envelope.preferences["library.grid-style"] == "grid")
         #expect(envelope.preferences["reminders.default-hour"] == "21")
+        #expect(envelope.preferences[HistoryPeriod.preferenceKey] == HistoryPeriod.week.rawValue)
         #expect(envelope.generator == DurabilityCoordinator.automaticRecoveryGenerator)
         // Unattended backups never depend on a remembered passphrase.
         #expect(envelope.encryptedPrivateData == nil)
+    }
+
+    @Test("Focus period restore accepts only known backup values")
+    func restoredFocusPeriodValidation() {
+        #expect(
+            DurabilityCoordinator.restoredFocusPeriod(
+                from: [HistoryPeriod.preferenceKey: HistoryPeriod.day.rawValue]
+            ) == .day
+        )
+        #expect(DurabilityCoordinator.restoredFocusPeriod(from: [:]) == nil)
+        #expect(
+            DurabilityCoordinator.restoredFocusPeriod(
+                from: [HistoryPeriod.preferenceKey: "year"]
+            ) == nil
+        )
     }
 }

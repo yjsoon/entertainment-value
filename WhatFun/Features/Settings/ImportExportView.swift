@@ -14,6 +14,7 @@ struct ImportExportView: View {
 
     @AppStorage("library.grid-style") private var gridStyleRaw = LibraryGridStyle.flow.rawValue
     @AppStorage("reminders.default-hour") private var defaultReminderHour = 9
+    @AppStorage(HistoryPeriod.preferenceKey) private var focusPeriodRaw = HistoryPeriod.defaultFocus.rawValue
     @AppStorage("backup.last-success") private var lastBackupTimestamp = 0.0
     @AppStorage("backup.last-error") private var lastBackupError = ""
 
@@ -307,7 +308,8 @@ struct ImportExportView: View {
     private var archivePreferences: [String: String] {
         DurabilityCoordinator.backupPreferences(
             gridStyle: gridStyleRaw,
-            defaultReminderHour: defaultReminderHour
+            defaultReminderHour: defaultReminderHour,
+            focusPeriod: HistoryPeriod.focus(from: focusPeriodRaw)
         )
     }
 
@@ -537,6 +539,9 @@ struct ImportExportView: View {
            let hour = Int(value),
            (0 ... 23).contains(hour) {
             defaultReminderHour = hour
+        }
+        if let focusPeriod = DurabilityCoordinator.restoredFocusPeriod(from: preferences) {
+            focusPeriodRaw = focusPeriod.rawValue
         }
     }
 

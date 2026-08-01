@@ -7,6 +7,14 @@ struct SettingsView: View {
 
     @AppStorage("library.grid-style") private var gridStyleRaw = LibraryGridStyle.flow.rawValue
     @AppStorage("reminders.default-hour") private var defaultReminderHour = 9
+    @AppStorage(HistoryPeriod.preferenceKey) private var focusPeriodRaw = HistoryPeriod.defaultFocus.rawValue
+
+    private var focusPeriodSelection: Binding<HistoryPeriod> {
+        Binding(
+            get: { HistoryPeriod.focus(from: focusPeriodRaw) },
+            set: { focusPeriodRaw = $0.rawValue }
+        )
+    }
 
     private var recentlyDeletedCount: Int {
         items.lazy.filter { $0.trashedAt != nil }.count +
@@ -43,6 +51,18 @@ struct SettingsView: View {
                         symbol: "trash"
                     )
                 }
+            }
+
+            Section {
+                Picker("Track repeats by", selection: focusPeriodSelection) {
+                    ForEach(HistoryPeriod.allCases) { period in
+                        Text(period.displayName).tag(period)
+                    }
+                }
+            } header: {
+                Text("Focus")
+            } footer: {
+                Text("Home and session logging use this period to show what you have already enjoyed. The default is Month.")
             }
 
             Section("Defaults") {
@@ -293,4 +313,3 @@ private struct MetadataKeyEditorView: View {
         }
     }
 }
-

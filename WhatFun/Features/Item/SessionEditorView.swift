@@ -7,6 +7,8 @@ struct SessionEditorView: View {
     @Query private var matchingItems: [LibraryItem]
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.calendar) private var calendar
+    @AppStorage(HistoryPeriod.preferenceKey) private var focusPeriodRaw = HistoryPeriod.defaultFocus.rawValue
 
     @State private var selectedUnitID: UUID?
     @State private var occurredAt = Date.now
@@ -77,6 +79,29 @@ struct SessionEditorView: View {
         activeCycle == nil && matchingCycles.contains { $0.status == .completed }
     }
 
+    private var focusPeriod: HistoryPeriod {
+        HistoryPeriod.focus(from: focusPeriodRaw)
+    }
+
+    private var focusSessionCount: Int {
+        let interval = focusPeriod.interval(containing: .now, calendar: calendar)
+        return (item?.cycles ?? [])
+            .filter { $0.deletedAt == nil }
+            .flatMap { $0.sessions ?? [] }
+            .filter {
+                $0.deletedAt == nil && $0.occurredAt >= interval.start && $0.occurredAt < interval.end
+            }
+            .count
+    }
+
+    private var focusSessionSummary: String {
+        focusPeriod.sessionCountSummary(focusSessionCount)
+    }
+
+    private var focusSessionColour: Color {
+        focusSessionCount == 0 ? WhatFunTheme.secondaryInk : WhatFunTheme.sage
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -94,6 +119,9 @@ struct SessionEditorView: View {
                                 Label(item.mediaKind.singularName, systemImage: item.mediaKind.symbolName)
                                     .font(.caption)
                                     .foregroundStyle(WhatFunTheme.secondaryInk)
+                                Text(focusSessionSummary)
+                                    .font(.caption)
+                                    .foregroundStyle(focusSessionColour)
                             }
                         }
                     }
@@ -109,19 +137,24 @@ struct SessionEditorView: View {
                         }
                     }
 
-                    Section("Session") {
+                    Section {
                         DatePicker(
                             "When",
                             selection: $occurredAt,
                             displayedComponents: [.date, .hourAndMinute]
                         )
-                        TextField("Time spent in minutes (optional)", text: $timeSpentMinutes)
-                            .keyboardType(.numberPad)
-                        TextField("Session note (optional)", text: $note, axis: .vertical)
-                            .lineLimit(2 ... 6)
+                        DisclosureGroup("Add details (optional)") {
+                            TextField("Time spent in minutes", text: $timeSpentMinutes)
+                                .keyboardType(.numberPad)
+                            TextField("Session note", text: $note, axis: .vertical)
+                                .lineLimit(2 ... 6)
+                            progressSection(for: item.mediaKind)
+                        }
+                    } header: {
+                        Text("Session")
+                    } footer: {
+                        Text("A date is all you need. Add details when they will help you remember or continue.")
                     }
-
-                    progressSection(for: item.mediaKind)
 
                     if repeatConfirmationRequired {
                         Section("New Cycle") {
@@ -172,7 +205,9 @@ struct SessionEditorView: View {
     private func progressSection(for mediaKind: MediaKind) -> some View {
         switch mediaKind {
         case .book, .comic:
-            Section("Reading Progress") {
+            Group {
+                Text("Reading progress")
+                    .font(.subheadline.weight(.semibold))
                 TextField("Current page (optional)", text: $currentPage)
                     .keyboardType(.numberPad)
                 TextField("Total pages (optional)", text: $totalPages)
@@ -181,7 +216,9 @@ struct SessionEditorView: View {
             }
 
         case .movie, .tvShow, .podcast:
-            Section("Playback Position") {
+            Group {
+                Text("Playback position")
+                    .font(.subheadline.weight(.semibold))
                 TextField("Elapsed minutes (optional)", text: $elapsedMinutes)
                     .keyboardType(.numberPad)
                 TextField("Total minutes (optional)", text: $mediaDurationMinutes)
@@ -189,7 +226,9 @@ struct SessionEditorView: View {
             }
 
         case .game:
-            Section("Game Progress") {
+            Group {
+                Text("Game progress")
+                    .font(.subheadline.weight(.semibold))
                 TextField("Playtime added, minutes (optional)", text: $gamePlaytimeDeltaMinutes)
                     .keyboardType(.numberPad)
                 TextField("Cumulative playtime, hours (optional)", text: $gamePlaytimeTotalHours)

@@ -111,6 +111,9 @@ struct RootView: View {
             let gridStyle = defaults.string(forKey: "library.grid-style")
                 ?? LibraryGridStyle.flow.rawValue
             let reminderHour = defaults.object(forKey: "reminders.default-hour") as? Int ?? 9
+            let focusPeriod = HistoryPeriod.focus(
+                from: defaults.string(forKey: HistoryPeriod.preferenceKey)
+            )
             let coordinator = DurabilityCoordinator(
                 bridge: SwiftDataArchiveBridge(
                     context: modelContext,
@@ -122,7 +125,8 @@ struct RootView: View {
             _ = try await coordinator.writeDailyBackup(
                 preferences: DurabilityCoordinator.backupPreferences(
                     gridStyle: gridStyle,
-                    defaultReminderHour: reminderHour
+                    defaultReminderHour: reminderHour,
+                    focusPeriod: focusPeriod
                 )
             )
             lastBackupTimestamp = Date.now.timeIntervalSince1970

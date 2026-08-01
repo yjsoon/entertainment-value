@@ -155,49 +155,38 @@ enum MediaFilter: Hashable, Identifiable, Sendable {
     }
 }
 
-struct MediaFilterBar: View {
+struct MediaFilterMenu: View {
     @Binding var selection: MediaFilter
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var accessibilityLabel: String {
+        switch selection {
+        case .all:
+            "Filter"
+        case let .kind(kind):
+            "Filter: \(String(localized: kind.displayName))"
+        }
+    }
 
     var body: some View {
-        ScrollView(.horizontal) {
-            GlassEffectContainer(spacing: 8) {
-                HStack(spacing: 8) {
-                    ForEach(MediaFilter.allCases) { filter in
-                        Button {
-                            if reduceMotion {
-                                selection = filter
-                            } else {
-                                withAnimation(.smooth(duration: 0.22)) {
-                                    selection = filter
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 6) {
-                                if let symbol = filter.symbolName {
-                                    Image(systemName: symbol)
-                                }
-                                Text(filter.displayName)
-                            }
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 13)
-                            .padding(.vertical, 9)
-                        }
-                        .buttonStyle(.plain)
-                        .glassEffect(
-                            selection == filter
-                                ? .regular.tint(WhatFunTheme.coral.opacity(0.42)).interactive()
-                                : .regular.interactive(),
-                            in: .capsule
-                        )
-                        .accessibilityAddTraits(selection == filter ? .isSelected : [])
+        Menu {
+            Picker("Filter", selection: $selection) {
+                ForEach(MediaFilter.allCases) { filter in
+                    if let symbol = filter.symbolName {
+                        Label(filter.displayName, systemImage: symbol)
+                            .tag(filter)
+                    } else {
+                        Text(filter.displayName)
+                            .tag(filter)
                     }
                 }
-                .padding(.vertical, 4)
             }
+        } label: {
+            Image(systemName: selection == .all
+                ? "line.3.horizontal.decrease.circle"
+                : "line.3.horizontal.decrease.circle.fill")
         }
-        .contentMargins(.horizontal, 16, for: .scrollContent)
-        .scrollIndicators(.hidden)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(String(localized: selection.displayName))
     }
 }
 

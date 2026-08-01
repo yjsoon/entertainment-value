@@ -10,7 +10,11 @@ struct HomeView: View {
     @Environment(AppNavigation.self) private var navigation
     @Environment(\.calendar) private var calendar
     @State private var mediaFilter = MediaFilter.all
-    @State private var historyPeriod = HistoryPeriod.week
+    @AppStorage(HistoryPeriod.preferenceKey) private var focusPeriodRaw = HistoryPeriod.defaultFocus.rawValue
+
+    private var focusPeriod: HistoryPeriod {
+        HistoryPeriod.focus(from: focusPeriodRaw)
+    }
 
     private var visibleItems: [LibraryItem] {
         items.filter { $0.archivedAt == nil && mediaFilter.includes($0) }
@@ -44,17 +48,23 @@ struct HomeView: View {
     }
 
     private var emptyAddTitle: String {
-        selectedMediaKind.map { "Add \(String(localized: $0.singularName))" } ?? "Add Your First Item"
+        selectedMediaKind.map { "Add \(String(localized: $0.singularName))" } ?? "Add Item"
     }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
-                MediaFilterBar(selection: $mediaFilter)
-
                 if visibleItems.isEmpty {
                     welcome
                 } else {
+                    ConsumedHistorySection(
+                        items: visibleItems,
+                        period: focusPeriod,
+                        referenceDate: .now,
+                        calendar: calendar
+                    )
+                    .id(focusPeriod)
+
                     if !overdueItems.isEmpty {
                         overdueSection
                     }
@@ -66,15 +76,6 @@ struct HomeView: View {
                     if !plannedItems.isEmpty {
                         upNextSection
                     }
-
-                    ConsumedHistorySection(
-                        items: visibleItems,
-                        period: historyPeriod,
-                        referenceDate: .now,
-                        calendar: calendar,
-                        selection: $historyPeriod
-                    )
-                    .id(historyPeriod)
                 }
             }
             .padding(.vertical, 12)
@@ -93,6 +94,10 @@ struct HomeView: View {
                     navigation.presentedSheet = .quickAdd(initialMediaKind: selectedMediaKind)
                 }
             }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                MediaFilterMenu(selection: $mediaFilter)
+            }
         }
     }
 
@@ -102,17 +107,63 @@ struct HomeView: View {
         } description: {
             Text("Add something you want to read, watch, play, or hear. Each time you return to it, log a new session.")
         } actions: {
-            Button(emptyAddTitle, systemImage: "plus") {
-                navigation.presentedSheet = .quickAdd(initialMediaKind: selectedMediaKind)
-            }
-            .buttonStyle(.glassProminent)
+            HStack(alignment: .top, spacing: 32) {
+                welcomeAction(
+                    title: emptyAddTitle,
+                    symbol: "plus",
+                    isPrimary: true
+                ) {
+                    navigation.presentedSheet = .quickAdd(initialMediaKind: selectedMediaKind)
+                }
 
-            Button("Import from Sofa or Overcast", systemImage: "square.and.arrow.down") {
-                navigation.showImportExport()
+                welcomeAction(
+                    title: "Import",
+                    symbol: "square.and.arrow.down",
+                    isPrimary: false
+                ) {
+                    navigation.showImportExport()
+                }
             }
-            .buttonStyle(.glass)
+            .frame(maxWidth: 280)
         }
         .frame(maxWidth: .infinity, minHeight: 480)
+    }
+
+    private func welcomeAction(
+        title: String,
+        symbol: String,
+        isPrimary: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 9) {
+                Image(systemName: symbol)
+                    .font(.title3.weight(.semibold))
+                    .frame(width: 58, height: 58)
+                    .foregroundStyle(isPrimary ? .white : WhatFunTheme.ink)
+                    .background(
+                        isPrimary ? WhatFunTheme.coral : WhatFunTheme.raisedBackground,
+                        in: .circle
+                    )
+                    .overlay {
+                        Circle()
+                            .strokeBorder(.white.opacity(isPrimary ? 0.2 : 0.14), lineWidth: 0.75)
+                    }
+
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(WhatFunTheme.ink)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(width: 104)
+            .frame(minHeight: 98, alignment: .top)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(title == "Import" ? "Imports your history from Sofa or Overcast" : "Adds something to your library")
     }
 
     private var overdueSection: some View {
@@ -155,14 +206,20 @@ struct HomeView: View {
             .padding(.horizontal, 16)
 
             ScrollView(.horizontal) {
-                LazyHStack(alignment: .top, spacing: 14) {
+                LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(activeItems) { item in
-                        ActiveItemTile(item: item) {
+                        ActiveItemTile(
+                            item: item,
+                            period: focusPeriod,
+                            referenceDate: .now,
+                            calendar: calendar
+                        ) {
                             navigation.showItem(item.id, from: .home)
                         } log: {
                             navigation.presentedSheet = .logSession(item.id)
                         }
-                        .containerRelativeFrame(.horizontal, count: 2, span: 1, spacing: 14)
+                        .id("\(item.id.uuidString)-\(focusPeriod.rawValue)")
+                        .containerRelativeFrame(.horizontal, count: 3, span: 1, spacing: 12)
                     }
                 }
             }
@@ -180,12 +237,12 @@ struct HomeView: View {
             .padding(.horizontal, 16)
 
             ScrollView(.horizontal) {
-                LazyHStack(alignment: .top, spacing: 14) {
+                LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(plannedItems.prefix(10)) { item in
                         LibraryItemTile(item: item, style: .flow) {
                             navigation.showItem(item.id, from: .home)
                         }
-                        .containerRelativeFrame(.horizontal, count: 2, span: 1, spacing: 14)
+                        .containerRelativeFrame(.horizontal, count: 3, span: 1, spacing: 12)
                     }
                 }
             }
@@ -196,15 +253,50 @@ struct HomeView: View {
 }
 
 private struct ActiveItemTile: View {
+    @Query private var focusSessions: [ConsumptionSession]
+
     let item: LibraryItem
+    let period: HistoryPeriod
     let open: () -> Void
     let log: () -> Void
+
+    init(
+        item: LibraryItem,
+        period: HistoryPeriod,
+        referenceDate: Date,
+        calendar: Calendar,
+        open: @escaping () -> Void,
+        log: @escaping () -> Void
+    ) {
+        self.item = item
+        self.period = period
+        self.open = open
+        self.log = log
+
+        let interval = period.interval(containing: referenceDate, calendar: calendar)
+        let itemID = item.id
+        let start = interval.start
+        let end = interval.end
+        _focusSessions = Query(
+            filter: #Predicate<ConsumptionSession> { session in
+                session.rootItemID == itemID && session.deletedAt == nil &&
+                    session.occurredAt >= start && session.occurredAt < end
+            }
+        )
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             LibraryItemTile(item: item, style: .flow, action: open)
 
-            Button("Log Session", systemImage: "plus.circle.fill", action: log)
+            if !focusSessions.isEmpty {
+                Text(period.sessionCountSummary(focusSessions.count))
+                    .font(.caption)
+                    .foregroundStyle(WhatFunTheme.secondaryInk)
+                    .lineLimit(2)
+            }
+
+            Button(focusSessions.isEmpty ? "Log Session" : "Log Again", systemImage: "plus.circle.fill", action: log)
                 .buttonStyle(.glassProminent)
                 .controlSize(.small)
         }
@@ -216,18 +308,15 @@ private struct ConsumedHistorySection: View {
 
     let items: [LibraryItem]
     let period: HistoryPeriod
-    let selection: Binding<HistoryPeriod>
 
     init(
         items: [LibraryItem],
         period: HistoryPeriod,
         referenceDate: Date,
-        calendar: Calendar,
-        selection: Binding<HistoryPeriod>
+        calendar: Calendar
     ) {
         self.items = items
         self.period = period
-        self.selection = selection
 
         let interval = period.interval(containing: referenceDate, calendar: calendar)
         let start = interval.start
@@ -263,18 +352,11 @@ private struct ConsumedHistorySection: View {
                 Spacer()
             }
 
-            Picker("History Period", selection: selection) {
-                Text("Week").tag(HistoryPeriod.week)
-                Text("Month").tag(HistoryPeriod.month)
-                Text("Year").tag(HistoryPeriod.year)
-            }
-            .pickerStyle(.segmented)
-
             if counts.isEmpty {
                 ContentUnavailableView(
                     "Nothing logged yet",
                     systemImage: "calendar",
-                    description: Text("Sessions you log in this calendar \(period.rawValue) will appear here.")
+                    description: Text("Sessions you log \(period.currentTitle.lowercased()) will appear here.")
                 )
                 .frame(minHeight: 190)
             } else {
@@ -290,9 +372,9 @@ private struct ConsumedHistorySection: View {
 
     private var heading: LocalizedStringKey {
         switch period {
-        case .week: "Consumed This Week"
-        case .month: "Consumed This Month"
-        case .year: "Consumed This Year"
+        case .day: "Logged Today"
+        case .week: "Logged This Week"
+        case .month: "Logged This Month"
         }
     }
 }

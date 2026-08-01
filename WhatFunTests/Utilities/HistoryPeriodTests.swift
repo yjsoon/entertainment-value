@@ -6,6 +6,29 @@ import Testing
 struct HistoryPeriodTests {
     private let singapore = TimeZone(identifier: "Asia/Singapore")!
 
+    @Test("The focus defaults to month and recognises the supported choices")
+    func focusDefaultsToMonth() {
+        #expect(HistoryPeriod.defaultFocus == .month)
+        #expect(HistoryPeriod.allCases == [.day, .week, .month])
+        #expect(HistoryPeriod.focus(from: nil) == .month)
+        #expect(HistoryPeriod.focus(from: "not-a-period") == .month)
+        #expect(HistoryPeriod.focus(from: "year") == .month)
+        #expect(HistoryPeriod.focus(from: "week") == .week)
+    }
+
+    @Test("Calendar days end at the following local midnight")
+    func dayUsesLocalTimeZone() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = singapore
+
+        let midday = try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 12)))
+        let evening = try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 23, minute: 59)))
+        let nextMidnight = try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 2)))
+
+        #expect(HistoryPeriod.day.contains(evening, relativeTo: midday, calendar: calendar))
+        #expect(!HistoryPeriod.day.contains(nextMidnight, relativeTo: midday, calendar: calendar))
+    }
+
     @Test("Calendar weeks respect the calendar's first weekday")
     func calendarWeekUsesLocaleRules() throws {
         var calendar = Calendar(identifier: .gregorian)
