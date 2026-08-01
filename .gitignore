@@ -16,6 +16,8 @@ Package.resolved
 Exports/
 Backups/
 
+# Local agent worktrees
+.claude/worktrees/
+
 # macOS
 .DS_Store
-
