@@ -104,7 +104,8 @@ actor ArtworkRepository: ArtworkLoading {
             guard !data.isEmpty else {
                 throw ArtworkRepositoryError.emptyResponse
             }
-            guard CGImageSourceCreateWithData(data as CFData, nil) != nil else {
+            guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  CGImageSourceGetCount(source) > 0 else {
                 throw ArtworkRepositoryError.invalidImage
             }
             return data
@@ -124,7 +125,9 @@ actor ArtworkRepository: ArtworkLoading {
     }
 
     func storeUserArtwork(_ data: Data, id: UUID) throws -> URL {
-        guard !data.isEmpty, CGImageSourceCreateWithData(data as CFData, nil) != nil else {
+        guard !data.isEmpty,
+              let source = CGImageSourceCreateWithData(data as CFData, nil),
+              CGImageSourceGetCount(source) > 0 else {
             throw ArtworkRepositoryError.invalidImage
         }
 
