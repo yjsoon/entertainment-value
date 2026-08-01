@@ -104,28 +104,33 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
       <div class="group" id="grp-bg-light">
         <label>Background &middot; light</label>
         <div class="seg" id="seg-bgl">
-          <button data-v="flat" class="on">Flat</button>
-          <button data-v="grad">Radial gradient</button>
+          <button data-v="flat">Flat</button>
+          <button data-v="grad" class="on">Radial gradient</button>
         </div>
-        <div class="color-row"><label><input type="color" id="bgl-color" value="#F1F2EF">Ground</label></div>
-        <div class="slider-row" id="row-grad"><span>Depth</span><input type="range" id="grad-depth" min="0" max="100" value="45"><output id="grad-depth-o">45</output></div>
+        <div class="color-row"><label><input type="color" id="bgl-color" value="#FFF7F0">Ground</label></div>
+        <div class="slider-row" id="row-grad"><span>Depth</span><input type="range" id="grad-depth" min="0" max="100" value="37"><output id="grad-depth-o">37</output></div>
       </div>
 
       <div class="group hidden" id="grp-bg-dark">
         <label>Background &middot; dark</label>
+        <div class="seg" id="seg-bgd-style">
+          <button data-v="flat" class="on">Flat</button>
+          <button data-v="grad">Radial gradient</button>
+        </div>
         <div class="seg" id="seg-bgd">
-          <button data-v="#0D1430" class="on">Ink navy</button>
-          <button data-v="#122048">Bluer</button>
+          <button data-v="#1A1310" class="on">Warm black</button>
+          <button data-v="#0D1430">Ink navy</button>
           <button data-v="#131417">Neutral</button>
         </div>
-        <div class="color-row"><label><input type="color" id="bgd-color" value="#0D1430">Custom</label></div>
+        <div class="color-row"><label><input type="color" id="bgd-color" value="#1A1310">Custom</label></div>
+        <div class="slider-row" id="row-grad-dark"><span>Depth</span><input type="range" id="grad-depth-dark" min="0" max="100" value="40"><output id="grad-depth-dark-o">40</output></div>
       </div>
 
       <div class="group">
         <label>Star glow</label>
         <div class="seg" id="seg-glow">
-          <button data-v="on" class="on">On</button>
-          <button data-v="off">Off</button>
+          <button data-v="on">On</button>
+          <button data-v="off" class="on">Off</button>
         </div>
         <div id="glow-ctrls">
           <div class="color-row" style="margin-bottom:6px">
@@ -140,14 +145,14 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
 
       <div class="group">
         <label>Shape</label>
-        <div class="slider-row"><span>Mark scale</span><input type="range" id="s-scale" min="55" max="100" value="80"><output id="s-scale-o">80</output></div>
-        <div class="slider-row"><span>Rotation</span><input type="range" id="s-rot" min="-45" max="45" value="0"><output id="s-rot-o">0</output></div>
-        <div class="slider-row"><span>Star size</span><input type="range" id="s-spread" min="-25" max="70" value="0"><output id="s-spread-o">0</output></div>
-        <div class="slider-row"><span>Corner round</span><input type="range" id="s-corner" min="6" max="90" value="44"><output id="s-corner-o">44</output></div>
-        <div class="slider-row"><span>Glyph size</span><input type="range" id="s-gsize" min="40" max="140" value="100"><output id="s-gsize-o">100</output></div>
-        <div class="slider-row"><span>Glyph position</span><input type="range" id="s-gpos" min="60" max="125" value="100"><output id="s-gpos-o">100</output></div>
-        <div class="slider-row"><span>Hand tilt</span><input type="range" id="s-jit" min="0" max="250" value="100"><output id="s-jit-o">100</output></div>
-        <div class="slider-row"><span>Emboss depth</span><input type="range" id="s-emb" min="0" max="220" value="100"><output id="s-emb-o">100</output></div>
+        <div class="slider-row"><span>Mark scale</span><input type="range" id="s-scale" min="55" max="100" value="84"><output id="s-scale-o">84</output></div>
+        <div class="slider-row"><span>Rotation</span><input type="range" id="s-rot" min="-45" max="45" value="4"><output id="s-rot-o">4</output></div>
+        <div class="slider-row"><span>Star size</span><input type="range" id="s-spread" min="-25" max="70" value="22"><output id="s-spread-o">22</output></div>
+        <div class="slider-row"><span>Corner round</span><input type="range" id="s-corner" min="6" max="90" value="90"><output id="s-corner-o">90</output></div>
+        <div class="slider-row"><span>Glyph size</span><input type="range" id="s-gsize" min="40" max="140" value="103"><output id="s-gsize-o">103</output></div>
+        <div class="slider-row"><span>Glyph position</span><input type="range" id="s-gpos" min="60" max="125" value="101"><output id="s-gpos-o">101</output></div>
+        <div class="slider-row"><span>Hand tilt</span><input type="range" id="s-jit" min="0" max="250" value="225"><output id="s-jit-o">225</output></div>
+        <div class="slider-row"><span>Emboss depth</span><input type="range" id="s-emb" min="0" max="220" value="143"><output id="s-emb-o">143</output></div>
       </div>
 
       <div class="btn-row">
@@ -657,6 +662,9 @@ const GEO = {
 };
 
 const PALETTES = [
+  { name:"Approved",
+    light:["#DD5A46","#E27C46","#C0A02A","#229682","#5769C7","#9F75C7"],
+    dark:["#E06755","#E48655","#C5A83B","#349E8C","#6475CB","#A780CB"] },
   { name:"Bright spectrum",
     light:["#4A63E4","#9550D6","#E0339B","#F04A32","#E2621F","#12A38C"],
     dark:["#5A73F2","#A560E5","#EE45AC","#F85B41","#EF6E2A","#16B69D"] },
@@ -686,12 +694,13 @@ function defaults(){
     mode:"light", pal:0,
     colors:{ light:[...PALETTES[0].light], dark:[...PALETTES[0].dark] },
     swapSel:null,
-    bgLight:"flat", bglColor:"#F1F2EF", gradDepth:45, bgDark:"#0D1430",
-    glowOn:true,
+    bgLight:"grad", bglColor:"#FFF7F0", gradDepth:37,
+    bgDarkStyle:"flat", bgDark:"#1A1310", gradDepthDark:40,
+    glowOn:false,
     glowColor:{ light:GEO.rim_glow.light.stroke, dark:GEO.rim_glow.dark.stroke },
     intColor:{ light:GEO.rim_glow.light.interior_fill, dark:GEO.rim_glow.dark.interior_fill },
     glowInt:100, glowW:24, glowB:8,
-    scale:80, rot:0, spread:0, corner:44, gsize:100, gpos:100, jit:100, emb:100,
+    scale:84, rot:4, spread:22, corner:90, gsize:103, gpos:101, jit:225, emb:143,
   };
 }
 let S = defaults();
@@ -726,7 +735,15 @@ function buildSVG(){
       el("stop",{offset:1,"stop-color":mix(S.bglColor,"#B9BCB0",t*0.55)},grad);
       bgFill="url(#cfg-bg)";
     } else bgFill=S.bglColor;
-  } else bgFill=S.bgDark;
+  } else {
+    if(S.bgDarkStyle==="grad"){
+      const t=S.gradDepthDark/100;
+      const grad=el("radialGradient",{id:"cfg-bg",cx:.5,cy:.5,r:GEO.backgrounds.light_gradient.r},defs);
+      el("stop",{offset:0,"stop-color":lighten(S.bgDark,t*0.4)},grad);
+      el("stop",{offset:1,"stop-color":darken(S.bgDark,t*0.45)},grad);
+      bgFill="url(#cfg-bg)";
+    } else bgFill=S.bgDark;
+  }
   el("rect",{width:1024,height:1024,fill:bgFill},svg);
 
   const markT=`translate(512 512) scale(${S.scale/100}) translate(-512 -512)`+(S.rot? ` rotate(${S.rot} 512 512)`:"");
@@ -810,10 +827,13 @@ function render(){
   document.getElementById("grp-bg-light").classList.toggle("hidden",S.mode!=="light");
   document.getElementById("grp-bg-dark").classList.toggle("hidden",S.mode!=="dark");
   document.getElementById("row-grad").classList.toggle("hidden",S.bgLight!=="grad");
+  document.getElementById("row-grad-dark").classList.toggle("hidden",S.bgDarkStyle!=="grad");
   document.getElementById("glow-ctrls").classList.toggle("hidden",!S.glowOn);
   document.getElementById("glow-color").value=S.glowColor[S.mode];
   document.getElementById("int-color").value=S.intColor[S.mode];
-  const bg=S.mode==="light"?(S.bgLight==="grad"?S.bglColor+" radial "+S.gradDepth+"%":S.bglColor):S.bgDark;
+  const bg=S.mode==="light"
+    ?(S.bgLight==="grad"?S.bglColor+" radial "+S.gradDepth+"%":S.bglColor)
+    :(S.bgDarkStyle==="grad"?S.bgDark+" radial "+S.gradDepthDark+"%":S.bgDark);
   document.getElementById("readout").textContent=
     "petals "+S.colors[S.mode].join(" ")+"\nbg "+bg+
     "\nglow "+(S.glowOn?S.glowColor[S.mode]+" centre "+S.intColor[S.mode]+" int "+S.glowInt+" w "+S.glowW+" blur "+S.glowB:"off")+
@@ -831,6 +851,7 @@ function segWire(id,fn){
 }
 segWire("seg-mode",v=>S.mode=v);
 segWire("seg-bgl",v=>S.bgLight=v);
+segWire("seg-bgd-style",v=>S.bgDarkStyle=v);
 segWire("seg-bgd",v=>{ S.bgDark=v; document.getElementById("bgd-color").value=v; });
 segWire("seg-glow",v=>S.glowOn=v==="on");
 document.getElementById("bgl-color").addEventListener("input",e=>{ S.bglColor=e.target.value.toUpperCase(); render(); });
@@ -841,7 +862,7 @@ document.getElementById("bgd-color").addEventListener("input",e=>{
 });
 document.getElementById("glow-color").addEventListener("input",e=>{ S.glowColor[S.mode]=e.target.value.toUpperCase(); render(); });
 document.getElementById("int-color").addEventListener("input",e=>{ S.intColor[S.mode]=e.target.value.toUpperCase(); render(); });
-for(const [id,key] of [["grad-depth","gradDepth"],["glow-int","glowInt"],["glow-w","glowW"],["glow-b","glowB"],
+for(const [id,key] of [["grad-depth","gradDepth"],["grad-depth-dark","gradDepthDark"],["glow-int","glowInt"],["glow-w","glowW"],["glow-b","glowB"],
   ["s-scale","scale"],["s-rot","rot"],["s-spread","spread"],["s-corner","corner"],
   ["s-gsize","gsize"],["s-gpos","gpos"],["s-jit","jit"],["s-emb","emb"]]){
   const inp=document.getElementById(id);
@@ -851,16 +872,17 @@ document.getElementById("rot-prev").onclick=()=>{ for(const md of ["light","dark
 document.getElementById("rot-next").onclick=()=>{ for(const md of ["light","dark"]) S.colors[md].push(S.colors[md].shift()); render(); };
 document.getElementById("reset").onclick=()=>{
   S=defaults();
-  for(const [id,val] of [["grad-depth",45],["glow-int",100],["glow-w",24],["glow-b",8],["s-scale",80],["s-rot",0],
-    ["s-spread",0],["s-corner",44],["s-gsize",100],["s-gpos",100],["s-jit",100],["s-emb",100]]){
+  for(const [id,val] of [["grad-depth",37],["grad-depth-dark",40],["glow-int",100],["glow-w",24],["glow-b",8],["s-scale",84],["s-rot",4],
+    ["s-spread",22],["s-corner",90],["s-gsize",103],["s-gpos",101],["s-jit",225],["s-emb",143]]){
     document.getElementById(id).value=val; document.getElementById(id+"-o").value=val;
   }
-  document.getElementById("bgl-color").value="#F1F2EF";
-  document.getElementById("bgd-color").value="#0D1430";
+  document.getElementById("bgl-color").value="#FFF7F0";
+  document.getElementById("bgd-color").value="#1A1310";
   document.querySelectorAll("#seg-mode button").forEach(x=>x.classList.toggle("on",x.dataset.v==="light"));
-  document.querySelectorAll("#seg-bgl button").forEach(x=>x.classList.toggle("on",x.dataset.v==="flat"));
-  document.querySelectorAll("#seg-bgd button").forEach(x=>x.classList.toggle("on",x.dataset.v==="#0D1430"));
-  document.querySelectorAll("#seg-glow button").forEach(x=>x.classList.toggle("on",x.dataset.v==="on"));
+  document.querySelectorAll("#seg-bgl button").forEach(x=>x.classList.toggle("on",x.dataset.v==="grad"));
+  document.querySelectorAll("#seg-bgd-style button").forEach(x=>x.classList.toggle("on",x.dataset.v==="flat"));
+  document.querySelectorAll("#seg-bgd button").forEach(x=>x.classList.toggle("on",x.dataset.v==="#1A1310"));
+  document.querySelectorAll("#seg-glow button").forEach(x=>x.classList.toggle("on",x.dataset.v==="off"));
   render();
 };
 document.getElementById("download").onclick=()=>{
