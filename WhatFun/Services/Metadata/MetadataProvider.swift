@@ -106,6 +106,40 @@ nonisolated struct MetadataProviderCatalog: Sendable {
     func primaryProvider(for mediaType: MetadataMediaType) -> (any MetadataProvider)? {
         providers(for: mediaType).first
     }
+
+    func typedSearchProviders(for mediaType: MetadataMediaType) -> [any MetadataProvider] {
+        providers(for: mediaType)
+    }
+
+    func search(_ request: MetadataSearchRequest) async throws -> MetadataSearchPage {
+        let searchProviders = typedSearchProviders(for: request.mediaType)
+        var emptyPage: MetadataSearchPage?
+        var lastError: (any Error)?
+
+        for provider in searchProviders {
+            try Task.checkCancellation()
+            do {
+                let page = try await provider.search(request)
+                if !page.results.isEmpty { return page }
+                emptyPage = page
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch let error as URLError where error.code == .cancelled {
+                throw CancellationError()
+            } catch {
+                lastError = error
+            }
+        }
+
+        if let emptyPage { return emptyPage }
+        throw lastError ?? MetadataProviderError.invalidRequest(
+            provider: searchProviders.first?.id ?? .openLibrary
+        )
+    }
+
+    func provider(id: MetadataProviderID) -> (any MetadataProvider)? {
+        providers.first { $0.id == id }
+    }
 }
 
 nonisolated struct MetadataServiceBundle: Sendable {
@@ -141,6 +175,7 @@ enum MetadataServiceFactory {
                 applicationName: Config.applicationName,
                 contactEmail: Config.openLibraryContactEmail
             ),
+            AppleBooksMetadataProvider(httpClient: httpClient),
             RAWGMetadataProvider(
                 httpClient: httpClient,
                 credential: MetadataCredentialSource(

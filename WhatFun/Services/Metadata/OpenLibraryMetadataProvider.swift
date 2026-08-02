@@ -82,7 +82,7 @@ nonisolated struct OpenLibraryMetadataProvider: MetadataProvider {
             mediaType: request.mediaType,
             page: request.page,
             limit: request.limit,
-            relevanceQuery: request.trimmedQuery
+            relevanceQuery: request.mediaType == .book ? request.trimmedQuery : nil
         )
     }
 
@@ -163,7 +163,7 @@ nonisolated struct OpenLibraryMetadataProvider: MetadataProvider {
         let payload = try decode(OpenLibrarySearchResponse.self, from: response.data)
         let mappedResults = payload.docs.compactMap { makeResult(from: $0, mediaType: mediaType) }
         if let relevanceQuery {
-            let results = OpenLibrarySearchRelevance.ranked(
+            let results = TitleCreatorSearchRelevance.ranked(
                 mappedResults,
                 for: relevanceQuery
             )
@@ -222,7 +222,7 @@ nonisolated struct OpenLibraryMetadataProvider: MetadataProvider {
     }
 }
 
-nonisolated enum OpenLibrarySearchRelevance {
+nonisolated enum TitleCreatorSearchRelevance {
     static func ranked(
         _ results: [MetadataSearchResult],
         for query: String

@@ -88,6 +88,7 @@ struct MetadataProviderTests {
         #expect(result.creators == ["Alan Moore", "Dave Gibbons"])
         #expect(result.pageCount == 416)
         #expect(result.genres.contains("Comics"))
+        #expect(page.totalResults == 1)
 
         let request = try #require(await client.request(at: 0))
         let requestURL = try #require(request.url)
@@ -134,7 +135,7 @@ struct MetadataProviderTests {
             openLibraryResult(id: "exact", title: "Dune Frank Herbert", creators: ["Someone Else"]),
         ]
         #expect(
-            OpenLibrarySearchRelevance.ranked(results, for: "Dune Frank Herbert")
+            TitleCreatorSearchRelevance.ranked(results, for: "Dune Frank Herbert")
                 .map(\.id.externalID) == ["exact", "mixed", "prefix"]
         )
 
@@ -143,10 +144,10 @@ struct MetadataProviderTests {
             openLibraryResult(id: "hidden", title: "Unrelated", creators: ["Harry", "Potter"]),
         ]
         #expect(
-            OpenLibrarySearchRelevance.ranked(typoResults, for: "Hary Potter")
+            TitleCreatorSearchRelevance.ranked(typoResults, for: "Hary Potter")
                 .map(\.id.externalID) == ["typo"]
         )
-        #expect(OpenLibrarySearchRelevance.ranked(typoResults, for: "Hary").isEmpty)
+        #expect(TitleCreatorSearchRelevance.ranked(typoResults, for: "Hary").isEmpty)
     }
 
     @Test("Open Library relevance normalizes punctuation and preserves repeated terms")
@@ -162,15 +163,15 @@ struct MetadataProviderTests {
         ]
 
         #expect(
-            OpenLibrarySearchRelevance.ranked(results, for: "CIEN ANOS, Garcia Marquez")
+            TitleCreatorSearchRelevance.ranked(results, for: "CIEN ANOS, Garcia Marquez")
                 .map(\.id.externalID) == ["normalized"]
         )
         #expect(
-            OpenLibrarySearchRelevance.ranked(results, for: "La La Land")
+            TitleCreatorSearchRelevance.ranked(results, for: "La La Land")
                 .map(\.id.externalID) == ["repeated"]
         )
         #expect(
-            OpenLibrarySearchRelevance.ranked(
+            TitleCreatorSearchRelevance.ranked(
                 [openLibraryResult(id: "prefix-assignment", title: "Joanna Jones", creators: [])],
                 for: "Jo Joa"
             ).map(\.id.externalID) == ["prefix-assignment"]
@@ -197,6 +198,94 @@ struct MetadataProviderTests {
         )?.queryItems
         #expect(queryItems?.contains(URLQueryItem(name: "sort", value: "trending")) == true)
         #expect(queryItems?.contains(URLQueryItem(name: "q", value: "trending_z_score:{0 TO *]")) == true)
+    }
+
+    @Test("Apple Books maps Joanna Stern metadata and artwork")
+    func appleBooksSearch() async throws {
+        let client = FixtureHTTPClient(data: appleBooksFixture)
+        let provider = AppleBooksMetadataProvider(httpClient: client)
+
+        let page = try await provider.search(
+            MetadataSearchRequest(
+                query: "Joanna Stern",
+                mediaType: .book,
+                countryCode: "US"
+            )
+        )
+
+        let result = try #require(page.results.first)
+        #expect(result.id == MetadataResultID(provider: .appleBooks, externalID: "6751840712"))
+        #expect(result.title == "I Am Not a Robot")
+        #expect(result.creators == ["Joanna Stern"])
+        #expect(result.releaseYear == 2026)
+        #expect(result.genres == ["Industries & Professions", "Business & Personal Finance"])
+        #expect(result.sourceURL == nil)
+        #expect(result.coverImageURL?.path.contains("/600x600bb.jpg") == true)
+        #expect(result.thumbnailImageURL?.path.contains("/100x100bb.jpg") == true)
+        #expect(provider.attribution == nil)
+
+        let request = try #require(await client.request(at: 0))
+        let queryItems = URLComponents(
+            url: try #require(request.url),
+            resolvingAgainstBaseURL: false
+        )?.queryItems
+        #expect(queryItems?.contains(URLQueryItem(name: "media", value: "ebook")) == true)
+        #expect(queryItems?.contains(URLQueryItem(name: "entity", value: "ebook")) == true)
+        #expect(queryItems?.contains(URLQueryItem(name: "country", value: "US")) == true)
+
+        let details = try await provider.details(for: result)
+        #expect(details.result == result)
+        #expect(details.artworkURLs == [result.coverImageURL].compactMap(\.self))
+        #expect(await client.requestCount == 1)
+    }
+
+    @Test("Book search falls back from Open Library to Apple Books")
+    func bookSearchFallback() async throws {
+        let openLibraryClient = FixtureHTTPClient(data: Data(#"{"numFound":0,"docs":[]}"#.utf8))
+        let appleBooksClient = FixtureHTTPClient(data: appleBooksFixture)
+        let catalog = MetadataProviderCatalog(providers: [
+            OpenLibraryMetadataProvider(
+                httpClient: openLibraryClient,
+                applicationName: "WhatFun",
+                contactEmail: nil
+            ),
+            AppleBooksMetadataProvider(httpClient: appleBooksClient),
+        ])
+
+        let page = try await catalog.search(
+            MetadataSearchRequest(query: "Joanna Stern", mediaType: .book)
+        )
+
+        #expect(page.results.first?.id.provider == .appleBooks)
+        #expect(page.results.first?.title == "I Am Not a Robot")
+        #expect(await openLibraryClient.requestCount == 1)
+        #expect(await appleBooksClient.requestCount == 1)
+        #expect(catalog.primaryProvider(for: .book)?.id == .openLibrary)
+    }
+
+    private var appleBooksFixture: Data {
+        Data(#"""
+        {
+          "resultCount": 2,
+          "results": [
+          {
+            "trackId": 1,
+            "kind": "ebook"
+          },
+          {
+            "trackId": 6751840712,
+            "trackName": "I Am Not a Robot",
+            "artistName": "Joanna Stern",
+            "artistIds": [1837139438],
+            "kind": "ebook",
+            "releaseDate": "2026-05-12T07:00:00Z",
+            "trackViewUrl": "https://books.apple.com/us/book/i-am-not-a-robot/id6751840712",
+            "artworkUrl60": "https://example.com/image/60x60bb.jpg",
+            "artworkUrl100": "https://example.com/image/100x100bb.jpg",
+            "genres": ["Industries & Professions", "Books", "Business & Personal Finance"]
+          }]
+        }
+        """#.utf8)
     }
 
     private func openLibraryResult(

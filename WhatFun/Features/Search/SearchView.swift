@@ -240,7 +240,7 @@ struct SearchView: View {
         } header: {
             Text("Popular \(String(localized: selectedMediaKind.displayName))")
         } footer: {
-            MetadataAttributionFooter(attribution: selectedProvider?.attribution)
+            MetadataAttributionFooter(attribution: remoteAttribution)
         }
     }
 
@@ -315,7 +315,7 @@ struct SearchView: View {
         } header: {
             Text("Discover")
         } footer: {
-            MetadataAttributionFooter(attribution: selectedProvider?.attribution)
+            MetadataAttributionFooter(attribution: remoteAttribution)
         }
     }
 
@@ -339,6 +339,15 @@ struct SearchView: View {
     private var selectedProvider: (any MetadataProvider)? {
         guard let type = MetadataDomainMapper.metadataType(for: selectedMediaKind) else { return nil }
         return services.metadata.catalog.primaryProvider(for: type)
+    }
+
+    private var remoteAttribution: MetadataAttribution? {
+        if case let .loaded(results) = remoteState,
+           let providerID = results.first?.id.provider
+        {
+            return services.metadata.catalog.provider(id: providerID)?.attribution
+        }
+        return trimmedQuery.isEmpty ? selectedProvider?.attribution : nil
     }
 
     private func searchRemoteMetadata() async {
@@ -369,7 +378,7 @@ struct SearchView: View {
                     )
                 )
             } else {
-                page = try await provider.search(
+                page = try await services.metadata.catalog.search(
                     MetadataSearchRequest(
                         query: trimmedQuery,
                         mediaType: metadataType,
@@ -393,7 +402,7 @@ struct SearchView: View {
         addingKey = duplicateKey
 
         Task { @MainActor in
-            let provider = services.metadata.catalog.providers.first { $0.id == result.id.provider }
+            let provider = services.metadata.catalog.provider(id: result.id.provider)
             let insertion: MetadataInsertionResult
             do {
                 // Persist the useful search payload before asking the provider
@@ -655,8 +664,8 @@ private struct RemoteSearchResultRow: View {
     }
 
     private var metadataSubtitle: String? {
-        let creator = if result.id.provider == .openLibrary {
-            OpenLibrarySearchRelevance.preferredCreator(in: result, for: query)
+        let creator = if result.mediaType == .book || result.mediaType == .comic {
+            TitleCreatorSearchRelevance.preferredCreator(in: result, for: query)
         } else {
             result.creators.first
         }

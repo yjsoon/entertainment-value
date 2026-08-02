@@ -12,6 +12,7 @@ nonisolated enum MetadataMediaType: String, CaseIterable, Codable, Sendable {
 nonisolated enum MetadataProviderID: String, CaseIterable, Codable, Sendable {
     case tmdb
     case openLibrary
+    case appleBooks
     case rawg
     case applePodcasts
     case rss
@@ -20,6 +21,7 @@ nonisolated enum MetadataProviderID: String, CaseIterable, Codable, Sendable {
         switch self {
         case .tmdb: "TMDB"
         case .openLibrary: "Open Library"
+        case .appleBooks: "Apple Books"
         case .rawg: "RAWG"
         case .applePodcasts: "Apple Podcasts"
         case .rss: "Podcast feed"
