@@ -291,6 +291,7 @@ struct SearchView: View {
                     ForEach(results) { result in
                         RemoteSearchResultRow(
                             result: result,
+                            query: trimmedQuery,
                             isAdding: addingKey == duplicateKey(for: result),
                             isAdded: addedKeys.contains(duplicateKey(for: result)),
                             isDisabled: addingKey != nil,
@@ -590,6 +591,7 @@ private struct LocalSearchResultRow: View {
 
 private struct RemoteSearchResultRow: View {
     let result: MetadataSearchResult
+    let query: String
     let isAdding: Bool
     let isAdded: Bool
     let isDisabled: Bool
@@ -653,9 +655,16 @@ private struct RemoteSearchResultRow: View {
     }
 
     private var metadataSubtitle: String? {
-        let creator = result.creators.first ?? result.subtitle
+        let creator = if result.id.provider == .openLibrary {
+            OpenLibrarySearchRelevance.preferredCreator(in: result, for: query)
+        } else {
+            result.creators.first
+        }
         let year = result.releaseYear.map(String.init)
-        return [creator, year].compactMap(\.self).joined(separator: " · ").metadataNilIfBlank
+        return [creator ?? result.subtitle, year]
+            .compactMap(\.self)
+            .joined(separator: " · ")
+            .metadataNilIfBlank
     }
 
     private var accessibilityLabel: String {

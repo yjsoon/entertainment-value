@@ -81,7 +81,8 @@ nonisolated struct OpenLibraryMetadataProvider: MetadataProvider {
             queryItems: queryItems,
             mediaType: request.mediaType,
             page: request.page,
-            limit: request.limit
+            limit: request.limit,
+            relevanceQuery: request.trimmedQuery
         )
     }
 
@@ -153,15 +154,30 @@ nonisolated struct OpenLibraryMetadataProvider: MetadataProvider {
         queryItems: [URLQueryItem],
         mediaType: MetadataMediaType,
         page: Int,
-        limit: Int
+        limit: Int,
+        relevanceQuery: String? = nil
     ) async throws -> MetadataSearchPage {
         let response = try await httpClient.send(
             makeRequest(path: "/search.json", queryItems: queryItems)
         )
         let payload = try decode(OpenLibrarySearchResponse.self, from: response.data)
+        let mappedResults = payload.docs.compactMap { makeResult(from: $0, mediaType: mediaType) }
+        if let relevanceQuery {
+            let results = OpenLibrarySearchRelevance.ranked(
+                mappedResults,
+                for: relevanceQuery
+            )
+            return MetadataSearchPage(
+                results: results,
+                page: page,
+                totalPages: nil,
+                totalResults: nil
+            )
+        }
+
         let totalPages = max(1, Int(ceil(Double(payload.numFound) / Double(limit))))
         return MetadataSearchPage(
-            results: payload.docs.compactMap { makeResult(from: $0, mediaType: mediaType) },
+            results: mappedResults,
             page: page,
             totalPages: totalPages,
             totalResults: payload.numFound
@@ -203,6 +219,199 @@ nonisolated struct OpenLibraryMetadataProvider: MetadataProvider {
 
     private func limitedSubjects(_ subjects: [String]) -> [String] {
         Array(subjects[0 ..< min(20, subjects.count)]).metadataDeduplicated
+    }
+}
+
+nonisolated enum OpenLibrarySearchRelevance {
+    static func ranked(
+        _ results: [MetadataSearchResult],
+        for query: String
+    ) -> [MetadataSearchResult] {
+        var matches = [(rank: Int, index: Int, result: MetadataSearchResult)]()
+        for (index, result) in results.enumerated() {
+            guard let resultRank = rank(result, for: query) else { continue }
+            matches.append((rank: resultRank, index: index, result: result))
+        }
+        matches.sort { lhs, rhs in
+            lhs.rank == rhs.rank ? lhs.index < rhs.index : lhs.rank < rhs.rank
+        }
+        return matches.map(\.result)
+    }
+
+    static func preferredCreator(
+        in result: MetadataSearchResult,
+        for query: String
+    ) -> String? {
+        var best: (rank: Int, creator: String)?
+        for creator in result.creators {
+            guard let creatorRank = rank(title: result.title, creators: [creator], for: query) else {
+                continue
+            }
+            if best == nil || creatorRank < best!.rank {
+                best = (rank: creatorRank, creator: creator)
+            }
+        }
+        return best?.creator ?? result.creators.first
+    }
+
+    private static func rank(_ result: MetadataSearchResult, for query: String) -> Int? {
+        rank(title: result.title, creators: result.creators, for: query)
+    }
+
+    private static func rank(title: String, creators: [String], for query: String) -> Int? {
+        let queryTokens = tokens(query)
+        guard !queryTokens.isEmpty else { return nil }
+        let titleTokens = tokens(title)
+        let creatorTokens = creators.map(tokens)
+        let individualFields = [titleTokens] + creatorTokens
+
+        if individualFields.contains(queryTokens) { return 0 }
+        if individualFields.contains(where: { containsContiguous(queryTokens, in: $0) }) { return 1 }
+        if individualFields.contains(where: { contains(queryTokens, in: $0) }) { return 2 }
+        if creatorTokens.contains(where: { isMixedMatch(queryTokens, title: titleTokens, creator: $0) }) {
+            return 3
+        }
+        if individualFields.contains(where: { contains(queryTokens, in: $0, allowPrefixes: true) }) {
+            return 4
+        }
+        if creatorTokens.contains(where: {
+            isMixedMatch(queryTokens, title: titleTokens, creator: $0, allowPrefixes: true)
+        }) {
+            return 5
+        }
+        if queryTokens.count >= 2,
+           individualFields.contains(where: { containsWithOneTypo(queryTokens, in: $0) })
+        {
+            return 6
+        }
+        return nil
+    }
+
+    private static func tokens(_ value: String) -> [String] {
+        let folded = value.folding(
+            options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive],
+            locale: Locale(identifier: "en_US_POSIX")
+        )
+        var result = [String]()
+        var token = ""
+        for scalar in folded.lowercased().unicodeScalars {
+            if CharacterSet.alphanumerics.contains(scalar) {
+                token.unicodeScalars.append(scalar)
+            } else if !token.isEmpty {
+                result.append(token)
+                token = ""
+            }
+        }
+        if !token.isEmpty { result.append(token) }
+        return result
+    }
+
+    private static func containsContiguous(_ query: [String], in candidate: [String]) -> Bool {
+        guard query.count <= candidate.count else { return false }
+        return candidate.indices.contains { start in
+            let end = start + query.count
+            return end <= candidate.count && Array(candidate[start ..< end]) == query
+        }
+    }
+
+    private static func contains(
+        _ query: [String],
+        in candidate: [String],
+        allowPrefixes: Bool = false
+    ) -> Bool {
+        guard query.count <= candidate.count else { return false }
+        var available = Array(candidate.indices)
+        var unmatched = [String]()
+
+        for queryToken in query {
+            if let position = available.firstIndex(where: { candidate[$0] == queryToken }) {
+                available.remove(at: position)
+            } else {
+                unmatched.append(queryToken)
+            }
+        }
+        guard allowPrefixes else { return unmatched.isEmpty }
+        for queryToken in unmatched.sorted(by: { $0.count > $1.count }) {
+            guard queryToken.count >= 2,
+                  let position = available.firstIndex(where: { candidate[$0].hasPrefix(queryToken) })
+            else { return false }
+            available.remove(at: position)
+        }
+        return true
+    }
+
+    private static func isMixedMatch(
+        _ query: [String],
+        title: [String],
+        creator: [String],
+        allowPrefixes: Bool = false
+    ) -> Bool {
+        guard query.contains(where: { tokenMatches($0, in: title, allowPrefixes: allowPrefixes) }),
+              query.contains(where: { tokenMatches($0, in: creator, allowPrefixes: allowPrefixes) })
+        else { return false }
+        return contains(query, in: title + creator, allowPrefixes: allowPrefixes)
+    }
+
+    private static func tokenMatches(
+        _ queryToken: String,
+        in candidate: [String],
+        allowPrefixes: Bool
+    ) -> Bool {
+        candidate.contains(queryToken) ||
+            (allowPrefixes && queryToken.count >= 2 && candidate.contains { $0.hasPrefix(queryToken) })
+    }
+
+    private static func containsWithOneTypo(_ query: [String], in candidate: [String]) -> Bool {
+        guard query.count <= candidate.count else { return false }
+        var available = Array(candidate.indices)
+        var unmatched = [String]()
+        for queryToken in query {
+            if let position = available.firstIndex(where: { candidate[$0] == queryToken }) {
+                available.remove(at: position)
+            } else {
+                unmatched.append(queryToken)
+            }
+        }
+        guard unmatched.count == 1, let queryToken = unmatched.first else {
+            return false
+        }
+        return available.contains {
+            max(queryToken.count, candidate[$0].count) >= 5 &&
+                isOneEditApart(queryToken, candidate[$0])
+        }
+    }
+
+    private static func isOneEditApart(_ lhs: String, _ rhs: String) -> Bool {
+        let left = Array(lhs)
+        let right = Array(rhs)
+        guard abs(left.count - right.count) <= 1, left != right else { return false }
+
+        if left.count == right.count {
+            let differences = left.indices.filter { left[$0] != right[$0] }
+            if differences.count == 1 { return true }
+            return differences.count == 2 &&
+                differences[1] == differences[0] + 1 &&
+                left[differences[0]] == right[differences[1]] &&
+                left[differences[1]] == right[differences[0]]
+        }
+
+        let shorter = left.count < right.count ? left : right
+        let longer = left.count < right.count ? right : left
+        var shortIndex = 0
+        var longIndex = 0
+        var skipped = false
+        while shortIndex < shorter.count, longIndex < longer.count {
+            if shorter[shortIndex] == longer[longIndex] {
+                shortIndex += 1
+                longIndex += 1
+            } else if skipped {
+                return false
+            } else {
+                skipped = true
+                longIndex += 1
+            }
+        }
+        return true
     }
 }
 

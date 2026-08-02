@@ -98,6 +98,85 @@ struct MetadataProviderTests {
         #expect(request.value(forHTTPHeaderField: "User-Agent")?.contains("mailto:developer@example.com") == true)
     }
 
+    @Test("Open Library keeps only visible title and individual-creator matches")
+    func openLibrarySearchRelevance() async throws {
+        let client = FixtureHTTPClient(data: Data(#"""
+        {
+          "numFound": 4,
+          "docs": [
+            { "key": "/works/weak-title", "title": "Stern der Leidenschaft", "author_name": ["Johanna Lindsey"] },
+            { "key": "/works/split-creators", "title": "Ladakh", "author_name": ["Joanna Van Gruisen", "Kenneth S. Stern"] },
+            { "key": "/works/anthology", "title": "Collected Essays", "author_name": ["Joanna Russ", "Steven H. Stern"] },
+            { "key": "/works/exact", "title": "Technology Notes", "author_name": ["Joanna Stern"] }
+          ]
+        }
+        """#.utf8))
+        let provider = OpenLibraryMetadataProvider(
+            httpClient: client,
+            applicationName: "WhatFun",
+            contactEmail: nil
+        )
+
+        let page = try await provider.search(
+            MetadataSearchRequest(query: "Joanna Stern", mediaType: .book)
+        )
+
+        #expect(page.results.map(\.id.externalID) == ["exact"])
+        #expect(page.totalPages == nil)
+        #expect(page.totalResults == nil)
+    }
+
+    @Test("Open Library ranks exact, mixed, prefix, and typo matches conservatively")
+    func openLibrarySearchRanking() async throws {
+        let results = [
+            openLibraryResult(id: "prefix", title: "Dunes", creators: ["Frank Herbertson"]),
+            openLibraryResult(id: "mixed", title: "Dune", creators: ["Frank Herbert"]),
+            openLibraryResult(id: "exact", title: "Dune Frank Herbert", creators: ["Someone Else"]),
+        ]
+        #expect(
+            OpenLibrarySearchRelevance.ranked(results, for: "Dune Frank Herbert")
+                .map(\.id.externalID) == ["exact", "mixed", "prefix"]
+        )
+
+        let typoResults = [
+            openLibraryResult(id: "typo", title: "Harry Potter", creators: []),
+            openLibraryResult(id: "hidden", title: "Unrelated", creators: ["Harry", "Potter"]),
+        ]
+        #expect(
+            OpenLibrarySearchRelevance.ranked(typoResults, for: "Hary Potter")
+                .map(\.id.externalID) == ["typo"]
+        )
+        #expect(OpenLibrarySearchRelevance.ranked(typoResults, for: "Hary").isEmpty)
+    }
+
+    @Test("Open Library relevance normalizes punctuation and preserves repeated terms")
+    func openLibrarySearchNormalization() {
+        let results = [
+            openLibraryResult(
+                id: "normalized",
+                title: "Cien años",
+                creators: ["Gabriel García-Márquez"]
+            ),
+            openLibraryResult(id: "missing-repeat", title: "La Land", creators: []),
+            openLibraryResult(id: "repeated", title: "La La Land", creators: []),
+        ]
+
+        #expect(
+            OpenLibrarySearchRelevance.ranked(results, for: "CIEN ANOS, Garcia Marquez")
+                .map(\.id.externalID) == ["normalized"]
+        )
+        #expect(
+            OpenLibrarySearchRelevance.ranked(results, for: "La La Land")
+                .map(\.id.externalID) == ["repeated"]
+        )
+        #expect(
+            OpenLibrarySearchRelevance.ranked(
+                [openLibraryResult(id: "prefix-assignment", title: "Joanna Jones", creators: [])],
+                for: "Jo Joa"
+            ).map(\.id.externalID) == ["prefix-assignment"]
+        )
+    }
+
     @Test("Open Library discovery requests trending works")
     func openLibraryDiscovery() async throws {
         let client = try FixtureHTTPClient(
@@ -118,6 +197,32 @@ struct MetadataProviderTests {
         )?.queryItems
         #expect(queryItems?.contains(URLQueryItem(name: "sort", value: "trending")) == true)
         #expect(queryItems?.contains(URLQueryItem(name: "q", value: "trending_z_score:{0 TO *]")) == true)
+    }
+
+    private func openLibraryResult(
+        id: String,
+        title: String,
+        creators: [String]
+    ) -> MetadataSearchResult {
+        MetadataSearchResult(
+            id: MetadataResultID(provider: .openLibrary, externalID: id),
+            mediaType: .book,
+            title: title,
+            subtitle: nil,
+            creators: creators,
+            overview: nil,
+            releaseYear: nil,
+            coverImageURL: nil,
+            thumbnailImageURL: nil,
+            sourceURL: nil,
+            feedURL: nil,
+            genres: [],
+            pageCount: nil,
+            durationMinutes: nil,
+            seasonCount: nil,
+            episodeCount: nil,
+            platformNames: []
+        )
     }
 
     @Test("RAWG maps games, platforms, and exposes required attribution")
