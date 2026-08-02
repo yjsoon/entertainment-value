@@ -22,11 +22,11 @@ STATE = {
     "scale": 0.84, "rot": 4, "spread": 22, "corner": 90,
     "gsize": 1.03, "gpos": 1.01, "tilt": 2.25, "emboss": 1.43,
 }
-# Dark mode is a derivation (not user-tuned): each hue lifted ~8% toward white
-# for legibility on the warm near-black ground, matching how earlier rounds
-# built their dark twins.
-DARK_LIFT = 0.08
-BG_DARK_CENTER, BG_DARK_EDGE = "#221A16", "#120D0B"
+# Dark mode, user-approved (configurator readout, 2026-08-02): the lifted petal
+# hues on a night-navy radial ground. Gradient stops use the configurator's
+# dark formula: centre = lighten(base, depth*0.4), edge = darken(base, depth*0.45).
+DARK_PETALS = ["#E06755", "#E48655", "#C5A83B", "#349E8C", "#6475CB", "#A780CB"]
+BG_DARK_BASE, BG_DARK_DEPTH = "#131D44", 0.44
 
 PETAL_ANGLES = [0, 60, 120, 180, 240, 300]
 
@@ -54,7 +54,7 @@ def darken(h, t):
 
 
 def petals_dark():
-    return [lighten(h, DARK_LIFT) for h in STATE["petals_light"]]
+    return list(DARK_PETALS)
 
 
 def glyph_defs(suffix):
@@ -107,7 +107,8 @@ def bg_gradient(mode, gid):
         c0 = lighten(STATE["bg_light"], 0.55)
         c1 = mix(STATE["bg_light"], "#B9BCB0", STATE["grad_depth"] * 0.55)
     else:
-        c0, c1 = BG_DARK_CENTER, BG_DARK_EDGE
+        c0 = lighten(BG_DARK_BASE, BG_DARK_DEPTH * 0.4)
+        c1 = darken(BG_DARK_BASE, BG_DARK_DEPTH * 0.45)
     r = GEO["backgrounds"]["light_gradient"]["r"]
     return (f'<radialGradient id="{gid}" cx="0.5" cy="0.5" r="{r}">'
             f'<stop offset="0" stop-color="{c0}"/><stop offset="1" stop-color="{c1}"/></radialGradient>')

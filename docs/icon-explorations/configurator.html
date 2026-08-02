@@ -114,16 +114,35 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
       <div class="group hidden" id="grp-bg-dark">
         <label>Background &middot; dark</label>
         <div class="seg" id="seg-bgd-style">
-          <button data-v="flat" class="on">Flat</button>
-          <button data-v="grad">Radial gradient</button>
+          <button data-v="flat">Flat</button>
+          <button data-v="grad" class="on">Radial gradient</button>
         </div>
         <div class="seg" id="seg-bgd">
-          <button data-v="#1A1310" class="on">Warm black</button>
-          <button data-v="#0D1430">Ink navy</button>
+          <button data-v="#131D44" class="on">Night navy</button>
+          <button data-v="#1A1310">Warm black</button>
           <button data-v="#131417">Neutral</button>
         </div>
-        <div class="color-row"><label><input type="color" id="bgd-color" value="#1A1310">Custom</label></div>
-        <div class="slider-row" id="row-grad-dark"><span>Depth</span><input type="range" id="grad-depth-dark" min="0" max="100" value="40"><output id="grad-depth-dark-o">40</output></div>
+        <div class="color-row"><label><input type="color" id="bgd-color" value="#131D44">Custom</label></div>
+        <div class="slider-row" id="row-grad-dark"><span>Depth</span><input type="range" id="grad-depth-dark" min="0" max="100" value="44"><output id="grad-depth-dark-o">44</output></div>
+      </div>
+
+      <div class="group">
+        <label>Star</label>
+        <div class="seg" id="seg-star">
+          <button data-v="natural" class="on">Natural overlap</button>
+          <button data-v="symmetric">Symmetric cut</button>
+        </div>
+        <div class="seg" id="seg-order">
+          <button data-v="cw" class="on">Lap clockwise</button>
+          <button data-v="ccw">Counter</button>
+          <button data-v="alt">Alternating</button>
+        </div>
+        <div id="star-ctrls" class="hidden">
+          <div class="slider-row"><span>Spike length</span><input type="range" id="st-spike" min="80" max="260" value="150"><output id="st-spike-o">150</output></div>
+          <div class="slider-row"><span>Core size</span><input type="range" id="st-core" min="20" max="130" value="55"><output id="st-core-o">55</output></div>
+          <div class="slider-row"><span>Cut rounding</span><input type="range" id="st-round" min="0" max="44" value="18"><output id="st-round-o">18</output></div>
+        </div>
+        <div class="hint">Natural overlap keeps the spokes as the lapping cards carve them (each spoke has an over-edge and an under-edge; the lap direction flips which). Symmetric cut carves a mathematically even star out of the whole stack &mdash; mirror-perfect spokes, sliders for the shape. The &ldquo;Star size&rdquo; slider below still moves the cards themselves.</div>
       </div>
 
       <div class="group">
@@ -695,7 +714,8 @@ function defaults(){
     colors:{ light:[...PALETTES[0].light], dark:[...PALETTES[0].dark] },
     swapSel:null,
     bgLight:"grad", bglColor:"#FFF7F0", gradDepth:37,
-    bgDarkStyle:"flat", bgDark:"#1A1310", gradDepthDark:40,
+    bgDarkStyle:"grad", bgDark:"#131D44", gradDepthDark:44,
+    starStyle:"natural", drawOrder:"cw", spikeR:150, coreR:55, cutRound:18,
     glowOn:false,
     glowColor:{ light:GEO.rim_glow.light.stroke, dark:GEO.rim_glow.dark.stroke },
     intColor:{ light:GEO.rim_glow.light.interior_fill, dark:GEO.rim_glow.dark.interior_fill },
@@ -759,9 +779,26 @@ function buildSVG(){
       transform:`translate(512 512) scale(${starScale.toFixed(4)}) translate(-512 -512)`,
       filter:"url(#cfg-blur)"},mark);
   }
-  for(let i=0;i<6;i++){
+  const ORDERS={cw:[0,1,2,3,4,5],ccw:[5,4,3,2,1,0],alt:[0,2,4,1,3,5]};
+  let petalHost=mark;
+  if(S.starStyle==="symmetric"){
+    const mask=el("mask",{id:"cfg-starmask",maskUnits:"userSpaceOnUse",x:0,y:0,width:1024,height:1024},defs);
+    el("rect",{x:0,y:0,width:1024,height:1024,fill:"#fff"},mask);
+    let pts=[];
+    for(let k=0;k<6;k++){
+      const a1=(k*60+30-90)*Math.PI/180, a2=(k*60+60-90)*Math.PI/180;
+      pts.push([512+S.coreR*Math.cos(a1),512+S.coreR*Math.sin(a1)]);
+      pts.push([512+S.spikeR*Math.cos(a2),512+S.spikeR*Math.sin(a2)]);
+    }
+    const d="M "+pts.map(p=>p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" L ")+" Z";
+    const cut={d,fill:"#000"};
+    if(S.cutRound>0){ cut.stroke="#000"; cut["stroke-width"]=S.cutRound; cut["stroke-linejoin"]="round"; }
+    el("path",cut,mask);
+    petalHost=el("g",{mask:"url(#cfg-starmask)"},mark);
+  }
+  for(const i of ORDERS[S.drawOrder]){
     el("path",{d:GEO.petal.d,fill:hues[i],stroke:hues[i],"stroke-width":S.corner,
-      "stroke-linejoin":"round",transform:`rotate(${PETAL_ANGLES[i]} 512 512) translate(0 ${-S.spread})`},mark);
+      "stroke-linejoin":"round",transform:`rotate(${PETAL_ANGLES[i]} 512 512) translate(0 ${-S.spread})`},petalHost);
   }
   const k=S.gpos/100, gs=S.gsize/100*0.8/0.8;
   for(let i=0;i<6;i++){
@@ -828,6 +865,7 @@ function render(){
   document.getElementById("grp-bg-dark").classList.toggle("hidden",S.mode!=="dark");
   document.getElementById("row-grad").classList.toggle("hidden",S.bgLight!=="grad");
   document.getElementById("row-grad-dark").classList.toggle("hidden",S.bgDarkStyle!=="grad");
+  document.getElementById("star-ctrls").classList.toggle("hidden",S.starStyle!=="symmetric");
   document.getElementById("glow-ctrls").classList.toggle("hidden",!S.glowOn);
   document.getElementById("glow-color").value=S.glowColor[S.mode];
   document.getElementById("int-color").value=S.intColor[S.mode];
@@ -838,7 +876,8 @@ function render(){
     "petals "+S.colors[S.mode].join(" ")+"\nbg "+bg+
     "\nglow "+(S.glowOn?S.glowColor[S.mode]+" centre "+S.intColor[S.mode]+" int "+S.glowInt+" w "+S.glowW+" blur "+S.glowB:"off")+
     "\nscale "+S.scale+"% rot "+S.rot+"° star "+(S.spread>=0?"+":"")+S.spread+" corner "+S.corner+
-    "\nglyphs "+S.gsize+"% pos "+S.gpos+"% tilt "+S.jit+"% emboss "+S.emb+"%";
+    "\nglyphs "+S.gsize+"% pos "+S.gpos+"% tilt "+S.jit+"% emboss "+S.emb+"%"+
+    "\nstar "+(S.starStyle==="symmetric"?"symmetric spike "+S.spikeR+" core "+S.coreR+" round "+S.cutRound:"natural")+" · lap "+S.drawOrder;
 }
 
 function segWire(id,fn){
@@ -852,6 +891,8 @@ function segWire(id,fn){
 segWire("seg-mode",v=>S.mode=v);
 segWire("seg-bgl",v=>S.bgLight=v);
 segWire("seg-bgd-style",v=>S.bgDarkStyle=v);
+segWire("seg-star",v=>S.starStyle=v);
+segWire("seg-order",v=>S.drawOrder=v);
 segWire("seg-bgd",v=>{ S.bgDark=v; document.getElementById("bgd-color").value=v; });
 segWire("seg-glow",v=>S.glowOn=v==="on");
 document.getElementById("bgl-color").addEventListener("input",e=>{ S.bglColor=e.target.value.toUpperCase(); render(); });
@@ -864,7 +905,8 @@ document.getElementById("glow-color").addEventListener("input",e=>{ S.glowColor[
 document.getElementById("int-color").addEventListener("input",e=>{ S.intColor[S.mode]=e.target.value.toUpperCase(); render(); });
 for(const [id,key] of [["grad-depth","gradDepth"],["grad-depth-dark","gradDepthDark"],["glow-int","glowInt"],["glow-w","glowW"],["glow-b","glowB"],
   ["s-scale","scale"],["s-rot","rot"],["s-spread","spread"],["s-corner","corner"],
-  ["s-gsize","gsize"],["s-gpos","gpos"],["s-jit","jit"],["s-emb","emb"]]){
+  ["s-gsize","gsize"],["s-gpos","gpos"],["s-jit","jit"],["s-emb","emb"],
+  ["st-spike","spikeR"],["st-core","coreR"],["st-round","cutRound"]]){
   const inp=document.getElementById(id);
   inp.addEventListener("input",e=>{ S[key]=+e.target.value; document.getElementById(id+"-o").value=e.target.value; render(); });
 }
@@ -872,17 +914,20 @@ document.getElementById("rot-prev").onclick=()=>{ for(const md of ["light","dark
 document.getElementById("rot-next").onclick=()=>{ for(const md of ["light","dark"]) S.colors[md].push(S.colors[md].shift()); render(); };
 document.getElementById("reset").onclick=()=>{
   S=defaults();
-  for(const [id,val] of [["grad-depth",37],["grad-depth-dark",40],["glow-int",100],["glow-w",24],["glow-b",8],["s-scale",84],["s-rot",4],
-    ["s-spread",22],["s-corner",90],["s-gsize",103],["s-gpos",101],["s-jit",225],["s-emb",143]]){
+  for(const [id,val] of [["grad-depth",37],["grad-depth-dark",44],["glow-int",100],["glow-w",24],["glow-b",8],["s-scale",84],["s-rot",4],
+    ["s-spread",22],["s-corner",90],["s-gsize",103],["s-gpos",101],["s-jit",225],["s-emb",143],
+    ["st-spike",150],["st-core",55],["st-round",18]]){
     document.getElementById(id).value=val; document.getElementById(id+"-o").value=val;
   }
   document.getElementById("bgl-color").value="#FFF7F0";
-  document.getElementById("bgd-color").value="#1A1310";
+  document.getElementById("bgd-color").value="#131D44";
   document.querySelectorAll("#seg-mode button").forEach(x=>x.classList.toggle("on",x.dataset.v==="light"));
   document.querySelectorAll("#seg-bgl button").forEach(x=>x.classList.toggle("on",x.dataset.v==="grad"));
-  document.querySelectorAll("#seg-bgd-style button").forEach(x=>x.classList.toggle("on",x.dataset.v==="flat"));
-  document.querySelectorAll("#seg-bgd button").forEach(x=>x.classList.toggle("on",x.dataset.v==="#1A1310"));
+  document.querySelectorAll("#seg-bgd-style button").forEach(x=>x.classList.toggle("on",x.dataset.v==="grad"));
+  document.querySelectorAll("#seg-bgd button").forEach(x=>x.classList.toggle("on",x.dataset.v==="#131D44"));
   document.querySelectorAll("#seg-glow button").forEach(x=>x.classList.toggle("on",x.dataset.v==="off"));
+  document.querySelectorAll("#seg-star button").forEach(x=>x.classList.toggle("on",x.dataset.v==="natural"));
+  document.querySelectorAll("#seg-order button").forEach(x=>x.classList.toggle("on",x.dataset.v==="cw"));
   render();
 };
 document.getElementById("download").onclick=()=>{
