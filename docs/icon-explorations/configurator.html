@@ -164,6 +164,7 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
           <div class="slider-row"><span>Spike length</span><input type="range" id="st-spike" min="80" max="260" value="150"><output id="st-spike-o">150</output></div>
           <div class="slider-row"><span>Core size</span><input type="range" id="st-core" min="20" max="130" value="55"><output id="st-core-o">55</output></div>
           <div class="slider-row"><span>Cut rounding</span><input type="range" id="st-round" min="0" max="44" value="18"><output id="st-round-o">18</output></div>
+          <div class="slider-row"><span>Tip flatness</span><input type="range" id="st-flat" min="0" max="24" value="12"><output id="st-flat-o">12</output></div>
         </div>
         <div class="hint">Natural overlap keeps the spokes as the lapping cards carve them (each spoke has an over-edge and an under-edge; the lap direction flips which). Symmetric cut carves a mathematically even star out of the whole stack &mdash; mirror-perfect spokes, sliders for the shape. The &ldquo;Star size&rdquo; slider below still moves the cards themselves.</div>
       </div>
@@ -745,7 +746,7 @@ function defaults(){
     swapSel:null,
     bgLight:"grad", bglColor:"#FFF7F0", gradDepth:37,
     bgDarkStyle:"grad", bgDark:"#131D44", gradDepthDark:44,
-    starStyle:"natural", drawOrder:"cw", spikeR:150, coreR:55, cutRound:18,
+    starStyle:"natural", drawOrder:"cw", spikeR:150, coreR:55, cutRound:18, tipFlat:12,
     glowOn:false,
     glowColor:{ light:GEO.rim_glow.light.stroke, dark:GEO.rim_glow.dark.stroke },
     intColor:{ light:GEO.rim_glow.light.interior_fill, dark:GEO.rim_glow.dark.interior_fill },
@@ -814,13 +815,23 @@ function buildSVG(){
   if(S.starStyle==="symmetric"){
     const mask=el("mask",{id:"cfg-starmask",maskUnits:"userSpaceOnUse",x:0,y:0,width:1024,height:1024},defs);
     el("rect",{x:0,y:0,width:1024,height:1024,fill:"#fff"},mask);
-    let pts=[];
+    const pt=(deg,r)=>{ const a=(deg-90)*Math.PI/180; return (512+r*Math.cos(a)).toFixed(1)+" "+(512+r*Math.sin(a)).toFixed(1); };
+    // Spike tips sit in the seams (30°+60k). In front of each petal tip the inner
+    // boundary is a rounded arc of half-width tipFlat° rather than a sharp vertex,
+    // matching how the natural sparkle's shoulders read.
+    const f=S.tipFlat;
+    let d="";
     for(let k=0;k<6;k++){
-      const a1=(k*60+30-90)*Math.PI/180, a2=(k*60+60-90)*Math.PI/180;
-      pts.push([512+S.coreR*Math.cos(a1),512+S.coreR*Math.sin(a1)]);
-      pts.push([512+S.spikeR*Math.cos(a2),512+S.spikeR*Math.sin(a2)]);
+      const axis=k*60, seam=k*60+30;
+      if(f<0.5){
+        d+=(k?"L ":"M ")+pt(axis,S.coreR)+" ";
+      } else {
+        d+=(k?"L ":"M ")+pt(axis-f,S.coreR)+" ";
+        d+=`A ${S.coreR} ${S.coreR} 0 0 1 ${pt(axis+f,S.coreR)} `;
+      }
+      d+="L "+pt(seam,S.spikeR)+" ";
     }
-    const d="M "+pts.map(p=>p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" L ")+" Z";
+    d+="Z";
     const cut={d,fill:"#000"};
     if(S.cutRound>0){ cut.stroke="#000"; cut["stroke-width"]=S.cutRound; cut["stroke-linejoin"]="round"; }
     el("path",cut,mask);
@@ -907,7 +918,7 @@ function render(){
     "\nglow "+(S.glowOn?S.glowColor[S.mode]+" centre "+S.intColor[S.mode]+" int "+S.glowInt+" w "+S.glowW+" blur "+S.glowB:"off")+
     "\nscale "+S.scale+"% rot "+S.rot+"° star "+(S.spread>=0?"+":"")+S.spread+" corner "+S.corner+
     "\nglyphs "+S.gsize+"% pos "+S.gpos+"% tilt "+S.jit+"% emboss "+S.emb+"%"+
-    "\nstar "+(S.starStyle==="symmetric"?"symmetric spike "+S.spikeR+" core "+S.coreR+" round "+S.cutRound:"natural")+" · lap "+S.drawOrder;
+    "\nstar "+(S.starStyle==="symmetric"?"symmetric spike "+S.spikeR+" core "+S.coreR+" round "+S.cutRound+" flat "+S.tipFlat:"natural")+" · lap "+S.drawOrder;
 }
 
 function segWire(id,fn){
@@ -940,7 +951,7 @@ document.getElementById("int-color").addEventListener("input",e=>{ S.intColor[S.
 for(const [id,key] of [["grad-depth","gradDepth"],["grad-depth-dark","gradDepthDark"],["glow-int","glowInt"],["glow-w","glowW"],["glow-b","glowB"],
   ["s-scale","scale"],["s-rot","rot"],["s-spread","spread"],["s-corner","corner"],
   ["s-gsize","gsize"],["s-gpos","gpos"],["s-jit","jit"],["s-emb","emb"],
-  ["st-spike","spikeR"],["st-core","coreR"],["st-round","cutRound"]]){
+  ["st-spike","spikeR"],["st-core","coreR"],["st-round","cutRound"],["st-flat","tipFlat"]]){
   const inp=document.getElementById(id);
   inp.addEventListener("input",e=>{ S[key]=+e.target.value; document.getElementById(id+"-o").value=e.target.value; render(); });
 }
@@ -950,7 +961,7 @@ document.getElementById("reset").onclick=()=>{
   S=defaults();
   for(const [id,val] of [["grad-depth",37],["grad-depth-dark",44],["glow-int",100],["glow-w",24],["glow-b",8],["s-scale",84],["s-rot",4],
     ["s-spread",22],["s-corner",90],["s-gsize",103],["s-gpos",101],["s-jit",225],["s-emb",143],
-    ["st-spike",150],["st-core",55],["st-round",18]]){
+    ["st-spike",150],["st-core",55],["st-round",18],["st-flat",12]]){
     document.getElementById(id).value=val; document.getElementById(id+"-o").value=val;
   }
   document.getElementById("bgl-color").value="#FFF7F0";
