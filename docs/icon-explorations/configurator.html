@@ -14,21 +14,32 @@
   --line:#DFDAD0; --accent:#C8492B; --tile:#EDEBE4; --code:#68615517; }
 html{background:var(--ground)}
 body{margin:0;color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-.wrap{max-width:1160px;margin:0 auto;padding:36px 24px 80px}
-h1{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;font-size:clamp(26px,4vw,36px);font-weight:600;margin:0;text-wrap:balance}
-.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:8px}
-.lede{color:var(--muted);max-width:62ch;margin:10px 0 28px}
-.layout{display:grid;grid-template-columns:minmax(300px,1fr) 380px;gap:28px;align-items:start}
+.wrap{max-width:1160px;margin:0 auto;padding:20px 24px 24px}
+h1{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;font-size:clamp(20px,3vw,26px);font-weight:600;margin:0;text-wrap:balance;display:inline}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:4px}
+.lede{color:var(--muted);margin:4px 0 16px;font-size:13px}
+.layout{display:grid;grid-template-columns:minmax(300px,1fr) 384px;gap:28px;align-items:stretch}
+@media(min-width:841px){
+  .layout{height:calc(100vh - 176px);min-height:470px;grid-template-rows:100%;--pw:47vh}
+  .panel{height:100%;min-height:0}
+  .stage{min-height:0}
+  .mini .frame.f180{width:max(96px,min(180px,19vh)) !important;height:max(96px,min(180px,19vh)) !important}
+}
 @media(max-width:840px){.layout{grid-template-columns:1fr}}
-.stage{display:flex;flex-direction:column;gap:16px;align-items:center;position:sticky;top:16px}
-@media(max-width:840px){.stage{position:static}}
-.main-preview{width:min(100%,480px);border-radius:24%;overflow:hidden;box-shadow:0 12px 40px #0003;line-height:0}
+.stage{display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center}
+.main-preview{width:min(100%,var(--pw,480px));border-radius:24%;overflow:hidden;box-shadow:0 12px 40px #0003;line-height:0}
 .main-preview svg{width:100%;height:auto;display:block}
 .minis{display:flex;gap:24px;align-items:flex-end}
 .mini{display:flex;flex-direction:column;align-items:center;gap:6px}
 .mini .frame{border-radius:22%;overflow:hidden;box-shadow:0 3px 10px #0004;line-height:0}
 .mini span{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:18px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.tabbar{display:flex;background:var(--tile);border-radius:9px;padding:3px;gap:3px}
+.tabbar button{flex:1;border:0;background:transparent;color:var(--muted);font:600 12.5px system-ui;padding:8px 4px;border-radius:7px;cursor:pointer}
+.tabbar button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px #0002}
+.tabpane{display:none;flex-direction:column;gap:16px;overflow-y:auto;flex:1;min-height:0;padding-right:2px}
+.tabpane.on{display:flex}
+.panel-foot{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:10px}
 .group{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:14px}
 .group:first-child{border-top:0;padding-top:0}
 .group>label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:600}
@@ -67,15 +78,13 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
 <div class="wrap">
   <div class="eyebrow">WhatFun &middot; icon configurator &middot; v2</div>
   <h1>The full mixing desk</h1>
-  <p class="lede">Palettes from every round, per-petal colour control with click-to-swap, independent
-  glow and star-centre colours, and shape sliders for the whole mark. Download the exact SVG of what
-  you compose.</p>
+  <p class="lede">Preview stays put; controls live in the tabs. Download the exact SVG of what you compose.</p>
 
   <div class="layout">
     <div class="stage">
       <div class="main-preview" id="main-preview"></div>
       <div class="minis">
-        <div class="mini"><div class="frame" id="mini-180" style="width:180px;height:180px"></div><span>Home screen</span></div>
+        <div class="mini"><div class="frame f180" id="mini-180" style="width:180px;height:180px"></div><span>Home screen</span></div>
         <div class="mini"><div class="frame" id="mini-64" style="width:64px;height:64px"></div><span>64 px</span></div>
       </div>
     </div>
@@ -89,6 +98,14 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
         </div>
       </div>
 
+      <div class="tabbar" role="tablist">
+        <button data-t="colors" class="on">Colours</button>
+        <button data-t="bg">Ground</button>
+        <button data-t="star">Star</button>
+        <button data-t="shape">Shape</button>
+      </div>
+
+      <div class="tabpane on" id="tab-colors">
       <div class="group">
         <label>Palette</label>
         <div class="pal" id="pal"></div>
@@ -101,6 +118,9 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
         <div class="hint">Click a swatch, then another, to swap those two petals&rsquo; colours (swaps in both modes). The small strip under each swatch edits that petal&rsquo;s colour directly.</div>
       </div>
 
+      </div>
+
+      <div class="tabpane" id="tab-bg">
       <div class="group" id="grp-bg-light">
         <label>Background &middot; light</label>
         <div class="seg" id="seg-bgl">
@@ -126,6 +146,9 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
         <div class="slider-row" id="row-grad-dark"><span>Depth</span><input type="range" id="grad-depth-dark" min="0" max="100" value="44"><output id="grad-depth-dark-o">44</output></div>
       </div>
 
+      </div>
+
+      <div class="tabpane" id="tab-star">
       <div class="group">
         <label>Star</label>
         <div class="seg" id="seg-star">
@@ -162,6 +185,9 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
         </div>
       </div>
 
+      </div>
+
+      <div class="tabpane" id="tab-shape">
       <div class="group">
         <label>Shape</label>
         <div class="slider-row"><span>Mark scale</span><input type="range" id="s-scale" min="55" max="100" value="84"><output id="s-scale-o">84</output></div>
@@ -174,11 +200,15 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
         <div class="slider-row"><span>Emboss depth</span><input type="range" id="s-emb" min="0" max="220" value="143"><output id="s-emb-o">143</output></div>
       </div>
 
-      <div class="btn-row">
-        <button class="dl" id="download">Download SVG</button>
-        <button class="ghost" id="reset">Reset</button>
       </div>
-      <div class="readout" id="readout"></div>
+
+      <div class="panel-foot">
+        <div class="btn-row">
+          <button class="dl" id="download">Download SVG</button>
+          <button class="ghost" id="reset">Reset</button>
+        </div>
+        <div class="readout" id="readout"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -888,6 +918,10 @@ function segWire(id,fn){
     fn(b.dataset.v); render();
   });
 }
+document.querySelectorAll(".tabbar button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tabbar button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".tabpane").forEach(p=>p.classList.toggle("on",p.id==="tab-"+b.dataset.t));
+});
 segWire("seg-mode",v=>S.mode=v);
 segWire("seg-bgl",v=>S.bgLight=v);
 segWire("seg-bgd-style",v=>S.bgDarkStyle=v);
