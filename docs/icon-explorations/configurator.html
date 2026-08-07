@@ -165,6 +165,8 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
           <div class="slider-row"><span>Core size</span><input type="range" id="st-core" min="20" max="130" value="55"><output id="st-core-o">55</output></div>
           <div class="slider-row"><span>Cut rounding</span><input type="range" id="st-round" min="0" max="44" value="18"><output id="st-round-o">18</output></div>
           <div class="slider-row"><span>Tip flatness</span><input type="range" id="st-flat" min="0" max="24" value="12"><output id="st-flat-o">12</output></div>
+          <div class="slider-row"><span>Spike angle</span><input type="range" id="st-ang" min="-15" max="15" step="0.5" value="5.5"><output id="st-ang-o">5.5</output></div>
+          <div class="hint">The cards carry a baked-in hand-tilt, so their real seams sit ~5.5&deg; off the ideal positions. Spike angle 5.5 follows the seams; 0 is geometrically pure but stabs into the cards.</div>
         </div>
         <div class="hint">Natural overlap keeps the spokes as the lapping cards carve them (each spoke has an over-edge and an under-edge; the lap direction flips which). Symmetric cut carves a mathematically even star out of the whole stack &mdash; mirror-perfect spokes, sliders for the shape. The &ldquo;Star size&rdquo; slider below still moves the cards themselves.</div>
       </div>
@@ -746,7 +748,7 @@ function defaults(){
     swapSel:null,
     bgLight:"grad", bglColor:"#FFF7F0", gradDepth:37,
     bgDarkStyle:"grad", bgDark:"#131D44", gradDepthDark:44,
-    starStyle:"natural", drawOrder:"cw", spikeR:150, coreR:55, cutRound:18, tipFlat:12,
+    starStyle:"natural", drawOrder:"cw", spikeR:150, coreR:55, cutRound:18, tipFlat:12, spikeAng:5.5,
     glowOn:false,
     glowColor:{ light:GEO.rim_glow.light.stroke, dark:GEO.rim_glow.dark.stroke },
     intColor:{ light:GEO.rim_glow.light.interior_fill, dark:GEO.rim_glow.dark.interior_fill },
@@ -822,7 +824,7 @@ function buildSVG(){
     const f=S.tipFlat;
     let d="";
     for(let k=0;k<6;k++){
-      const axis=k*60, seam=k*60+30;
+      const axis=k*60, seam=k*60+30+S.spikeAng;
       if(f<0.5){
         d+=(k?"L ":"M ")+pt(axis,S.coreR)+" ";
       } else {
@@ -918,7 +920,7 @@ function render(){
     "\nglow "+(S.glowOn?S.glowColor[S.mode]+" centre "+S.intColor[S.mode]+" int "+S.glowInt+" w "+S.glowW+" blur "+S.glowB:"off")+
     "\nscale "+S.scale+"% rot "+S.rot+"° star "+(S.spread>=0?"+":"")+S.spread+" corner "+S.corner+
     "\nglyphs "+S.gsize+"% pos "+S.gpos+"% tilt "+S.jit+"% emboss "+S.emb+"%"+
-    "\nstar "+(S.starStyle==="symmetric"?"symmetric spike "+S.spikeR+" core "+S.coreR+" round "+S.cutRound+" flat "+S.tipFlat:"natural")+" · lap "+S.drawOrder;
+    "\nstar "+(S.starStyle==="symmetric"?"symmetric spike "+S.spikeR+" core "+S.coreR+" round "+S.cutRound+" flat "+S.tipFlat+" ang "+S.spikeAng:"natural")+" · lap "+S.drawOrder;
 }
 
 function segWire(id,fn){
@@ -951,7 +953,7 @@ document.getElementById("int-color").addEventListener("input",e=>{ S.intColor[S.
 for(const [id,key] of [["grad-depth","gradDepth"],["grad-depth-dark","gradDepthDark"],["glow-int","glowInt"],["glow-w","glowW"],["glow-b","glowB"],
   ["s-scale","scale"],["s-rot","rot"],["s-spread","spread"],["s-corner","corner"],
   ["s-gsize","gsize"],["s-gpos","gpos"],["s-jit","jit"],["s-emb","emb"],
-  ["st-spike","spikeR"],["st-core","coreR"],["st-round","cutRound"],["st-flat","tipFlat"]]){
+  ["st-spike","spikeR"],["st-core","coreR"],["st-round","cutRound"],["st-flat","tipFlat"],["st-ang","spikeAng"]]){
   const inp=document.getElementById(id);
   inp.addEventListener("input",e=>{ S[key]=+e.target.value; document.getElementById(id+"-o").value=e.target.value; render(); });
 }
@@ -961,7 +963,7 @@ document.getElementById("reset").onclick=()=>{
   S=defaults();
   for(const [id,val] of [["grad-depth",37],["grad-depth-dark",44],["glow-int",100],["glow-w",24],["glow-b",8],["s-scale",84],["s-rot",4],
     ["s-spread",22],["s-corner",90],["s-gsize",103],["s-gpos",101],["s-jit",225],["s-emb",143],
-    ["st-spike",150],["st-core",55],["st-round",18],["st-flat",12]]){
+    ["st-spike",150],["st-core",55],["st-round",18],["st-flat",12],["st-ang",5.5]]){
     document.getElementById(id).value=val; document.getElementById(id+"-o").value=val;
   }
   document.getElementById("bgl-color").value="#FFF7F0";
