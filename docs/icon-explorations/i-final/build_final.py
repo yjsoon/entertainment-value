@@ -14,14 +14,22 @@ import pathlib
 HERE = pathlib.Path(__file__).parent
 GEO = json.loads((HERE.parent / "h-winner" / "geometry.json").read_text())
 
-# ---- approved configurator state (light readout, 2026-08-01) ----------------
+# ---- approved configurator state (readout, 2026-08-08) ----------------------
 STATE = {
     "petals_light": ["#DD5A46", "#E27C46", "#C0A02A", "#229682", "#5769C7", "#9F75C7"],
     "bg_light": "#FFF7F0", "grad_depth": 0.37,     # radial 37%
     "glow": False,
-    "scale": 0.84, "rot": 4, "spread": 22, "corner": 90,
-    "gsize": 1.03, "gpos": 1.01, "tilt": 2.25, "emboss": 1.43,
+    "scale": 0.85, "rot": 4, "spread": 25, "corner": 90,
+    "gsize": 1.20, "gpos": 1.00, "tilt": 1.90, "emboss": 1.56,
+    "chip_tilt": 0, "lap": "alt",
 }
+
+# Chip pentagon: mirror-symmetric base rotated about its tip by chip_tilt degrees.
+# At 0 the chips are symmetric, so the null-space star is perfectly even.
+CHIP_TIP = (512.0, 418.0)
+CHIP_BASE = [(0.0, 0.0), (-144.0, -148.05), (-171.97, -334.0), (171.97, -334.0), (144.0, -148.05)]
+GLYPH_ANCHOR_BASE = (0.0, -203.05)     # on-axis, relative to the chip tip
+LAP_ORDERS = {"cw": [0, 1, 2, 3, 4, 5], "ccw": [5, 4, 3, 2, 1, 0], "alt": [0, 2, 4, 1, 3, 5]}
 # Dark mode, user-approved (configurator readout, 2026-08-02): the lifted petal
 # hues on a night-navy radial ground. Gradient stops use the configurator's
 # dark formula: centre = lighten(base, depth*0.4), edge = darken(base, depth*0.45).
@@ -73,17 +81,33 @@ def mark_open():
             f'{f" rotate({r} 512 512)" if r else ""}">')
 
 
+def _chip_rot(x, y):
+    import math
+    t = math.radians(STATE["chip_tilt"])
+    return x * math.cos(t) - y * math.sin(t), x * math.sin(t) + y * math.cos(t)
+
+
+def petal_path():
+    pts = []
+    for x, y in CHIP_BASE:
+        rx, ry = _chip_rot(x, y)
+        pts.append(f"{CHIP_TIP[0] + rx:.1f} {CHIP_TIP[1] + ry:.1f}")
+    return "M " + " L ".join(pts) + " Z"
+
+
 def petal_elems(hues):
     sp, w = STATE["spread"], STATE["corner"]
+    d = petal_path()
     return "".join(
-        f'<path d="{GEO["petal"]["d"]}" fill="{hues[i]}" stroke="{hues[i]}" '
+        f'<path d="{d}" fill="{hues[i]}" stroke="{hues[i]}" '
         f'stroke-width="{w}" stroke-linejoin="round" '
         f'transform="rotate({PETAL_ANGLES[i]} 512 512) translate(0 {-sp})"/>'
-        for i in range(6))
+        for i in LAP_ORDERS[STATE["lap"]])
 
 
 def glyph_elems(hues, mode, suffix):
-    ax0, ay0 = GEO["glyphs"]["anchor"]
+    arx, ary = _chip_rot(*GLYPH_ANCHOR_BASE)
+    ax0, ay0 = CHIP_TIP[0] + arx, CHIP_TIP[1] + ary
     k, gs, sp = STATE["gpos"], STATE["gsize"], STATE["spread"]
     ax, ay = 512 + (ax0 - 512) * k, 512 + (ay0 - 512) * k
     amt = GEO["deboss"]["amounts"][mode]

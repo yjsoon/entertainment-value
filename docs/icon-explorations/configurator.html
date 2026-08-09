@@ -83,6 +83,11 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
   <div class="layout">
     <div class="stage">
       <div class="main-preview" id="main-preview"></div>
+      <div class="seg" id="seg-ov" style="align-self:center">
+        <button data-v="off" class="on">No overlay</button>
+        <button data-v="outline">iOS squircle</button>
+        <button data-v="grid">Full grid</button>
+      </div>
       <div class="minis">
         <div class="mini"><div class="frame f180" id="mini-180" style="width:180px;height:180px"></div><span>Home screen</span></div>
         <div class="mini"><div class="frame" id="mini-64" style="width:64px;height:64px"></div><span>64 px</span></div>
@@ -151,11 +156,11 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
       <div class="tabpane" id="tab-star">
       <div class="group">
         <label>Star</label>
-        <div class="slider-row"><span>Chip tilt</span><input type="range" id="st-ctilt" min="-12" max="12" step="0.5" value="9"><output id="st-ctilt-o">9</output></div>
+        <div class="slider-row"><span>Chip tilt</span><input type="range" id="st-ctilt" min="-12" max="12" step="0.5" value="0"><output id="st-ctilt-o">0</output></div>
         <div class="seg" id="seg-order">
-          <button data-v="cw" class="on">Lap clockwise</button>
+          <button data-v="cw">Lap clockwise</button>
           <button data-v="ccw">Counter</button>
-          <button data-v="alt">Alternating</button>
+          <button data-v="alt" class="on">Alternating</button>
         </div>
         <div class="hint">The star is always just the empty space between the chips &mdash; nothing is drawn there.
         Each chip body carries a hand-placed tilt (the approved design uses 9&deg;), and that tilt is what
@@ -186,14 +191,14 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
       <div class="tabpane" id="tab-shape">
       <div class="group">
         <label>Shape</label>
-        <div class="slider-row"><span>Mark scale</span><input type="range" id="s-scale" min="55" max="100" value="84"><output id="s-scale-o">84</output></div>
+        <div class="slider-row"><span>Mark scale</span><input type="range" id="s-scale" min="55" max="100" value="85"><output id="s-scale-o">85</output></div>
         <div class="slider-row"><span>Rotation</span><input type="range" id="s-rot" min="-45" max="45" value="4"><output id="s-rot-o">4</output></div>
-        <div class="slider-row"><span>Star size</span><input type="range" id="s-spread" min="-25" max="70" value="22"><output id="s-spread-o">22</output></div>
+        <div class="slider-row"><span>Star size</span><input type="range" id="s-spread" min="-25" max="70" value="25"><output id="s-spread-o">25</output></div>
         <div class="slider-row"><span>Corner round</span><input type="range" id="s-corner" min="6" max="90" value="90"><output id="s-corner-o">90</output></div>
-        <div class="slider-row"><span>Glyph size</span><input type="range" id="s-gsize" min="40" max="140" value="103"><output id="s-gsize-o">103</output></div>
-        <div class="slider-row"><span>Glyph position</span><input type="range" id="s-gpos" min="60" max="125" value="101"><output id="s-gpos-o">101</output></div>
-        <div class="slider-row"><span>Hand tilt</span><input type="range" id="s-jit" min="0" max="250" value="225"><output id="s-jit-o">225</output></div>
-        <div class="slider-row"><span>Emboss depth</span><input type="range" id="s-emb" min="0" max="220" value="143"><output id="s-emb-o">143</output></div>
+        <div class="slider-row"><span>Glyph size</span><input type="range" id="s-gsize" min="40" max="140" value="120"><output id="s-gsize-o">120</output></div>
+        <div class="slider-row"><span>Glyph position</span><input type="range" id="s-gpos" min="60" max="125" value="100"><output id="s-gpos-o">100</output></div>
+        <div class="slider-row"><span>Hand tilt</span><input type="range" id="s-jit" min="0" max="250" value="190"><output id="s-jit-o">190</output></div>
+        <div class="slider-row"><span>Emboss depth</span><input type="range" id="s-emb" min="0" max="220" value="156"><output id="s-emb-o">156</output></div>
       </div>
 
       </div>
@@ -741,12 +746,12 @@ function defaults(){
     swapSel:null,
     bgLight:"grad", bglColor:"#FFF7F0", gradDepth:37,
     bgDarkStyle:"grad", bgDark:"#131D44", gradDepthDark:44,
-    drawOrder:"cw", chipTilt:9,
+    drawOrder:"alt", chipTilt:0, overlay:"off",
     glowOn:false,
     glowColor:{ light:GEO.rim_glow.light.stroke, dark:GEO.rim_glow.dark.stroke },
     intColor:{ light:GEO.rim_glow.light.interior_fill, dark:GEO.rim_glow.dark.interior_fill },
     glowInt:100, glowW:24, glowB:8,
-    scale:84, rot:4, spread:22, corner:90, gsize:103, gpos:101, jit:225, emb:143,
+    scale:85, rot:4, spread:25, corner:90, gsize:120, gpos:100, jit:190, emb:156,
   };
 }
 let S = defaults();
@@ -759,6 +764,32 @@ const lighten=(h,t)=>mix(h,"#FFFFFF",Math.min(1,t)), darken=(h,t)=>mix(h,"#00000
 const NS="http://www.w3.org/2000/svg";
 function el(n,a,p){ const e=document.createElementNS(NS,n); for(const k in a) e.setAttribute(k,a[k]); if(p) p.appendChild(e); return e; }
 
+// Apple icon-grid squircle: superellipse |x/a|^n + |y/a|^n = 1 with n = 5,
+// full-bleed (a = 512) — the shape iOS masks every app icon to.
+function squirclePath(cx, cy, a, n){
+  const pts = [];
+  for(let i = 0; i < 128; i++){
+    const t = i / 128 * 2 * Math.PI, c = Math.cos(t), s = Math.sin(t);
+    pts.push((cx + a * Math.sign(c) * Math.abs(c) ** (2 / n)).toFixed(1) + " " +
+             (cy + a * Math.sign(s) * Math.abs(s) ** (2 / n)).toFixed(1));
+  }
+  return "M " + pts.join(" L ") + " Z";
+}
+function addOverlay(svg){
+  const g = el("g", {fill:"none", "pointer-events":"none"}, svg);
+  const guide = d => {
+    el("path", {d, stroke:"#000", "stroke-width":4, opacity:0.35}, g);
+    el("path", {d, stroke:"#FFF", "stroke-width":2, opacity:0.85, "stroke-dasharray":"10 7"}, g);
+  };
+  guide(squirclePath(512, 512, 511, 5));
+  if(S.overlay === "grid"){
+    const circ = r => { const k = 0.5523 * r;
+      return `M ${512-r} 512 C ${512-r} ${512-k} ${512-k} ${512-r} 512 ${512-r} C ${512+k} ${512-r} ${512+r} ${512-k} ${512+r} 512 C ${512+r} ${512+k} ${512+k} ${512+r} 512 ${512+r} C ${512-k} ${512+r} ${512-r} ${512+k} ${512-r} 512 Z`; };
+    guide(circ(384));
+    guide(circ(192));
+    guide("M 512 0 L 512 1024 M 0 512 L 1024 512");
+  }
+}
 function buildSVG(){
   const m=S.mode, hues=S.colors[m], base=GEO.deboss.amounts[m], embF=S.emb/100;
   const svg=el("svg",{xmlns:NS,width:1024,height:1024,viewBox:GEO.canvas.viewBox});
@@ -835,9 +866,11 @@ function buildSVG(){
 
 function render(){
   const svg=buildSVG();
+  const main=buildSVG();
+  if(S.overlay!=="off") addOverlay(main);
   for(const id of ["main-preview","mini-180","mini-64"]){
     const host=document.getElementById(id);
-    host.replaceChildren(svg.cloneNode(true));
+    host.replaceChildren(id==="main-preview"?main:svg.cloneNode(true));
     const s=host.querySelector("svg");
     s.removeAttribute("width"); s.removeAttribute("height");
     s.style.width="100%"; s.style.height="100%"; s.style.display="block";
@@ -915,6 +948,7 @@ segWire("seg-mode",v=>S.mode=v);
 segWire("seg-bgl",v=>S.bgLight=v);
 segWire("seg-bgd-style",v=>S.bgDarkStyle=v);
 segWire("seg-order",v=>S.drawOrder=v);
+segWire("seg-ov",v=>S.overlay=v);
 segWire("seg-bgd",v=>{ S.bgDark=v; document.getElementById("bgd-color").value=v; });
 segWire("seg-glow",v=>S.glowOn=v==="on");
 document.getElementById("bgl-color").addEventListener("input",e=>{ S.bglColor=e.target.value.toUpperCase(); render(); });
@@ -936,9 +970,9 @@ document.getElementById("rot-prev").onclick=()=>{ for(const md of ["light","dark
 document.getElementById("rot-next").onclick=()=>{ for(const md of ["light","dark"]) S.colors[md].push(S.colors[md].shift()); render(); };
 document.getElementById("reset").onclick=()=>{
   S=defaults();
-  for(const [id,val] of [["grad-depth",37],["grad-depth-dark",44],["glow-int",100],["glow-w",24],["glow-b",8],["s-scale",84],["s-rot",4],
-    ["s-spread",22],["s-corner",90],["s-gsize",103],["s-gpos",101],["s-jit",225],["s-emb",143],
-    ["st-ctilt",9]]){
+  for(const [id,val] of [["grad-depth",37],["grad-depth-dark",44],["glow-int",100],["glow-w",24],["glow-b",8],["s-scale",85],["s-rot",4],
+    ["s-spread",25],["s-corner",90],["s-gsize",120],["s-gpos",100],["s-jit",190],["s-emb",156],
+    ["st-ctilt",0]]){
     document.getElementById(id).value=val; document.getElementById(id+"-o").value=val;
   }
   document.getElementById("bgl-color").value="#FFF7F0";
@@ -948,7 +982,8 @@ document.getElementById("reset").onclick=()=>{
   document.querySelectorAll("#seg-bgd-style button").forEach(x=>x.classList.toggle("on",x.dataset.v==="grad"));
   document.querySelectorAll("#seg-bgd button").forEach(x=>x.classList.toggle("on",x.dataset.v==="#131D44"));
   document.querySelectorAll("#seg-glow button").forEach(x=>x.classList.toggle("on",x.dataset.v==="off"));
-  document.querySelectorAll("#seg-order button").forEach(x=>x.classList.toggle("on",x.dataset.v==="cw"));
+  document.querySelectorAll("#seg-order button").forEach(x=>x.classList.toggle("on",x.dataset.v==="alt"));
+  document.querySelectorAll("#seg-ov button").forEach(x=>x.classList.toggle("on",x.dataset.v==="off"));
   render();
 };
 document.getElementById("download").onclick=()=>{
