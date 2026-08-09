@@ -18,7 +18,7 @@ Treat this bundle as the input; apply the IC2-only settings in the app:
 
 1. Open `AppIcon.icon` in Icon Composer 2 (it will migrate the document on
    save; keep a copy of the original if you want to stay dual-version).
-2. **Chips layer** — enable refraction at low strength (start ~20–25%): the
+2. **Petals layer** (the chips) — enable refraction at low strength (start ~20–25%): the
    lapped chips are the glass slab, and a subtle edge bend where chips overlap
    sells the stacking without distorting the glyphs. Keep specular ON; with
    iOS 27's brighter speculars, if the rim reads hot, pull specular intensity

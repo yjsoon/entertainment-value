@@ -205,10 +205,15 @@ ETCH = {
     "dark":  dict(etch_fill_amt=0.16, etch_hi_amt=0.18, etch_sh_amt=0.34),
 }
 
-for slug, modes in VARIANTS.items():
-    for mode, spec in modes.items():
-        svg = build_svg(spec["bg"], spec["ramp"], order=spec.get("order", ORDER), **ETCH[mode])
-        path = os.path.join(OUT, f"{slug}-{mode}.svg")
-        with open(path, "w") as f:
-            f.write(svg)
-        print(path)
+def main():
+    for slug, modes in VARIANTS.items():
+        for mode, spec in modes.items():
+            svg = build_svg(spec["bg"], spec["ramp"], order=spec.get("order", ORDER), **ETCH[mode])
+            path = os.path.join(OUT, f"{slug}-{mode}.svg")
+            with open(path, "w") as f:
+                f.write(svg)
+            print(path)
+
+
+if __name__ == "__main__":
+    main()

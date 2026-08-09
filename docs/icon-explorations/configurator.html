@@ -1,3 +1,6 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WhatFun Icon Configurator</title>
 <style>
 :root{
@@ -104,13 +107,13 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
       </div>
 
       <div class="tabbar" role="tablist">
-        <button data-t="colors" class="on">Colours</button>
-        <button data-t="bg">Ground</button>
-        <button data-t="star">Star</button>
-        <button data-t="shape">Shape</button>
+        <button role="tab" id="tabbtn-colors" aria-controls="tab-colors" aria-selected="true" data-t="colors" class="on">Colours</button>
+        <button role="tab" id="tabbtn-bg" aria-controls="tab-bg" aria-selected="false" data-t="bg">Ground</button>
+        <button role="tab" id="tabbtn-star" aria-controls="tab-star" aria-selected="false" data-t="star">Star</button>
+        <button role="tab" id="tabbtn-shape" aria-controls="tab-shape" aria-selected="false" data-t="shape">Shape</button>
       </div>
 
-      <div class="tabpane on" id="tab-colors">
+      <div class="tabpane on" role="tabpanel" aria-labelledby="tabbtn-colors" id="tab-colors">
       <div class="group">
         <label>Palette</label>
         <div class="pal" id="pal"></div>
@@ -125,7 +128,7 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
 
       </div>
 
-      <div class="tabpane" id="tab-bg">
+      <div class="tabpane" role="tabpanel" aria-labelledby="tabbtn-bg" id="tab-bg">
       <div class="group" id="grp-bg-light">
         <label>Background &middot; light</label>
         <div class="seg" id="seg-bgl">
@@ -153,7 +156,7 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
 
       </div>
 
-      <div class="tabpane" id="tab-star">
+      <div class="tabpane" role="tabpanel" aria-labelledby="tabbtn-star" id="tab-star">
       <div class="group">
         <label>Star</label>
         <div class="slider-row"><span>Chip tilt</span><input type="range" id="st-ctilt" min="-12" max="12" step="0.5" value="0"><output id="st-ctilt-o">0</output></div>
@@ -188,7 +191,7 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
 
       </div>
 
-      <div class="tabpane" id="tab-shape">
+      <div class="tabpane" role="tabpanel" aria-labelledby="tabbtn-shape" id="tab-shape">
       <div class="group">
         <label>Shape</label>
         <div class="slider-row"><span>Mark scale</span><input type="range" id="s-scale" min="55" max="100" value="81"><output id="s-scale-o">81</output></div>
@@ -605,7 +608,7 @@ const GEO = {
         "darken_sh": 0.34
       }
     },
-    "mixing": "linear sRGB mix toward #FFFFFF (lighten) / #000000 (darken)"
+    "mixing": "per-channel mix of gamma-encoded sRGB toward #FFFFFF (lighten) / #000000 (darken)"
   },
   "hues": {
     "order_note": "petal 0 = top squircle, then clockwise: film, mic, pad, tv, book",
@@ -790,35 +793,35 @@ function addOverlay(svg){
     guide("M 512 0 L 512 1024 M 0 512 L 1024 512");
   }
 }
-function buildSVG(){
+function buildSVG(uid="main"){
   const m=S.mode, hues=S.colors[m], base=GEO.deboss.amounts[m], embF=S.emb/100;
   const svg=el("svg",{xmlns:NS,width:1024,height:1024,viewBox:GEO.canvas.viewBox});
   const defs=el("defs",{},svg);
-  const filt=el("filter",{id:"cfg-blur",x:"-40%",y:"-40%",width:"180%",height:"180%"},defs);
+  const filt=el("filter",{id:"cfg-blur-"+uid,x:"-40%",y:"-40%",width:"180%",height:"180%"},defs);
   el("feGaussianBlur",{stdDeviation:S.glowB},filt);
   for(const name in GEO.glyphs.shapes){
-    const g=el("g",{id:"cfg-g-"+name},defs);
+    const g=el("g",{id:"cfg-g-"+uid+"-"+name},defs);
     for(const sh of GEO.glyphs.shapes[name]){
       if(sh.kind==="fill") el("path",{fill:"currentColor","fill-rule":"evenodd",d:sh.d},g);
-      else el("path",{fill:"none",stroke:"currentColor","stroke-width":sh.stroke_width||13,"stroke-linecap":"round",d:sh.d},g);
+      else el("path",{fill:"none",stroke:"currentColor","stroke-width":sh.width,"stroke-linecap":sh.linecap||"round",d:sh.d},g);
     }
   }
   let bgFill;
   if(m==="light"){
     if(S.bgLight==="grad"){
       const t=S.gradDepth/100;
-      const grad=el("radialGradient",{id:"cfg-bg",cx:.5,cy:.5,r:GEO.backgrounds.light_gradient.r},defs);
+      const grad=el("radialGradient",{id:"cfg-bg-"+uid,cx:.5,cy:.5,r:GEO.backgrounds.light_gradient.r},defs);
       el("stop",{offset:0,"stop-color":lighten(S.bglColor,0.55)},grad);
       el("stop",{offset:1,"stop-color":mix(S.bglColor,"#B9BCB0",t*0.55)},grad);
-      bgFill="url(#cfg-bg)";
+      bgFill="url(#cfg-bg-"+uid+")";
     } else bgFill=S.bglColor;
   } else {
     if(S.bgDarkStyle==="grad"){
       const t=S.gradDepthDark/100;
-      const grad=el("radialGradient",{id:"cfg-bg",cx:.5,cy:.5,r:GEO.backgrounds.light_gradient.r},defs);
+      const grad=el("radialGradient",{id:"cfg-bg-"+uid,cx:.5,cy:.5,r:GEO.backgrounds.light_gradient.r},defs);
       el("stop",{offset:0,"stop-color":lighten(S.bgDark,t*0.4)},grad);
       el("stop",{offset:1,"stop-color":darken(S.bgDark,t*0.45)},grad);
-      bgFill="url(#cfg-bg)";
+      bgFill="url(#cfg-bg-"+uid+")";
     } else bgFill=S.bgDark;
   }
   el("rect",{width:1024,height:1024,fill:bgFill},svg);
@@ -834,7 +837,7 @@ function buildSVG(){
     el("path",{d:GEO.star.d,fill:"none",stroke:S.glowColor[m],"stroke-width":S.glowW,
       "stroke-linejoin":"round",opacity:(GEO.rim_glow[m].opacity*S.glowInt/100).toFixed(3),
       transform:`translate(512 512) scale(${starScale.toFixed(4)}) translate(-512 -512)`,
-      filter:"url(#cfg-blur)"},mark);
+      filter:"url(#cfg-blur-"+uid+")"},mark);
   }
   const ORDERS={cw:[0,1,2,3,4,5],ccw:[5,4,3,2,1,0],alt:[0,2,4,1,3,5]};
   // Chip body, parametric tilt about its tip (512,418). The base pentagon is
@@ -857,20 +860,20 @@ function buildSVG(){
     const jit=(JITTER[i]*S.jit/100).toFixed(2);
     const g=el("g",{transform:`rotate(${PETAL_ANGLES[i]} 512 512) translate(0 ${-S.spread}) translate(${ax.toFixed(1)} ${ay.toFixed(1)}) rotate(${-PETAL_ANGLES[i]+ +jit}) scale(${(S.gsize/100).toFixed(3)})`},mark);
     const hue=hues[i], name=ORDER[i];
-    el("use",{href:"#cfg-g-"+name,y:3,color:lighten(hue,base.lighten*embF)},g);
-    el("use",{href:"#cfg-g-"+name,y:-3,color:darken(hue,base.darken_sh*embF)},g);
-    el("use",{href:"#cfg-g-"+name,color:darken(hue,base.darken_fill*embF)},g);
+    el("use",{href:"#cfg-g-"+uid+"-"+name,y:3,color:lighten(hue,base.lighten*embF)},g);
+    el("use",{href:"#cfg-g-"+uid+"-"+name,y:-3,color:darken(hue,base.darken_sh*embF)},g);
+    el("use",{href:"#cfg-g-"+uid+"-"+name,color:darken(hue,base.darken_fill*embF)},g);
   }
   return svg;
 }
 
 function render(){
-  const svg=buildSVG();
-  const main=buildSVG();
+  const main=buildSVG("main");
   if(S.overlay!=="off") addOverlay(main);
+  const trees={"main-preview":main,"mini-180":buildSVG("m180"),"mini-64":buildSVG("m64")};
   for(const id of ["main-preview","mini-180","mini-64"]){
     const host=document.getElementById(id);
-    host.replaceChildren(id==="main-preview"?main:svg.cloneNode(true));
+    host.replaceChildren(trees[id]);
     const s=host.querySelector("svg");
     s.removeAttribute("width"); s.removeAttribute("height");
     s.style.width="100%"; s.style.height="100%"; s.style.display="block";
@@ -941,7 +944,10 @@ function segWire(id,fn){
   });
 }
 document.querySelectorAll(".tabbar button").forEach(b=>b.onclick=()=>{
-  document.querySelectorAll(".tabbar button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".tabbar button").forEach(x=>{
+    x.classList.toggle("on",x===b);
+    x.setAttribute("aria-selected",String(x===b));
+  });
   document.querySelectorAll(".tabpane").forEach(p=>p.classList.toggle("on",p.id==="tab-"+b.dataset.t));
 });
 segWire("seg-mode",v=>S.mode=v);
@@ -987,12 +993,13 @@ document.getElementById("reset").onclick=()=>{
   render();
 };
 document.getElementById("download").onclick=()=>{
-  const svg=buildSVG();
+  const svg=buildSVG("dl");
   const blob=new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(svg)],{type:"image/svg+xml"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
   a.download=`whatfun-icon-${S.mode}.svg`;
-  a.click(); URL.revokeObjectURL(a.href);
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
 };
 render();
 </script>

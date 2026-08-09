@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the final WhatFun icon from geometry.json + the approved configurator state.
 
-Reproduces the configurator's render math exactly (same linear sRGB mixes,
+Reproduces the configurator's render math exactly (same gamma-encoded sRGB mixes,
 same transform composition), then emits:
   final-light.svg, final-dark.svg          — the icon in both modes
   layer-1-background-{light,dark}.svg      — Icon Composer background layer
@@ -9,6 +9,7 @@ same transform composition), then emits:
 Run: python3 build_final.py
 """
 import json
+import math
 import pathlib
 
 HERE = pathlib.Path(__file__).parent
@@ -69,7 +70,7 @@ def glyph_defs(suffix):
     out = [f'<g id="g-{name}-{suffix}">' + "".join(
         (f'<path fill="currentColor" fill-rule="evenodd" d="{s["d"]}"/>'
          if s["kind"] == "fill" else
-         f'<path fill="none" stroke="currentColor" stroke-width="{s.get("stroke_width", 13)}" stroke-linecap="round" d="{s["d"]}"/>')
+         f'<path fill="none" stroke="currentColor" stroke-width="{s["width"]}" stroke-linecap="{s.get("linecap", "round")}" d="{s["d"]}"/>')
         for s in GEO["glyphs"]["shapes"][name]) + "</g>"
         for name in GEO["glyphs"]["shapes"]]
     return "".join(out)
@@ -82,7 +83,6 @@ def mark_open():
 
 
 def _chip_rot(x, y):
-    import math
     t = math.radians(STATE["chip_tilt"])
     return x * math.cos(t) - y * math.sin(t), x * math.sin(t) + y * math.cos(t)
 
@@ -173,3 +173,13 @@ if __name__ == "__main__":
     for name, content in out.items():
         (HERE / name).write_text(content)
         print("wrote", name)
+    # Both AppIcon.icon bundles reference Assets/petals.svg and Assets/glyphs.svg —
+    # write them here so regeneration never needs a manual copy step.
+    repo_root = HERE.parent.parent.parent
+    for assets in (HERE / "AppIcon.icon" / "Assets",
+                   repo_root / "WhatFun" / "AppIcon.icon" / "Assets"):
+        if assets.parent.exists():
+            assets.mkdir(exist_ok=True)
+            (assets / "petals.svg").write_text(out["layer-2-petals.svg"])
+            (assets / "glyphs.svg").write_text(out["layer-3-glyphs.svg"])
+            print("wrote", assets / "petals.svg", "and glyphs.svg")

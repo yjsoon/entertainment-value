@@ -294,8 +294,13 @@ def write_layers():
         '<rect width="1024" height="1024" fill="url(#bgl)"/>',
         '<radialGradient id="bgl" cx="0.5" cy="0.42" r="0.75">'
         f'<stop offset="0" stop-color="{CREAM_HI}"/><stop offset="1" stop-color="{CREAM_LO}"/></radialGradient>'))
-    write("layer-2-petals.svg", svg("".join(petal_elem(i, RAMP[i]) for i in range(6))))
-    write("layer-3-glyphs.svg", svg(glyph_group()))
+    petals = svg("".join(petal_elem(i, RAMP[i]) for i in range(6)))
+    glyphs = svg(glyph_group())
+    write("layer-2-petals.svg", petals)
+    write("layer-3-glyphs.svg", glyphs)
+    # keep the bundle's referenced assets in sync (icon.json points at these)
+    write(os.path.join("AppIcon.icon", "Assets", "petals.svg"), petals)
+    write(os.path.join("AppIcon.icon", "Assets", "glyphs.svg"), glyphs)
 
 # ---------------------------------------------------------------- context mockups
 def context(name, dark):

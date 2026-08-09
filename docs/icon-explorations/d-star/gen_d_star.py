@@ -16,7 +16,7 @@ Construction:
 import math, os
 from shapely.geometry import Polygon, MultiPolygon
 
-OUT = "/tmp/claude-0/-home-user-whatfun/bb502722-18e9-50e5-9328-dea22a981794/scratchpad/d-star"
+OUT = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(OUT, exist_ok=True)
 C = 512.0
 R_OUT = 370.0        # mark radius -> 740 diameter

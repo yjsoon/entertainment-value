@@ -25,17 +25,20 @@ generic app-squircle glyph; `06-ember-v3` is a moodier alternative with a deeper
 
 Same pinwheel language and ember ramp, with the petal tips re-carved so the true
 negative space forms a play button, a camera aperture, a five-point rating star, or a
-heart. `gen_b_centers.py` regenerates the set.
+heart. `gen_b_centers.py` regenerates the set (requires the `shapely` package:
+`pip install shapely`; `gen_d_star.py` in `d-star/` needs it too).
 
 ## i-final — the approved icon
 
-The shipped design, baked from the approved configurator state: petals #DD5A46
-#E27C46 #C0A02A #229682 #5769C7 #9F75C7 on a warm-white radial ground (#FFF7F0,
-37% depth), no glow, mark at 84% with 4° rotation, star opened +22, corner
-rounding 90, glyphs 103% at 101% radius with 225% hand-tilt and 143% emboss.
-`build_final.py` regenerates both mode SVGs and the three Icon Composer layers
-from that state; the dark build derives each hue +8% lighter on a warm
-near-black ground. This design is the app's `AppIcon.png`, and
+The shipped design, baked from the approved configurator state: petals
+`#DD5A46` `#E27C46` `#C0A02A` `#229682` `#5769C7` `#9F75C7` on a warm-white
+radial ground (`#FFF7F0`, 37% depth), no glow, mark at 81% with 4° rotation,
+star opened +25, corner rounding 90, glyphs 120% at 100% radius with 190%
+hand-tilt and 156% emboss, symmetric chips (tilt 0) with alternating lap.
+`build_final.py` regenerates both mode SVGs, the three Icon Composer layers,
+and both bundles' assets from that state; the dark build uses the approved
+lifted hue set on the night-navy ground `#131D44`. This design is the app's
+`AppIcon.png`, and
 `AppIcon.icon/` here is the matching Composer bundle (verify in Icon Composer
 on a Mac, then wire into Xcode per `c-composer/ICON-COMPOSER-NOTES.md`).
 

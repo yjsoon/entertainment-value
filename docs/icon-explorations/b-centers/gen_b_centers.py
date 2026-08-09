@@ -8,7 +8,7 @@ import math, os
 from shapely.geometry import Polygon, MultiPolygon
 from shapely import affinity
 
-OUT = "/tmp/claude-0/-home-user-whatfun/bb502722-18e9-50e5-9328-dea22a981794/scratchpad/b-centers"
+OUT = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(OUT, exist_ok=True)
 C = 512.0
 

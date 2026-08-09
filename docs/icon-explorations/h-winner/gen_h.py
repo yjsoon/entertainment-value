@@ -239,7 +239,7 @@ GEO = {
             "light": {"darken_fill": 0.13, "lighten": 0.22, "darken_sh": 0.30},
             "dark":  {"darken_fill": 0.16, "lighten": 0.18, "darken_sh": 0.34},
         },
-        "mixing": "linear sRGB mix toward #FFFFFF (lighten) / #000000 (darken)",
+        "mixing": "per-channel mix of gamma-encoded sRGB toward #FFFFFF (lighten) / #000000 (darken)",
     },
     "hues": {
         "order_note": "petal 0 = top squircle, then clockwise: film, mic, pad, tv, book",
