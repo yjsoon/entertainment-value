@@ -168,3 +168,8 @@ enum ReminderState: String, CaseIterable, Codable, Sendable {
         Self(rawValue: rawValue) ?? .unknown
     }
 }
+
+enum MediaAccessType: String, CaseIterable, Codable, Sendable {
+    case bought
+    case subscription
+}

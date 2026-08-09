@@ -12,6 +12,7 @@ enum AppRoute: Hashable, Sendable {
     case item(UUID)
     case list(UUID)
     case settings
+    case mediaValueSetup
     case importExport
     case archived
     case recentlyDeleted

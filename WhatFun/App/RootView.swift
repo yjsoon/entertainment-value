@@ -172,6 +172,8 @@ private struct RouteDestination: View {
             ListRouteDestination(listID: id)
         case .settings:
             SettingsView()
+        case .mediaValueSetup:
+            MediaValueSetupView()
         case .archived:
             ArchivedItemsView()
         case .recentlyDeleted:

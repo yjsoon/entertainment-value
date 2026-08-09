@@ -1,0 +1,258 @@
+{
+  "exportedAt" : "2025-03-15T00:53:20.000000000Z",
+  "format" : "app.whatfun.full-backup",
+  "generator" : "WhatFunTests/1",
+  "payload" : {
+    "artworks" : [
+      {
+        "archivePath" : "assets/artwork/00000000-0000-0000-0000-000000000015.png",
+        "aspectRatio" : 1,
+        "contentHash" : "fixture-hash",
+        "createdAt" : "2025-03-15T00:53:20.000000000Z",
+        "id" : "00000000-0000-0000-0000-000000000015",
+        "imageData" : "iVBORw==",
+        "itemID" : "00000000-0000-0000-0000-000000000001",
+        "kind" : "user_selected",
+        "mimeType" : "image/png",
+        "pixelHeight" : 600,
+        "pixelWidth" : 600,
+        "updatedAt" : "2025-03-15T00:53:20.000000000Z"
+      }
+    ],
+    "credits" : [
+      {
+        "createdAt" : "2025-03-15T00:53:20.000000000Z",
+        "id" : "00000000-0000-0000-0000-000000000016",
+        "itemID" : "00000000-0000-0000-0000-000000000001",
+        "name" : "Host One",
+        "role" : "host",
+        "sortIndex" : 0,
+        "updatedAt" : "2025-03-15T00:53:20.000000000Z"
+      }
+    ],
+    "cycles" : [
+      {
+        "completedAt" : "2025-03-15T00:53:20.000000000Z",
+        "completionPercentage" : 100,
+        "elapsedMinutes" : 60,
+        "id" : "00000000-0000-0000-0000-000000000003",
+        "itemID" : "00000000-0000-0000-0000-000000000001",
+        "kind" : "initial",
+        "note" : "One listen",
+        "rating" : 4.5,
+        "sequence" : 1,
+        "startedAt" : "2025-03-15T00:53:20.000000000Z",
+        "status" : "completed",
+        "unitID" : "00000000-0000-0000-0000-000000000002"
+      }
+    ],
+    "events" : [
+      {
+        "cycleID" : "00000000-0000-0000-0000-000000000003",
+        "details" : {
+          "source" : "manual"
+        },
+        "id" : "00000000-0000-0000-0000-000000000005",
+        "itemID" : "00000000-0000-0000-0000-000000000001",
+        "kind" : "marked_completed",
+        "newStatus" : "completed",
+        "occurredAt" : "2025-03-15T00:53:20.000000000Z",
+        "previousStatus" : "in_progress",
+        "sessionID" : "00000000-0000-0000-0000-000000000004",
+        "timeZoneIdentifier" : "Asia/Singapore",
+        "unitID" : "00000000-0000-0000-0000-000000000002"
+      }
+    ],
+    "externalReferences" : [
+      {
+        "attributionText" : "Apple Podcasts",
+        "attributionURL" : "https://podcasts.apple.com",
+        "canonicalURL" : "https://podcasts.apple.com/podcast/id123456",
+        "createdAt" : "2025-03-15T00:53:20.000000000Z",
+        "externalID" : "123456",
+        "id" : "00000000-0000-0000-0000-000000000011",
+        "isActiveFeed" : false,
+        "isPrivateFeed" : false,
+        "itemID" : "00000000-0000-0000-0000-000000000001",
+        "lastFetchedAt" : "2025-03-15T00:53:20.000000000Z",
+        "provider" : "apple_podcasts",
+        "recordKind" : "podcast_show",
+        "updatedAt" : "2025-03-15T00:53:20.000000000Z"
+      }
+    ],
+    "items" : [
+      {
+        "artworkKind" : "remote",
+        "artworkURL" : "https://example.com/art.jpg",
+        "comment" : "Keep this around.",
+        "createdAt" : "2025-03-15T00:53:20.000000000Z",
+        "creators" : [
+          "Host One",
+          "Host Two"
+        ],
+        "feedCredentialIdentifier" : "private-feed-key",
+        "feedURLIsPrivate" : true,
+        "genres" : [
+          "Design",
+          "Technology"
+        ],
+        "id" : "00000000-0000-0000-0000-000000000001",
+        "isFavorite" : true,
+        "languageCode" : "en",
+        "mediaKind" : "podcast",
+        "platforms" : [
+
+        ],
+        "podcastListeningStyle" : "selected_episodes",
+        "projectedRating" : 4.5,
+        "projectedRepeatCount" : 1,
+        "projectedStartDate" : "2025-03-15T00:53:20.000000000Z",
+        "projectedStatus" : "following",
+        "releaseDate" : "2025-03-15T00:53:20.000000000Z",
+        "sortTitle" : "Design Details",
+        "subtitle" : "A show about design",
+        "summary" : "A summary with a comma, a quote \"and\" a newline.\nSecond line.",
+        "title" : "Design Details",
+        "updatedAt" : "2025-03-15T00:53:20.000000000Z"
+      }
+    ],
+    "listMemberships" : [
+      {
+        "addedAt" : "2025-03-15T00:53:20.000000000Z",
+        "id" : "00000000-0000-0000-0000-000000000008",
+        "itemID" : "00000000-0000-0000-0000-000000000001",
+        "listID" : "00000000-0000-0000-0000-000000000007",
+        "positionRank" : "a0"
+      }
+    ],
+    "lists" : [
+      {
+        "colorHex" : "#FF6F61",
+        "createdAt" : "2025-03-15T00:53:20.000000000Z",
+        "id" : "00000000-0000-0000-0000-000000000007",
+        "kind" : "manual",
+        "name" : "Thoughtful listens",
+        "sortIndex" : 0,
+        "updatedAt" : "2025-03-15T00:53:20.000000000Z"
+      },
+      {
+        "colorHex" : "#7AAED6",
+        "comment" : "Derived automatically",
+        "createdAt" : "2025-03-15T00:53:20.000000000Z",
+        "id" : "00000000-0000-0000-0000-000000000012",
+        "kind" : "smart",
+        "matchMode" : "all",
+        "name" : "Favorite podcasts",
+        "sortIndex" : 1,
+        "updatedAt" : "2025-03-15T00:53:20.000000000Z"
+      }
+    ],
+    "quotes" : [
+      {
+        "capturedAt" : "2025-03-15T00:53:20.000000000Z",
+        "comment" : "Worth remembering",
+        "id" : "00000000-0000-0000-0000-000000000006",
+        "itemID" : "00000000-0000-0000-0000-000000000001",
+        "sessionID" : "00000000-0000-0000-0000-000000000004",
+        "text" : "Constraints create clarity.",
+        "timestampSeconds" : 1234,
+        "unitID" : "00000000-0000-0000-0000-000000000002"
+      }
+    ],
+    "reminders" : [
+      {
+        "createdAt" : "2025-03-15T00:53:20.000000000Z",
+        "fireAt" : "2025-03-15T00:53:20.000000000Z",
+        "id" : "00000000-0000-0000-0000-000000000017",
+        "itemID" : "00000000-0000-0000-0000-000000000001",
+        "state" : "pending",
+        "timeZoneIdentifier" : "Asia/Singapore",
+        "updatedAt" : "2025-03-15T00:53:20.000000000Z"
+      }
+    ],
+    "sessions" : [
+      {
+        "completionPercentage" : 100,
+        "cycleID" : "00000000-0000-0000-0000-000000000003",
+        "durationMinutes" : 60,
+        "endElapsedMinutes" : 60,
+        "endedAt" : "2025-03-15T01:53:20.000000000Z",
+        "id" : "00000000-0000-0000-0000-000000000004",
+        "isCompletion" : true,
+        "itemID" : "00000000-0000-0000-0000-000000000001",
+        "loggedAt" : "2025-03-15T00:53:20.000000000Z",
+        "note" : "Listened on the train.",
+        "rating" : 4.5,
+        "startElapsedMinutes" : 0,
+        "startedAt" : "2025-03-15T00:53:20.000000000Z",
+        "timeZoneIdentifier" : "Asia/Singapore",
+        "totalRuntimeMinutes" : 60,
+        "unitID" : "00000000-0000-0000-0000-000000000002"
+      }
+    ],
+    "smartListRuleValues" : [
+      {
+        "id" : "00000000-0000-0000-0000-000000000014",
+        "ruleID" : "00000000-0000-0000-0000-000000000013",
+        "sortIndex" : 0,
+        "stringValue" : "podcast",
+        "valueType" : "string"
+      }
+    ],
+    "smartListRules" : [
+      {
+        "comparison" : "equals",
+        "createdAt" : "2025-03-15T00:53:20.000000000Z",
+        "field" : "media_kind",
+        "id" : "00000000-0000-0000-0000-000000000013",
+        "isNegated" : false,
+        "listID" : "00000000-0000-0000-0000-000000000012",
+        "sortIndex" : 0,
+        "updatedAt" : "2025-03-15T00:53:20.000000000Z"
+      }
+    ],
+    "tagMemberships" : [
+      {
+        "addedAt" : "2025-03-15T00:53:20.000000000Z",
+        "id" : "00000000-0000-0000-0000-000000000010",
+        "itemID" : "00000000-0000-0000-0000-000000000001",
+        "sortIndex" : 0,
+        "source" : "manual",
+        "tagID" : "00000000-0000-0000-0000-000000000009"
+      }
+    ],
+    "tags" : [
+      {
+        "colorHex" : "#92A889",
+        "createdAt" : "2025-03-15T00:53:20.000000000Z",
+        "id" : "00000000-0000-0000-0000-000000000009",
+        "name" : "Design",
+        "updatedAt" : "2025-03-15T00:53:20.000000000Z"
+      }
+    ],
+    "units" : [
+      {
+        "canonicalURL" : "https://example.com/episodes/1",
+        "comment" : "Great discussion.",
+        "completedAt" : "2025-03-15T00:53:20.000000000Z",
+        "durationMinutes" : 60,
+        "episodeNumber" : 1,
+        "guid" : "episode-guid-1",
+        "id" : "00000000-0000-0000-0000-000000000002",
+        "isNotable" : true,
+        "itemID" : "00000000-0000-0000-0000-000000000001",
+        "kind" : "episode",
+        "rating" : 4.5,
+        "releasedAt" : "2025-03-15T00:53:20.000000000Z",
+        "sortIndex" : 1,
+        "status" : "completed",
+        "summary" : "An episode summary.",
+        "title" : "The archival episode"
+      }
+    ]
+  },
+  "preferences" : {
+
+  },
+  "schemaVersion" : 1
+}

@@ -36,6 +36,10 @@ struct ItemDetailView: View {
                             continueItem: continueItem
                         )
                         ItemProgressSection(item: item)
+                        ItemMediaValueSection(
+                            item: item,
+                            edit: { presentedSheet = .mediaAccess(item.id) }
+                        )
 
                         if item.mediaKind == .tvShow ||
                             item.mediaKind == .comic ||
@@ -76,6 +80,8 @@ struct ItemDetailView: View {
                 ContentUnitEditorView(itemID: itemID, parentUnitID: parentID)
             case let .addQuote(episodeID):
                 QuoteEditorView(episodeID: episodeID)
+            case let .mediaAccess(itemID):
+                MediaAccessEditorView(itemID: itemID)
             }
         }
         .confirmationDialog(
@@ -251,12 +257,14 @@ private enum DetailSheet: Identifiable {
     case markDone(UUID)
     case addUnit(UUID, UUID?)
     case addQuote(UUID)
+    case mediaAccess(UUID)
 
     var id: String {
         switch self {
         case let .markDone(id): "done-\(id)"
         case let .addUnit(itemID, parentID): "unit-\(itemID)-\(parentID?.uuidString ?? "root")"
         case let .addQuote(id): "quote-\(id)"
+        case let .mediaAccess(id): "media-access-\(id)"
         }
     }
 }
@@ -434,6 +442,70 @@ private struct ItemProgressSection: View {
                 .font(.subheadline)
                 .foregroundStyle(WhatFunTheme.secondaryInk)
             }
+        }
+    }
+}
+
+private struct ItemMediaValueSection: View {
+    let item: LibraryItem
+    let edit: () -> Void
+    @Query private var assignments: [MediaAccessAssignment]
+    @Query private var subscriptions: [MediaSubscription]
+    @Query private var items: [LibraryItem]
+    @Query private var sessions: [ConsumptionSession]
+    @Environment(\.calendar) private var calendar
+
+    private var assignment: MediaAccessAssignment? {
+        assignments.first { $0.itemID == item.id }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeading(title: "Media Value")
+            if let assignment, assignment.type == .bought,
+               let value = MediaValueCalculator.boughtValue(
+                   assignment: assignment, item: item, sessions: sessions, calendar: calendar
+               ), let date = assignment.purchasedAt {
+                LabeledContent("Access", value: "Bought")
+                LabeledContent("Purchase", value: MediaValueFormatting.currency(value.amount, code: value.currencyCode))
+                LabeledContent("Purchase date") { Text(date, format: .dateTime.day().month().year()) }
+                LabeledContent("Tracked since purchase", value: MediaValueFormatting.duration(value.trackedSeconds))
+                if let rate = value.costPerHour {
+                    LabeledContent("Cost per tracked hour", value: MediaValueFormatting.currency(rate, code: value.currencyCode))
+                } else {
+                    LabeledContent("Cost per tracked hour", value: "No tracked time")
+                }
+                Button("Edit Access", action: edit)
+            } else if let assignment, assignment.type == .subscription,
+                      let subscription = subscriptions.first(where: { $0.id == assignment.subscriptionID }) {
+                subscriptionContent(subscription)
+                Button("Edit Access", action: edit)
+            } else {
+                LabeledContent("Access", value: "Not set")
+                Button("Set Access", action: edit)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func subscriptionContent(_ subscription: MediaSubscription) -> some View {
+        let value = MediaValueCalculator.subscriptionValues(
+            subscriptions: [subscription], assignments: assignments, items: items,
+            sessions: sessions, monthContaining: .now, calendar: calendar
+        ).first
+        let itemValue = value?.items.first { $0.itemID == item.id }
+        LabeledContent("Access", value: "Subscription")
+        LabeledContent("Plan", value: subscription.name)
+        LabeledContent("Expected per month", value: MediaValueFormatting.currency(subscription.expectedMonthlyAmount, code: subscription.currencyCode))
+        LabeledContent("Plan start") { Text(subscription.startedAt, format: .dateTime.day().month().year()) }
+        LabeledContent("Tracked this month", value: MediaValueFormatting.duration(itemValue?.trackedSeconds ?? 0))
+        if let itemValue {
+            LabeledContent("Estimated share", value: MediaValueFormatting.currency(itemValue.estimatedShare, code: subscription.currencyCode))
+        }
+        if let rate = value?.costPerHour {
+            LabeledContent("Plan month cost per tracked hour", value: MediaValueFormatting.currency(rate, code: subscription.currencyCode))
+        } else {
+            LabeledContent("Plan month cost per tracked hour", value: "No tracked time")
         }
     }
 }

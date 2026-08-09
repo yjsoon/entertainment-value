@@ -35,6 +35,9 @@ struct ArchiveRoundTripTests {
 
         let data = try FullFidelityArchiveCodec.encode(envelope)
         #expect(try FullFidelityArchiveCodec.decode(data) == envelope)
+        let text = String(decoding: data, as: UTF8.self)
+        #expect(text.contains("\"expectedMonthlyAmount\" : \"19.99\""))
+        #expect(text.contains("\"currencyCode\" : \"SGD\""))
     }
 
     @Test("Portable package round-trips stable joins and redacts Keychain identifiers")
@@ -53,6 +56,27 @@ struct ArchiveRoundTripTests {
         #expect(package.manifest.files.contains { $0.path == "sessions.csv" && $0.rowCount == 1 })
         #expect(package.files[PortableArchivePackage.schemaFilename]?.isEmpty == false)
         #expect(package.files["items.csv"].map { !String(decoding: $0, as: UTF8.self).contains("private-feed-key") } == true)
+        #expect(package.files["media_subscriptions.csv"].map {
+            String(decoding: $0, as: UTF8.self).contains("19.99,SGD")
+        } == true)
+        #expect(package.manifest.redactions == [
+            "private_podcast_feed_urls",
+            "keychain_credential_identifiers",
+        ])
+    }
+
+    @Test("V1 full and portable archives decode without Media Value records")
+    func v1Compatibility() throws {
+        let decodedEnvelope = try ArchiveV1Fixture.fullEnvelope()
+        #expect(decodedEnvelope.payload.items.count == 1)
+        #expect(decodedEnvelope.payload.mediaSubscriptions.isEmpty)
+        #expect(decodedEnvelope.payload.mediaAccessAssignments.isEmpty)
+
+        let package = try ArchiveV1Fixture.portablePackage()
+        let decodedPayload = try PortableArchiveBuilder.decodePayload(from: package)
+        #expect(decodedPayload.items.count == 1)
+        #expect(decodedPayload.mediaSubscriptions.isEmpty)
+        #expect(decodedPayload.mediaAccessAssignments.isEmpty)
     }
 
     @Test("Private feed URLs never appear in plain JSON or portable files")
@@ -144,4 +168,44 @@ struct ArchiveRoundTripTests {
         let restored = try await store.read(from: root)
         #expect(restored == package)
     }
+
+}
+
+enum ArchiveV1Fixture {
+    static func fullEnvelope() throws -> FullFidelityArchiveEnvelope {
+        try FullFidelityArchiveCodec.decode(data(named: "full-v1.json"))
+    }
+
+    static func portablePackage() throws -> PortableArchivePackage {
+        let frozen = try JSONDecoder().decode(
+            FrozenPortableV1Package.self,
+            from: data(named: "portable-v1-package.json")
+        )
+        let files = try frozen.files.mapValues { encoded in
+            guard let data = Data(base64Encoded: encoded) else {
+                throw DecodingError.dataCorrupted(
+                    .init(codingPath: [], debugDescription: "Invalid frozen V1 file data")
+                )
+            }
+            return data
+        }
+        guard let manifestData = files[PortableArchivePackage.manifestFilename] else {
+            throw PortableArchiveError.missingFile(PortableArchivePackage.manifestFilename)
+        }
+        return PortableArchivePackage(
+            manifest: try PortableManifestCodec.decode(manifestData),
+            files: files
+        )
+    }
+
+    private static func data(named name: String) throws -> Data {
+        let directory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appending(path: "Fixtures", directoryHint: .isDirectory)
+        return try Data(contentsOf: directory.appending(path: name))
+    }
+}
+
+private struct FrozenPortableV1Package: Decodable {
+    let files: [String: String]
 }

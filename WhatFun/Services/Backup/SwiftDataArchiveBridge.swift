@@ -36,6 +36,29 @@ final class SwiftDataArchiveBridge {
         let smartRules = try fetchAll(SmartRule.self)
         let smartValues = try fetchAll(SmartRuleValue.self)
         let reminders = try fetchAll(StartReminder.self)
+        let subscriptions = try fetchAll(MediaSubscription.self).filter {
+            let trimmedName = $0.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            return !trimmedName.isEmpty &&
+                $0.normalizedName == MediaSubscription.normalize(trimmedName) &&
+                $0.expectedMonthlyAmount > 0 && isCurrency($0.currencyCode)
+        }
+        let subscriptionIDs = Set(subscriptions.map(\.id))
+        let itemIDs = Set(items.map(\.id))
+        let accessAssignments = try fetchAll(MediaAccessAssignment.self).filter { assignment in
+            guard itemIDs.contains(assignment.itemID) else { return false }
+            switch assignment.typeRaw {
+            case MediaAccessType.bought.rawValue:
+                return assignment.purchaseAmount.map { $0 > 0 } == true &&
+                    assignment.purchaseCurrencyCode.map(isCurrency) == true &&
+                    assignment.purchasedAt != nil && assignment.subscriptionID == nil
+            case MediaAccessType.subscription.rawValue:
+                return assignment.subscriptionID.map(subscriptionIDs.contains) == true &&
+                    assignment.purchaseAmount == nil && assignment.purchaseCurrencyCode == nil &&
+                    assignment.purchasedAt == nil
+            default:
+                return false
+            }
+        }
 
         let facetsByID = facets.reduce(into: [UUID: Facet]()) { result, facet in
             if result[facet.id] == nil { result[facet.id] = facet }
@@ -389,6 +412,12 @@ final class SwiftDataArchiveBridge {
                 updatedAt: reference.updatedAt,
             )
         }
+        payload.mediaSubscriptions = subscriptions.map {
+            ArchiveMediaSubscriptionRecord(id: $0.id, name: $0.name, normalizedName: $0.normalizedName, expectedMonthlyAmount: $0.expectedMonthlyAmount, currencyCode: $0.currencyCode, startedAt: $0.startedAt, createdAt: $0.createdAt, updatedAt: $0.updatedAt)
+        }
+        payload.mediaAccessAssignments = accessAssignments.map {
+            ArchiveMediaAccessAssignmentRecord(id: $0.id, itemID: $0.itemID, typeRaw: $0.typeRaw, purchaseAmount: $0.purchaseAmount, purchaseCurrencyCode: $0.purchaseCurrencyCode, purchasedAt: $0.purchasedAt, subscriptionID: $0.subscriptionID, createdAt: $0.createdAt, updatedAt: $0.updatedAt)
+        }
 
         let privatePayload: ArchivePrivatePayload?
         if includePrivateFeedSecrets {
@@ -396,10 +425,14 @@ final class SwiftDataArchiveBridge {
         } else {
             privatePayload = nil
         }
-        return DurabilitySnapshot(
-            payload: payload.stablySorted(),
-            privatePayload: privatePayload?.privateFeedSecrets.isEmpty == false ? privatePayload : nil,
+        let sortedPayload = payload.stablySorted()
+        let exportedPrivatePayload = privatePayload?.privateFeedSecrets.isEmpty == false ? privatePayload : nil
+        try preflight(
+            payload: sortedPayload,
+            privatePayload: exportedPrivatePayload,
+            mode: .replaceAll
         )
+        return DurabilitySnapshot(payload: sortedPayload, privatePayload: exportedPrivatePayload)
     }
 
     func restore(
@@ -440,6 +473,9 @@ final class SwiftDataArchiveBridge {
                 ? indexByID(try fetchAll(Facet.self).filter { $0.kind == .tag })
                 : [:]
             var referencesByID = mode == .mergeNew ? indexByID(try fetchAll(ExternalReference.self)) : [:]
+            var subscriptionsByID = mode == .mergeNew ? indexByID(try fetchAll(MediaSubscription.self)) : [:]
+            var assignmentIDs = mode == .mergeNew ? Set(try fetchAll(MediaAccessAssignment.self).map(\.id)) : []
+            var assignedItemIDs = mode == .mergeNew ? Set(try fetchAll(MediaAccessAssignment.self).map(\.itemID)) : []
 
             var insertedUnitIDs: Set<UUID> = []
             var insertedReferenceIDs: Set<UUID> = []
@@ -486,6 +522,18 @@ final class SwiftDataArchiveBridge {
                 context.insert(item)
                 itemsByID[item.id] = item
                 report.insertedRecords += 1
+            }
+
+            for record in payload.mediaSubscriptions {
+                if subscriptionsByID[record.id] != nil { report.skippedExistingRecords += 1; continue }
+                let value = MediaSubscription(id: record.id, name: record.name, expectedMonthlyAmount: record.expectedMonthlyAmount, currencyCode: record.currencyCode, startedAt: record.startedAt, createdAt: record.createdAt)
+                value.normalizedName = record.normalizedName; value.updatedAt = record.updatedAt
+                context.insert(value); subscriptionsByID[value.id] = value; report.insertedRecords += 1
+            }
+            for record in payload.mediaAccessAssignments {
+                if assignmentIDs.contains(record.id) || assignedItemIDs.contains(record.itemID) { report.skippedExistingRecords += 1; continue }
+                let value = MediaAccessAssignment(id: record.id, itemID: record.itemID, type: MediaAccessType(rawValue: record.typeRaw)!, purchaseAmount: record.purchaseAmount, purchaseCurrencyCode: record.purchaseCurrencyCode, purchasedAt: record.purchasedAt, subscriptionID: record.subscriptionID, createdAt: record.createdAt)
+                value.updatedAt = record.updatedAt; context.insert(value); assignmentIDs.insert(value.id); assignedItemIDs.insert(value.itemID); report.insertedRecords += 1
             }
 
             // Tags have stable IDs. Genre/platform facets are normalized from item arrays later.
@@ -1320,6 +1368,8 @@ private extension SwiftDataArchiveBridge {
     }
 
     func deleteAllSemanticRecords() throws {
+        try deleteAll(MediaAccessAssignment.self)
+        try deleteAll(MediaSubscription.self)
         try deleteAll(SmartRuleValue.self)
         try deleteAll(SmartRule.self)
         try deleteAll(ListMembership.self)
@@ -1408,6 +1458,9 @@ private extension SwiftDataArchiveBridge {
         try ensureUnique(payload.credits.map(\.id), table: "credits")
         try ensureUnique(payload.reminders.map(\.id), table: "reminders")
         try ensureUnique(payload.externalReferences.map(\.id), table: "external_references")
+        try ensureUnique(payload.mediaSubscriptions.map(\.id), table: "media_subscriptions")
+        try ensureUnique(payload.mediaAccessAssignments.map(\.id), table: "media_access_assignments")
+        try ensureUnique(payload.mediaAccessAssignments.map(\.itemID), table: "media access assignment item IDs")
 
         var itemIDs = Set(payload.items.map(\.id))
         var unitRoots = Dictionary(uniqueKeysWithValues: payload.units.map { ($0.id, $0.itemID) })
@@ -1452,6 +1505,33 @@ private extension SwiftDataArchiveBridge {
                 if facet.kind == .tag { tagIDs.insert(facet.id) }
             }
             try validateMergeCollisions(payload: payload, unitRoots: unitRoots)
+            let archivedAssignments = Dictionary(uniqueKeysWithValues: payload.mediaAccessAssignments.map { ($0.id, $0) })
+            for existing in try fetchAll(MediaAccessAssignment.self) where archivedAssignments[existing.id] != nil {
+                if archivedAssignments[existing.id]?.itemID != existing.itemID { throw DurabilityError.invalidArchive("media access assignment \(existing.id) conflicts with an existing item") }
+            }
+        }
+
+        var subscriptionIDs = Set(payload.mediaSubscriptions.map(\.id))
+        if mode == .mergeNew { subscriptionIDs.formUnion(try fetchAll(MediaSubscription.self).map(\.id)) }
+        for subscription in payload.mediaSubscriptions {
+            let trimmedName = subscription.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedName.isEmpty,
+                  subscription.normalizedName == MediaSubscription.normalize(trimmedName),
+                  subscription.expectedMonthlyAmount > 0,
+                  isCurrency(subscription.currencyCode)
+            else {
+                throw DurabilityError.invalidArchive("media subscription \(subscription.id) is incoherent")
+            }
+        }
+        for assignment in payload.mediaAccessAssignments {
+            guard itemIDs.contains(assignment.itemID) else { throw DurabilityError.invalidArchive("media access assignment \(assignment.id) has no item") }
+            switch assignment.typeRaw {
+            case MediaAccessType.bought.rawValue:
+                guard let amount = assignment.purchaseAmount, amount > 0, let currency = assignment.purchaseCurrencyCode, isCurrency(currency), assignment.purchasedAt != nil, assignment.subscriptionID == nil else { throw DurabilityError.invalidArchive("bought assignment \(assignment.id) is incoherent") }
+            case MediaAccessType.subscription.rawValue:
+                guard let id = assignment.subscriptionID, subscriptionIDs.contains(id), assignment.purchaseAmount == nil, assignment.purchaseCurrencyCode == nil, assignment.purchasedAt == nil else { throw DurabilityError.invalidArchive("subscription assignment \(assignment.id) is incoherent") }
+            default: throw DurabilityError.invalidArchive("media access assignment \(assignment.id) has invalid type")
+            }
         }
 
         for unit in payload.units {
@@ -1645,6 +1725,10 @@ private extension SwiftDataArchiveBridge {
         }
     }
 
+    func isCurrency(_ value: String) -> Bool {
+        value.count == 3 && value.allSatisfy { $0.isASCII && $0.isLetter } && value == value.uppercased()
+    }
+
     func validateParentCycles(_ units: [ArchiveUnitRecord]) throws {
         let parents = Dictionary(uniqueKeysWithValues: units.map { ($0.id, $0.parentUnitID) })
         for unit in units {
@@ -1691,6 +1775,7 @@ extension UserList: BackupIdentified {}
 extension SmartRule: BackupIdentified {}
 extension Facet: BackupIdentified {}
 extension ExternalReference: BackupIdentified {}
+extension MediaSubscription: BackupIdentified {}
 
 private nonisolated extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }

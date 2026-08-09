@@ -2,7 +2,7 @@ import SwiftData
 
 enum AppModelContainer {
     static func make(isStoredInMemoryOnly: Bool = false) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: WhatFunSchemaV1.self)
+        let schema = Schema(versionedSchema: WhatFunSchemaV2.self)
         let configuration = ModelConfiguration(
             "WhatFun",
             schema: schema,
@@ -16,4 +16,3 @@ enum AppModelContainer {
         )
     }
 }
-

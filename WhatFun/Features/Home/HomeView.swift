@@ -56,6 +56,7 @@ struct HomeView: View {
             LazyVStack(alignment: .leading, spacing: 28) {
                 if visibleItems.isEmpty {
                     welcome
+                    MediaValueThisMonthSection(items: items)
                 } else {
                     ConsumedHistorySection(
                         items: visibleItems,
@@ -64,6 +65,8 @@ struct HomeView: View {
                         calendar: calendar
                     )
                     .id(focusPeriod)
+
+                    MediaValueThisMonthSection(items: items)
 
                     if !overdueItems.isEmpty {
                         overdueSection
@@ -375,6 +378,49 @@ private struct ConsumedHistorySection: View {
         case .day: "Logged Today"
         case .week: "Logged This Week"
         case .month: "Logged This Month"
+        }
+    }
+}
+
+private struct MediaValueThisMonthSection: View {
+    @Query private var subscriptions: [MediaSubscription]
+    @Query private var assignments: [MediaAccessAssignment]
+    @Query private var sessions: [ConsumptionSession]
+    @Environment(\.calendar) private var calendar
+    let items: [LibraryItem]
+
+    private var values: [SubscriptionMonthValue] {
+        MediaValueCalculator.subscriptionValues(
+            subscriptions: subscriptions,
+            assignments: assignments,
+            items: items,
+            sessions: sessions,
+            monthContaining: .now,
+            calendar: calendar
+        )
+    }
+
+    var body: some View {
+        if !subscriptions.isEmpty, !values.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeading(title: "Media Value This Month")
+                ForEach(values) { value in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(value.name).font(.headline)
+                        Text("Expected \(MediaValueFormatting.currency(value.amount, code: value.currencyCode)) / month")
+                        Text("\(MediaValueFormatting.duration(value.trackedSeconds)) tracked")
+                        if let rate = value.costPerHour {
+                            Text("\(MediaValueFormatting.currency(rate, code: value.currencyCode)) per tracked hour")
+                        } else {
+                            Text("No tracked time")
+                        }
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(WhatFunTheme.secondaryInk)
+                    .padding(.vertical, 3)
+                }
+            }
+            .padding(.horizontal, 16)
         }
     }
 }
