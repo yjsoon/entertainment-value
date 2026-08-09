@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WhatFun Icon Configurator</title>
+<style>
+:root{
+  --ground:#F1F0EB; --card:#FAF9F6; --ink:#231F1A; --muted:#7D766A;
+  --line:#DFDAD0; --accent:#C8492B; --tile:#EDEBE4; --code:#68615517;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --ground:#151310; --card:#1D1A17; --ink:#ECE7DF; --muted:#98907F;
+    --line:#2E2A24; --accent:#E87048; --tile:#232019; --code:#98907F33; }
+}
+:root[data-theme="dark"]{ --ground:#151310; --card:#1D1A17; --ink:#ECE7DF; --muted:#98907F;
+  --line:#2E2A24; --accent:#E87048; --tile:#232019; --code:#98907F33; }
+:root[data-theme="light"]{ --ground:#F1F0EB; --card:#FAF9F6; --ink:#231F1A; --muted:#7D766A;
+  --line:#DFDAD0; --accent:#C8492B; --tile:#EDEBE4; --code:#68615517; }
+html{background:var(--ground)}
+body{margin:0;color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1160px;margin:0 auto;padding:20px 24px 24px}
+h1{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;font-size:clamp(20px,3vw,26px);font-weight:600;margin:0;text-wrap:balance;display:inline}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:4px}
+.lede{color:var(--muted);margin:4px 0 16px;font-size:13px}
+.layout{display:grid;grid-template-columns:minmax(300px,1fr) 384px;gap:28px;align-items:stretch}
+@media(min-width:841px){
+  .layout{height:calc(100vh - 176px);min-height:470px;grid-template-rows:100%;--pw:47vh}
+  .panel{height:100%;min-height:0}
+  .stage{min-height:0}
+  .mini .frame.f180{width:max(96px,min(180px,19vh)) !important;height:max(96px,min(180px,19vh)) !important}
+}
+@media(max-width:840px){.layout{grid-template-columns:1fr}}
+.stage{display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center}
+.main-preview{width:min(100%,var(--pw,480px));border-radius:24%;overflow:hidden;box-shadow:0 12px 40px #0003;line-height:0}
+.main-preview svg{width:100%;height:auto;display:block}
+.minis{display:flex;gap:24px;align-items:flex-end}
+.mini{display:flex;flex-direction:column;align-items:center;gap:6px}
+.mini .frame{border-radius:22%;overflow:hidden;box-shadow:0 3px 10px #0004;line-height:0}
+.mini span{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.tabbar{display:flex;background:var(--tile);border-radius:9px;padding:3px;gap:3px}
+.tabbar button{flex:1;border:0;background:transparent;color:var(--muted);font:600 12.5px system-ui;padding:8px 4px;border-radius:7px;cursor:pointer}
+.tabbar button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px #0002}
+.tabpane{display:none;flex-direction:column;gap:16px;overflow-y:auto;flex:1;min-height:0;padding-right:2px}
+.tabpane.on{display:flex}
+.panel-foot{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:10px}
+.group{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:14px}
+.group:first-child{border-top:0;padding-top:0}
+.group>label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.seg{display:flex;background:var(--tile);border-radius:9px;padding:3px;gap:3px;flex-wrap:wrap}
+.seg button{flex:1;border:0;background:transparent;color:var(--muted);font:600 12.5px system-ui;padding:7px 8px;border-radius:7px;cursor:pointer;white-space:nowrap}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px #0002}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.pal{display:flex;flex-wrap:wrap;gap:6px}
+.pal button{display:flex;gap:0;border:2px solid var(--line);border-radius:8px;overflow:hidden;padding:0;cursor:pointer;background:none}
+.pal button.on{border-color:var(--ink)}
+.pal i{width:13px;height:26px;display:inline-block}
+.pal span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.chips{display:flex;gap:6px;justify-content:space-between}
+.chip{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+.chip button{width:100%;aspect-ratio:1;max-width:44px;border-radius:10px;border:2px solid transparent;cursor:pointer}
+.chip button.sel{border-color:var(--ink);box-shadow:0 0 0 2px var(--card) inset}
+.chip input[type=color]{width:100%;max-width:44px;height:16px;border:1px solid var(--line);border-radius:4px;padding:0;background:var(--card);cursor:pointer}
+.chip em{font-style:normal;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.rot{display:flex;align-items:center;gap:10px;justify-content:center}
+.rot button{border:1px solid var(--line);background:var(--card);color:var(--ink);width:32px;height:32px;border-radius:9px;font-size:15px;cursor:pointer}
+.hint{font-size:11.5px;color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0}
+.slider-row{display:grid;grid-template-columns:92px 1fr 40px;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.slider-row output{text-align:right;font-variant-numeric:tabular-nums}
+input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(--card);padding:1px;cursor:pointer}
+.color-row{display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.color-row label{display:flex;align-items:center;gap:6px}
+.color-row input[type=color]{width:32px;height:26px}
+.btn-row{display:flex;gap:8px}
+.dl{flex:1;border:0;background:var(--accent);color:#fff;font:600 14px system-ui;padding:11px 16px;border-radius:9px;cursor:pointer}
+.dl:hover{filter:brightness(1.07)}
+.ghost{border:1px solid var(--line);background:var(--card);color:var(--muted);font:600 13px system-ui;padding:11px 14px;border-radius:9px;cursor:pointer}
+.readout{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--muted);background:var(--code);border-radius:8px;padding:10px 12px;line-height:1.7;overflow-x:auto;white-space:pre}
+.hidden{display:none !important}
+</style>
+<div class="wrap">
+  <div class="eyebrow">WhatFun &middot; icon configurator &middot; v2</div>
+  <h1>The full mixing desk</h1>
+  <p class="lede">Preview stays put; controls live in the tabs. Download the exact SVG of what you compose.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <div class="main-preview" id="main-preview"></div>
+      <div class="seg" id="seg-ov" style="align-self:center">
+        <button data-v="off" class="on">No overlay</button>
+        <button data-v="outline">iOS squircle</button>
+        <button data-v="grid">Full grid</button>
+      </div>
+      <div class="minis">
+        <div class="mini"><div class="frame f180" id="mini-180" style="width:180px;height:180px"></div><span>Home screen</span></div>
+        <div class="mini"><div class="frame" id="mini-64" style="width:64px;height:64px"></div><span>64 px</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="group">
+        <label>Appearance</label>
+        <div class="seg" id="seg-mode">
+          <button data-v="light" class="on">Light</button>
+          <button data-v="dark">Dark</button>
+        </div>
+      </div>
+
+      <div class="tabbar" role="tablist">
+        <button role="tab" id="tabbtn-colors" aria-controls="tab-colors" aria-selected="true" data-t="colors" class="on">Colours</button>
+        <button role="tab" id="tabbtn-bg" aria-controls="tab-bg" aria-selected="false" data-t="bg">Ground</button>
+        <button role="tab" id="tabbtn-star" aria-controls="tab-star" aria-selected="false" data-t="star">Star</button>
+        <button role="tab" id="tabbtn-shape" aria-controls="tab-shape" aria-selected="false" data-t="shape">Shape</button>
+      </div>
+
+      <div class="tabpane on" role="tabpanel" aria-labelledby="tabbtn-colors" id="tab-colors">
+      <div class="group">
+        <label>Palette</label>
+        <div class="pal" id="pal"></div>
+        <div class="chips" id="chips"></div>
+        <div class="rot">
+          <button id="rot-prev" aria-label="Rotate colours left">&#8634;</button>
+          <span class="hint" id="rot-label"></span>
+          <button id="rot-next" aria-label="Rotate colours right">&#8635;</button>
+        </div>
+        <div class="hint">Click a swatch, then another, to swap those two petals&rsquo; colours (swaps in both modes). The small strip under each swatch edits that petal&rsquo;s colour directly.</div>
+      </div>
+
+      </div>
+
+      <div class="tabpane" role="tabpanel" aria-labelledby="tabbtn-bg" id="tab-bg">
+      <div class="group" id="grp-bg-light">
+        <label>Background &middot; light</label>
+        <div class="seg" id="seg-bgl">
+          <button data-v="flat">Flat</button>
+          <button data-v="grad" class="on">Radial gradient</button>
+        </div>
+        <div class="color-row"><label><input type="color" id="bgl-color" value="#FFF7F0">Ground</label></div>
+        <div class="slider-row" id="row-grad"><span>Depth</span><input type="range" id="grad-depth" min="0" max="100" value="37"><output id="grad-depth-o">37</output></div>
+      </div>
+
+      <div class="group hidden" id="grp-bg-dark">
+        <label>Background &middot; dark</label>
+        <div class="seg" id="seg-bgd-style">
+          <button data-v="flat">Flat</button>
+          <button data-v="grad" class="on">Radial gradient</button>
+        </div>
+        <div class="seg" id="seg-bgd">
+          <button data-v="#131D44" class="on">Night navy</button>
+          <button data-v="#1A1310">Warm black</button>
+          <button data-v="#131417">Neutral</button>
+        </div>
+        <div class="color-row"><label><input type="color" id="bgd-color" value="#131D44">Custom</label></div>
+        <div class="slider-row" id="row-grad-dark"><span>Depth</span><input type="range" id="grad-depth-dark" min="0" max="100" value="44"><output id="grad-depth-dark-o">44</output></div>
+      </div>
+
+      </div>
+
+      <div class="tabpane" role="tabpanel" aria-labelledby="tabbtn-star" id="tab-star">
+      <div class="group">
+        <label>Star</label>
+        <div class="slider-row"><span>Chip tilt</span><input type="range" id="st-ctilt" min="-12" max="12" step="0.5" value="0"><output id="st-ctilt-o">0</output></div>
+        <div class="seg" id="seg-order">
+          <button data-v="cw">Lap clockwise</button>
+          <button data-v="ccw">Counter</button>
+          <button data-v="alt" class="on">Alternating</button>
+        </div>
+        <div class="hint">The star is always just the empty space between the chips &mdash; nothing is drawn there.
+        Each chip body carries a hand-placed tilt (the approved design uses 9&deg;), and that tilt is what
+        skews the star&rsquo;s spokes. Set chip tilt to <b>0</b> and the chips become mirror-symmetric, so the
+        null space comes out as a perfectly even star by construction. &ldquo;Star size&rdquo; in Shape still
+        opens/closes the gap; corner rounding still softens the spike tips.</div>
+      </div>
+
+      <div class="group">
+        <label>Star glow</label>
+        <div class="seg" id="seg-glow">
+          <button data-v="on">On</button>
+          <button data-v="off" class="on">Off</button>
+        </div>
+        <div id="glow-ctrls">
+          <div class="color-row" style="margin-bottom:6px">
+            <label><input type="color" id="glow-color">Glow</label>
+            <label><input type="color" id="int-color">Star centre</label>
+          </div>
+          <div class="slider-row"><span>Intensity</span><input type="range" id="glow-int" min="0" max="100" value="100"><output id="glow-int-o">100</output></div>
+          <div class="slider-row"><span>Width</span><input type="range" id="glow-w" min="4" max="56" value="24"><output id="glow-w-o">24</output></div>
+          <div class="slider-row"><span>Blur</span><input type="range" id="glow-b" min="1" max="22" value="8"><output id="glow-b-o">8</output></div>
+        </div>
+      </div>
+
+      </div>
+
+      <div class="tabpane" role="tabpanel" aria-labelledby="tabbtn-shape" id="tab-shape">
+      <div class="group">
+        <label>Shape</label>
+        <div class="slider-row"><span>Mark scale</span><input type="range" id="s-scale" min="55" max="100" value="81"><output id="s-scale-o">81</output></div>
+        <div class="slider-row"><span>Rotation</span><input type="range" id="s-rot" min="-45" max="45" value="4"><output id="s-rot-o">4</output></div>
+        <div class="slider-row"><span>Star size</span><input type="range" id="s-spread" min="-25" max="70" value="25"><output id="s-spread-o">25</output></div>
+        <div class="slider-row"><span>Corner round</span><input type="range" id="s-corner" min="6" max="90" value="90"><output id="s-corner-o">90</output></div>
+        <div class="slider-row"><span>Glyph size</span><input type="range" id="s-gsize" min="40" max="140" value="120"><output id="s-gsize-o">120</output></div>
+        <div class="slider-row"><span>Glyph position</span><input type="range" id="s-gpos" min="60" max="125" value="100"><output id="s-gpos-o">100</output></div>
+        <div class="slider-row"><span>Hand tilt</span><input type="range" id="s-jit" min="0" max="250" value="190"><output id="s-jit-o">190</output></div>
+        <div class="slider-row"><span>Emboss depth</span><input type="range" id="s-emb" min="0" max="220" value="156"><output id="s-emb-o">156</output></div>
+      </div>
+
+      </div>
+
+      <div class="panel-foot">
+        <div class="btn-row">
+          <button class="dl" id="download">Download SVG</button>
+          <button class="ghost" id="reset">Reset</button>
+        </div>
+        <div class="readout" id="readout"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const GEO = {
+  "canvas": {
+    "width": 1024,
+    "height": 1024,
+    "viewBox": "0 0 1024 1024"
+  },
+  "mark": {
+    "scale": 0.8,
+    "transform": "translate(512 512) scale(0.8) translate(-512 -512)",
+    "note": "everything except the background rect lives inside this group"
+  },
+  "petal": {
+    "d": "M 512.0 418.0 L 392.9 249.3 L 394.4 61.2 L 734.1 115.0 L 677.4 294.3 Z",
+    "fill_and_stroke": "petal colour on both",
+    "stroke_width": 44,
+    "stroke_linejoin": "round",
+    "transforms": [
+      "rotate(0 512 512)",
+      "rotate(60 512 512)",
+      "rotate(120 512 512)",
+      "rotate(180 512 512)",
+      "rotate(240 512 512)",
+      "rotate(300 512 512)"
+    ]
+  },
+  "star": {
+    "d": "M 494.0 430.7 L 496.9 434.0 L 500.4 436.7 L 504.3 438.6 L 508.6 439.7 L 512.9 440.0 L 517.3 439.4 L 521.4 437.9 L 525.2 435.6 L 610.7 373.6 L 573.4 455.8 L 572.0 459.9 L 571.4 464.3 L 571.7 468.7 L 572.9 472.9 L 574.8 476.8 L 577.6 480.3 L 580.9 483.1 L 584.7 485.2 L 681.2 528.3 L 591.4 537.1 L 587.1 537.9 L 583.0 539.6 L 579.4 542.0 L 576.3 545.2 L 573.9 548.8 L 572.3 552.9 L 571.5 557.2 L 571.6 561.6 L 582.5 666.7 L 530.0 593.3 L 527.1 590.0 L 523.6 587.3 L 519.7 585.4 L 515.4 584.3 L 511.1 584.0 L 506.7 584.6 L 502.6 586.1 L 498.8 588.4 L 413.3 650.4 L 450.6 568.2 L 452.0 564.1 L 452.6 559.7 L 452.3 555.3 L 451.1 551.1 L 449.2 547.2 L 446.4 543.7 L 443.1 540.9 L 439.3 538.8 L 342.8 495.7 L 432.6 486.9 L 436.9 486.1 L 441.0 484.4 L 444.6 482.0 L 447.7 478.8 L 450.1 475.2 L 451.7 471.1 L 452.5 466.8 L 452.4 462.4 L 441.5 357.3 Z",
+    "points": [
+      [
+        494.0,
+        430.7
+      ],
+      [
+        496.9,
+        434.0
+      ],
+      [
+        500.4,
+        436.7
+      ],
+      [
+        504.3,
+        438.6
+      ],
+      [
+        508.6,
+        439.7
+      ],
+      [
+        512.9,
+        440.0
+      ],
+      [
+        517.3,
+        439.4
+      ],
+      [
+        521.4,
+        437.9
+      ],
+      [
+        525.2,
+        435.6
+      ],
+      [
+        610.7,
+        373.6
+      ],
+      [
+        573.4,
+        455.8
+      ],
+      [
+        572.0,
+        459.9
+      ],
+      [
+        571.4,
+        464.3
+      ],
+      [
+        571.7,
+        468.7
+      ],
+      [
+        572.9,
+        472.9
+      ],
+      [
+        574.8,
+        476.8
+      ],
+      [
+        577.6,
+        480.3
+      ],
+      [
+        580.9,
+        483.1
+      ],
+      [
+        584.7,
+        485.2
+      ],
+      [
+        681.2,
+        528.3
+      ],
+      [
+        591.4,
+        537.1
+      ],
+      [
+        587.1,
+        537.9
+      ],
+      [
+        583.0,
+        539.6
+      ],
+      [
+        579.4,
+        542.0
+      ],
+      [
+        576.3,
+        545.2
+      ],
+      [
+        573.9,
+        548.8
+      ],
+      [
+        572.3,
+        552.9
+      ],
+      [
+        571.5,
+        557.2
+      ],
+      [
+        571.6,
+        561.6
+      ],
+      [
+        582.5,
+        666.7
+      ],
+      [
+        530.0,
+        593.3
+      ],
+      [
+        527.1,
+        590.0
+      ],
+      [
+        523.6,
+        587.3
+      ],
+      [
+        519.7,
+        585.4
+      ],
+      [
+        515.4,
+        584.3
+      ],
+      [
+        511.1,
+        584.0
+      ],
+      [
+        506.7,
+        584.6
+      ],
+      [
+        502.6,
+        586.1
+      ],
+      [
+        498.8,
+        588.4
+      ],
+      [
+        413.3,
+        650.4
+      ],
+      [
+        450.6,
+        568.2
+      ],
+      [
+        452.0,
+        564.1
+      ],
+      [
+        452.6,
+        559.7
+      ],
+      [
+        452.3,
+        555.3
+      ],
+      [
+        451.1,
+        551.1
+      ],
+      [
+        449.2,
+        547.2
+      ],
+      [
+        446.4,
+        543.7
+      ],
+      [
+        443.1,
+        540.9
+      ],
+      [
+        439.3,
+        538.8
+      ],
+      [
+        342.8,
+        495.7
+      ],
+      [
+        432.6,
+        486.9
+      ],
+      [
+        436.9,
+        486.1
+      ],
+      [
+        441.0,
+        484.4
+      ],
+      [
+        444.6,
+        482.0
+      ],
+      [
+        447.7,
+        478.8
+      ],
+      [
+        450.1,
+        475.2
+      ],
+      [
+        451.7,
+        471.1
+      ],
+      [
+        452.5,
+        466.8
+      ],
+      [
+        452.4,
+        462.4
+      ],
+      [
+        441.5,
+        357.3
+      ]
+    ],
+    "note": "exact negative-space cutout: petal tip edges offset by stroke/2, valleys at the round-join tip arcs, spikes at adjacent-edge intersections. Pre-mark-scale coords; render inside mark.transform."
+  },
+  "glyphs": {
+    "shapes": {
+      "book": [
+        {
+          "kind": "fill",
+          "d": "M 0 -34 C -20 -50 -60 -55 -86 -46 L -86 38 C -60 29 -20 32 0 47 C 20 32 60 29 86 38 L 86 -46 C 60 -55 20 -50 0 -34 Z M -13 -20 C -27 -31 -50 -36 -68 -33 L -68 21 C -50 18 -27 21 -13 29 Z M 13 -20 C 27 -31 50 -36 68 -33 L 68 21 C 50 18 27 21 13 29 Z"
+        }
+      ],
+      "film": [
+        {
+          "kind": "fill",
+          "d": "M -54 -78 L 54 -78 Q 66 -78 66 -66 L 66 66 Q 66 78 54 78 L -54 78 Q -66 78 -66 66 L -66 -66 Q -66 -78 -54 -78 Z M -28 -46 L 28 -46 Q 32 -46 32 -42 L 32 42 Q 32 46 28 46 L -28 46 Q -32 46 -32 42 L -32 -42 Q -32 -46 -28 -46 Z M -55 -66 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M -55 -36 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M -55 -6 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M -55 24 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M -55 54 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M 43 -66 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M 43 -36 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M 43 -6 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M 43 24 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z M 43 54 h 12 q 3 0 3 3 v 10 q 0 3 -3 3 h -12 q -3 0 -3 -3 v -10 q 0 -3 3 -3 Z"
+        }
+      ],
+      "tv": [
+        {
+          "kind": "stroke",
+          "d": "M 0 -30 L -30 -64 M 0 -30 L 28 -64",
+          "width": 13,
+          "linecap": "round"
+        },
+        {
+          "kind": "fill",
+          "d": "M -68 -28 L 68 -28 Q 84 -28 84 -12 L 84 50 Q 84 66 68 66 L -68 66 Q -84 66 -84 50 L -84 -12 Q -84 -28 -68 -28 Z M -62 -12 L 34 -12 Q 40 -12 40 -6 L 40 44 Q 40 50 34 50 L -62 50 Q -68 50 -68 44 L -68 -6 Q -68 -12 -62 -12 Z M 62 -4 a 7 7 0 1 0 0.0001 0 Z M 62 16 a 7 7 0 1 0 0.0001 0 Z M 62 36 a 7 7 0 1 0 0.0001 0 Z"
+        }
+      ],
+      "pad": [
+        {
+          "kind": "fill",
+          "d": "M -44 -40 L 44 -40 Q 84 -40 84 0 Q 84 40 44 40 L -44 40 Q -84 40 -84 0 Q -84 -40 -44 -40 Z M -51 -21 L -37 -21 L -37 -7 L -23 -7 L -23 7 L -37 7 L -37 21 L -51 21 L -51 7 L -65 7 L -65 -7 L -51 -7 Z M 44 -22 a 8 8 0 1 0 0.0001 0 Z M 60 -3 a 8 8 0 1 0 0.0001 0 Z M 28 -3 a 8 8 0 1 0 0.0001 0 Z M 44 16 a 8 8 0 1 0 0.0001 0 Z"
+        }
+      ],
+      "mic": [
+        {
+          "kind": "stroke",
+          "d": "M -46 -34 A 46 46 0 0 0 46 -34 M 0 11 L 0 44 M -27 50 L 27 50",
+          "width": 13,
+          "linecap": "round"
+        },
+        {
+          "kind": "fill",
+          "d": "M -26 -50 Q -26 -76 0 -76 Q 26 -76 26 -50 L 26 -30 Q 26 -4 0 -4 Q -26 -4 -26 -30 Z M -14 -56 L 14 -56 Q 18 -56 18 -52 Q 18 -48 14 -48 L -14 -48 Q -18 -48 -18 -52 Q -18 -56 -14 -56 Z M -14 -40 L 14 -40 Q 18 -40 18 -36 Q 18 -32 14 -32 L -14 -32 Q -18 -32 -18 -36 Q -18 -40 -14 -40 Z"
+        }
+      ],
+      "app": [
+        {
+          "kind": "fill",
+          "d": "M -20 -64 L 20 -64 C 52 -64 64 -52 64 -20 L 64 20 C 64 52 52 64 20 64 L -20 64 C -52 64 -64 52 -64 20 L -64 -20 C -64 -52 -52 -64 -20 -64 Z M -14 -47 L 14 -47 C 38 -47 47 -38 47 -14 L 47 14 C 47 38 38 47 14 47 L -14 47 C -38 47 -47 38 -47 14 L -47 -14 C -47 -38 -38 -47 -14 -47 Z M 0 -10 a 10 10 0 1 0 0.0001 0 Z"
+        }
+      ]
+    },
+    "order": [
+      "app",
+      "film",
+      "mic",
+      "pad",
+      "tv",
+      "book"
+    ],
+    "jitter_deg": [
+      -4,
+      5,
+      -6,
+      4,
+      -5,
+      6
+    ],
+    "anchor": [
+      543.8,
+      217.5
+    ],
+    "transforms": [
+      "rotate(0 512 512) translate(543.8 217.5) rotate(-4)",
+      "rotate(60 512 512) translate(543.8 217.5) rotate(-55)",
+      "rotate(120 512 512) translate(543.8 217.5) rotate(-126)",
+      "rotate(180 512 512) translate(543.8 217.5) rotate(-176)",
+      "rotate(240 512 512) translate(543.8 217.5) rotate(-245)",
+      "rotate(300 512 512) translate(543.8 217.5) rotate(-294)"
+    ],
+    "note": "colour via currentColor on each primitive; transforms are pre-mark-scale"
+  },
+  "deboss": {
+    "layers": [
+      {
+        "role": "highlight",
+        "offset": [
+          0,
+          3
+        ],
+        "tint": "lighten"
+      },
+      {
+        "role": "shadow",
+        "offset": [
+          0,
+          -3
+        ],
+        "tint": "darken_sh"
+      },
+      {
+        "role": "main",
+        "offset": [
+          0,
+          0
+        ],
+        "tint": "darken_fill"
+      }
+    ],
+    "amounts": {
+      "light": {
+        "darken_fill": 0.13,
+        "lighten": 0.22,
+        "darken_sh": 0.3
+      },
+      "dark": {
+        "darken_fill": 0.16,
+        "lighten": 0.18,
+        "darken_sh": 0.34
+      }
+    },
+    "mixing": "per-channel mix of gamma-encoded sRGB toward #FFFFFF (lighten) / #000000 (darken)"
+  },
+  "hues": {
+    "order_note": "petal 0 = top squircle, then clockwise: film, mic, pad, tv, book",
+    "light": [
+      "#4A63E4",
+      "#9550D6",
+      "#E0339B",
+      "#F04A32",
+      "#E2621F",
+      "#12A38C"
+    ],
+    "dark": [
+      "#5A73F2",
+      "#A560E5",
+      "#EE45AC",
+      "#F85B41",
+      "#EF6E2A",
+      "#16B69D"
+    ]
+  },
+  "backgrounds": {
+    "light_porcelain": "#F1F2EF",
+    "light_gradient": {
+      "type": "radial",
+      "cx": 0.5,
+      "cy": 0.5,
+      "r": 0.72,
+      "stops": [
+        [
+          0,
+          "#F8F8F4"
+        ],
+        [
+          1,
+          "#E9EAE5"
+        ]
+      ]
+    },
+    "dark_navy": "#0D1430",
+    "dark_navy_rejected": "#122048"
+  },
+  "rim_glow": {
+    "geometry": "star.d stroked, fill none, blurred; drawn behind the petals inside mark.transform so only the inner half of the blur shows in the cutout. Interior: star.d filled, scaled about (512,512) by interior_scale so its edge hides under the petals.",
+    "interior_scale": 1.05,
+    "light": {
+      "interior_fill": "#FAEDD3",
+      "stroke": "#F0A93C",
+      "stroke_width": 24,
+      "blur_std": 8,
+      "opacity": 0.95
+    },
+    "dark": {
+      "interior_fill": "#1B2138",
+      "stroke": "#FFB347",
+      "stroke_width": 22,
+      "blur_std": 8,
+      "opacity": 0.9
+    },
+    "alt": {
+      "light": {
+        "interior_fill": "#FBE9E2",
+        "stroke": "#FF5A3C",
+        "stroke_width": 24,
+        "blur_std": 8,
+        "opacity": 0.9
+      },
+      "dark": {
+        "interior_fill": "#241B33",
+        "stroke": "#FF6B8A",
+        "stroke_width": 22,
+        "blur_std": 8,
+        "opacity": 0.85
+      }
+    }
+  },
+  "schemes": {
+    "01-rim-glow": {
+      "light": {
+        "bg": "porcelain",
+        "glow": "main"
+      },
+      "dark": {
+        "bg": "navy",
+        "glow": "main"
+      }
+    },
+    "02-gradient": {
+      "light": {
+        "bg": "gradient",
+        "glow": "main"
+      }
+    },
+    "03-alt-glow": {
+      "light": {
+        "bg": "porcelain",
+        "glow": "alt"
+      },
+      "dark": {
+        "bg": "navy",
+        "glow": "alt"
+      }
+    }
+  }
+};
+
+const PALETTES = [
+  { name:"Approved",
+    light:["#DD5A46","#E27C46","#C0A02A","#229682","#5769C7","#9F75C7"],
+    dark:["#E06755","#E48655","#C5A83B","#349E8C","#6475CB","#A780CB"] },
+  { name:"Bright spectrum",
+    light:["#4A63E4","#9550D6","#E0339B","#F04A32","#E2621F","#12A38C"],
+    dark:["#5A73F2","#A560E5","#EE45AC","#F85B41","#EF6E2A","#16B69D"] },
+  { name:"Poster ink",
+    light:["#4257C2","#8244B5","#C22B85","#D8402E","#BC4F1C","#0E7D6C"],
+    dark:["#4E63D1","#9153C4","#D13A96","#E44E3A","#CC5C26","#159180"] },
+  { name:"Sunset",
+    light:["#D4562F","#D8404C","#C92F67","#A82E82","#7C3193","#462D8C"],
+    dark:["#DD6136","#E04B55","#D43A72","#B43A8E","#8A3FA1","#54389E"] },
+  { name:"Retro pop",
+    light:["#40578F","#A84D1C","#16766F","#B33A2B","#2E6B33","#AF2D6E"],
+    dark:["#46609F","#C4602A","#1C857D","#C44730","#377B3C","#C23A7D"] },
+  { name:"Jewel",
+    light:["#1D4E9E","#B01E42","#0C7048","#8C4E1B","#71399C","#8A2433"],
+    dark:["#2A5FB5","#C22A50","#12855C","#A05E22","#8348B0","#9C2E3E"] },
+  { name:"Neon dusk",
+    light:["#2C55C0","#D6248E","#0A8278","#C63F26","#6931B8","#B01E55"],
+    dark:["#3D66D4","#E93AA2","#0E968A","#E85A3C","#7B42CC","#C22C66"] },
+];
+const PETAL_LABELS = ["Top","Film","Mic","Pad","TV","Book"];
+const PETAL_ANGLES = [0,60,120,180,240,300];
+const ANCHOR = GEO.glyphs.anchor, JITTER = GEO.glyphs.jitter_deg, ORDER = GEO.glyphs.order;
+const STAR_R0 = 154; // approx mean star radius for glow scaling under spread
+
+function defaults(){
+  return {
+    mode:"light", pal:0,
+    colors:{ light:[...PALETTES[0].light], dark:[...PALETTES[0].dark] },
+    swapSel:null,
+    bgLight:"grad", bglColor:"#FFF7F0", gradDepth:37,
+    bgDarkStyle:"grad", bgDark:"#131D44", gradDepthDark:44,
+    drawOrder:"alt", chipTilt:0, overlay:"off",
+    glowOn:false,
+    glowColor:{ light:GEO.rim_glow.light.stroke, dark:GEO.rim_glow.dark.stroke },
+    intColor:{ light:GEO.rim_glow.light.interior_fill, dark:GEO.rim_glow.dark.interior_fill },
+    glowInt:100, glowW:24, glowB:8,
+    scale:81, rot:4, spread:25, corner:90, gsize:120, gpos:100, jit:190, emb:156,
+  };
+}
+let S = defaults();
+
+function hex2rgb(h){ h=h.replace("#",""); return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16)); }
+function rgb2hex(r){ return "#"+r.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,"0")).join("").toUpperCase(); }
+function mix(hex,t2,t){ const a=hex2rgb(hex), b=hex2rgb(t2); return rgb2hex(a.map((v,i)=>v+(b[i]-v)*t)); }
+const lighten=(h,t)=>mix(h,"#FFFFFF",Math.min(1,t)), darken=(h,t)=>mix(h,"#000000",Math.min(1,t));
+
+const NS="http://www.w3.org/2000/svg";
+function el(n,a,p){ const e=document.createElementNS(NS,n); for(const k in a) e.setAttribute(k,a[k]); if(p) p.appendChild(e); return e; }
+
+// Apple icon-grid squircle: superellipse |x/a|^n + |y/a|^n = 1 with n = 5,
+// full-bleed (a = 512) — the shape iOS masks every app icon to.
+function squirclePath(cx, cy, a, n){
+  const pts = [];
+  for(let i = 0; i < 128; i++){
+    const t = i / 128 * 2 * Math.PI, c = Math.cos(t), s = Math.sin(t);
+    pts.push((cx + a * Math.sign(c) * Math.abs(c) ** (2 / n)).toFixed(1) + " " +
+             (cy + a * Math.sign(s) * Math.abs(s) ** (2 / n)).toFixed(1));
+  }
+  return "M " + pts.join(" L ") + " Z";
+}
+function addOverlay(svg){
+  const g = el("g", {fill:"none", "pointer-events":"none"}, svg);
+  const guide = d => {
+    el("path", {d, stroke:"#000", "stroke-width":4, opacity:0.35}, g);
+    el("path", {d, stroke:"#FFF", "stroke-width":2, opacity:0.85, "stroke-dasharray":"10 7"}, g);
+  };
+  guide(squirclePath(512, 512, 511, 5));
+  if(S.overlay === "grid"){
+    const circ = r => { const k = 0.5523 * r;
+      return `M ${512-r} 512 C ${512-r} ${512-k} ${512-k} ${512-r} 512 ${512-r} C ${512+k} ${512-r} ${512+r} ${512-k} ${512+r} 512 C ${512+r} ${512+k} ${512+k} ${512+r} 512 ${512+r} C ${512-k} ${512+r} ${512-r} ${512+k} ${512-r} 512 Z`; };
+    guide(circ(384));
+    guide(circ(192));
+    guide("M 512 0 L 512 1024 M 0 512 L 1024 512");
+  }
+}
+function buildSVG(uid="main"){
+  const m=S.mode, hues=S.colors[m], base=GEO.deboss.amounts[m], embF=S.emb/100;
+  const svg=el("svg",{xmlns:NS,width:1024,height:1024,viewBox:GEO.canvas.viewBox});
+  const defs=el("defs",{},svg);
+  const filt=el("filter",{id:"cfg-blur-"+uid,x:"-40%",y:"-40%",width:"180%",height:"180%"},defs);
+  el("feGaussianBlur",{stdDeviation:S.glowB},filt);
+  for(const name in GEO.glyphs.shapes){
+    const g=el("g",{id:"cfg-g-"+uid+"-"+name},defs);
+    for(const sh of GEO.glyphs.shapes[name]){
+      if(sh.kind==="fill") el("path",{fill:"currentColor","fill-rule":"evenodd",d:sh.d},g);
+      else el("path",{fill:"none",stroke:"currentColor","stroke-width":sh.width,"stroke-linecap":sh.linecap||"round",d:sh.d},g);
+    }
+  }
+  let bgFill;
+  if(m==="light"){
+    if(S.bgLight==="grad"){
+      const t=S.gradDepth/100;
+      const grad=el("radialGradient",{id:"cfg-bg-"+uid,cx:.5,cy:.5,r:GEO.backgrounds.light_gradient.r},defs);
+      el("stop",{offset:0,"stop-color":lighten(S.bglColor,0.55)},grad);
+      el("stop",{offset:1,"stop-color":mix(S.bglColor,"#B9BCB0",t*0.55)},grad);
+      bgFill="url(#cfg-bg-"+uid+")";
+    } else bgFill=S.bglColor;
+  } else {
+    if(S.bgDarkStyle==="grad"){
+      const t=S.gradDepthDark/100;
+      const grad=el("radialGradient",{id:"cfg-bg-"+uid,cx:.5,cy:.5,r:GEO.backgrounds.light_gradient.r},defs);
+      el("stop",{offset:0,"stop-color":lighten(S.bgDark,t*0.4)},grad);
+      el("stop",{offset:1,"stop-color":darken(S.bgDark,t*0.45)},grad);
+      bgFill="url(#cfg-bg-"+uid+")";
+    } else bgFill=S.bgDark;
+  }
+  el("rect",{width:1024,height:1024,fill:bgFill},svg);
+
+  const markT=`translate(512 512) scale(${S.scale/100}) translate(-512 -512)`+(S.rot? ` rotate(${S.rot} 512 512)`:"");
+  const mark=el("g",{transform:markT},svg);
+
+  if(S.glowOn && S.glowInt>0){
+    const starScale=(STAR_R0+S.spread)/STAR_R0;
+    el("path",{d:GEO.star.d,fill:S.intColor[m],
+      transform:`translate(512 512) scale(${(GEO.rim_glow.interior_scale*starScale).toFixed(4)}) translate(-512 -512)`,
+      opacity:Math.min(1,S.glowInt/100*1.4)},mark);
+    el("path",{d:GEO.star.d,fill:"none",stroke:S.glowColor[m],"stroke-width":S.glowW,
+      "stroke-linejoin":"round",opacity:(GEO.rim_glow[m].opacity*S.glowInt/100).toFixed(3),
+      transform:`translate(512 512) scale(${starScale.toFixed(4)}) translate(-512 -512)`,
+      filter:"url(#cfg-blur-"+uid+")"},mark);
+  }
+  const ORDERS={cw:[0,1,2,3,4,5],ccw:[5,4,3,2,1,0],alt:[0,2,4,1,3,5]};
+  // Chip body, parametric tilt about its tip (512,418). The base pentagon is
+  // mirror-symmetric about the petal axis — at chipTilt 0 the null space between
+  // chips is a perfectly even star; 9° reproduces the original hand-placed look.
+  const TIP=[512,418];
+  const BASE=[[0,0],[-144,-148.05],[-171.97,-334.0],[171.97,-334.0],[144,-148.05]];
+  const ct=S.chipTilt*Math.PI/180, cosT=Math.cos(ct), sinT=Math.sin(ct);
+  const rot=(x,y)=>[x*cosT-y*sinT, x*sinT+y*cosT];
+  const petalD="M "+BASE.map(([x,y])=>{ const [rx,ry]=rot(x,y); return (TIP[0]+rx).toFixed(1)+" "+(TIP[1]+ry).toFixed(1); }).join(" L ")+" Z";
+  for(const i of ORDERS[S.drawOrder]){
+    el("path",{d:petalD,fill:hues[i],stroke:hues[i],"stroke-width":S.corner,
+      "stroke-linejoin":"round",transform:`rotate(${PETAL_ANGLES[i]} 512 512) translate(0 ${-S.spread})`},mark);
+  }
+  const k=S.gpos/100;
+  const [anx,any]=rot(0,-203.05);
+  const A0=[TIP[0]+anx, TIP[1]+any];
+  for(let i=0;i<6;i++){
+    const ax=512+(A0[0]-512)*k, ay=512+(A0[1]-512)*k;
+    const jit=(JITTER[i]*S.jit/100).toFixed(2);
+    const g=el("g",{transform:`rotate(${PETAL_ANGLES[i]} 512 512) translate(0 ${-S.spread}) translate(${ax.toFixed(1)} ${ay.toFixed(1)}) rotate(${-PETAL_ANGLES[i]+ +jit}) scale(${(S.gsize/100).toFixed(3)})`},mark);
+    const hue=hues[i], name=ORDER[i];
+    el("use",{href:"#cfg-g-"+uid+"-"+name,y:3,color:lighten(hue,base.lighten*embF)},g);
+    el("use",{href:"#cfg-g-"+uid+"-"+name,y:-3,color:darken(hue,base.darken_sh*embF)},g);
+    el("use",{href:"#cfg-g-"+uid+"-"+name,color:darken(hue,base.darken_fill*embF)},g);
+  }
+  return svg;
+}
+
+function render(){
+  const main=buildSVG("main");
+  if(S.overlay!=="off") addOverlay(main);
+  const trees={"main-preview":main,"mini-180":buildSVG("m180"),"mini-64":buildSVG("m64")};
+  for(const id of ["main-preview","mini-180","mini-64"]){
+    const host=document.getElementById(id);
+    host.replaceChildren(trees[id]);
+    const s=host.querySelector("svg");
+    s.removeAttribute("width"); s.removeAttribute("height");
+    s.style.width="100%"; s.style.height="100%"; s.style.display="block";
+  }
+  // palette buttons
+  const pal=document.getElementById("pal");
+  pal.replaceChildren(...PALETTES.map((p,i)=>{
+    const b=document.createElement("button");
+    b.className=i===S.pal?"on":"";
+    b.title=p.name;
+    b.append(...p[S.mode].map(h=>{ const sq=document.createElement("i"); sq.style.background=h; return sq; }));
+    const sr=document.createElement("span"); sr.textContent=p.name; b.append(sr);
+    b.onclick=()=>{ S.pal=i; S.colors={light:[...p.light],dark:[...p.dark]}; S.swapSel=null; render(); };
+    return b;
+  }));
+  // chips
+  const chips=document.getElementById("chips");
+  chips.replaceChildren(...S.colors[S.mode].map((h,i)=>{
+    const d=document.createElement("div"); d.className="chip";
+    const b=document.createElement("button");
+    b.style.background=h;
+    b.className=S.swapSel===i?"sel":"";
+    b.title=PETAL_LABELS[i]+" petal — click two swatches to swap";
+    b.onclick=()=>{
+      if(S.swapSel===null){ S.swapSel=i; }
+      else if(S.swapSel===i){ S.swapSel=null; }
+      else {
+        for(const md of ["light","dark"]){
+          const c=S.colors[md]; [c[S.swapSel],c[i]]=[c[i],c[S.swapSel]];
+        }
+        S.swapSel=null;
+      }
+      render();
+    };
+    const inp=document.createElement("input");
+    inp.type="color"; inp.value=h;
+    inp.setAttribute("aria-label",PETAL_LABELS[i]+" petal colour");
+    inp.oninput=e=>{ S.colors[S.mode][i]=e.target.value.toUpperCase(); render(); };
+    const em=document.createElement("em"); em.textContent=PETAL_LABELS[i];
+    d.append(b,inp,em);
+    return d;
+  }));
+  document.getElementById("rot-label").textContent="rotate all";
+  document.getElementById("grp-bg-light").classList.toggle("hidden",S.mode!=="light");
+  document.getElementById("grp-bg-dark").classList.toggle("hidden",S.mode!=="dark");
+  document.getElementById("row-grad").classList.toggle("hidden",S.bgLight!=="grad");
+  document.getElementById("row-grad-dark").classList.toggle("hidden",S.bgDarkStyle!=="grad");
+  document.getElementById("glow-ctrls").classList.toggle("hidden",!S.glowOn);
+  document.getElementById("glow-color").value=S.glowColor[S.mode];
+  document.getElementById("int-color").value=S.intColor[S.mode];
+  const bg=S.mode==="light"
+    ?(S.bgLight==="grad"?S.bglColor+" radial "+S.gradDepth+"%":S.bglColor)
+    :(S.bgDarkStyle==="grad"?S.bgDark+" radial "+S.gradDepthDark+"%":S.bgDark);
+  document.getElementById("readout").textContent=
+    "petals "+S.colors[S.mode].join(" ")+"\nbg "+bg+
+    "\nglow "+(S.glowOn?S.glowColor[S.mode]+" centre "+S.intColor[S.mode]+" int "+S.glowInt+" w "+S.glowW+" blur "+S.glowB:"off")+
+    "\nscale "+S.scale+"% rot "+S.rot+"° star "+(S.spread>=0?"+":"")+S.spread+" corner "+S.corner+
+    "\nglyphs "+S.gsize+"% pos "+S.gpos+"% tilt "+S.jit+"% emboss "+S.emb+"%"+
+    "\nchip tilt "+S.chipTilt+"° · lap "+S.drawOrder;
+}
+
+function segWire(id,fn){
+  const seg=document.getElementById(id);
+  seg.addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    seg.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+    fn(b.dataset.v); render();
+  });
+}
+document.querySelectorAll(".tabbar button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tabbar button").forEach(x=>{
+    x.classList.toggle("on",x===b);
+    x.setAttribute("aria-selected",String(x===b));
+  });
+  document.querySelectorAll(".tabpane").forEach(p=>p.classList.toggle("on",p.id==="tab-"+b.dataset.t));
+});
+segWire("seg-mode",v=>S.mode=v);
+segWire("seg-bgl",v=>S.bgLight=v);
+segWire("seg-bgd-style",v=>S.bgDarkStyle=v);
+segWire("seg-order",v=>S.drawOrder=v);
+segWire("seg-ov",v=>S.overlay=v);
+segWire("seg-bgd",v=>{ S.bgDark=v; document.getElementById("bgd-color").value=v; });
+segWire("seg-glow",v=>S.glowOn=v==="on");
+document.getElementById("bgl-color").addEventListener("input",e=>{ S.bglColor=e.target.value.toUpperCase(); render(); });
+document.getElementById("bgd-color").addEventListener("input",e=>{
+  S.bgDark=e.target.value.toUpperCase();
+  document.querySelectorAll("#seg-bgd button").forEach(x=>x.classList.remove("on"));
+  render();
+});
+document.getElementById("glow-color").addEventListener("input",e=>{ S.glowColor[S.mode]=e.target.value.toUpperCase(); render(); });
+document.getElementById("int-color").addEventListener("input",e=>{ S.intColor[S.mode]=e.target.value.toUpperCase(); render(); });
+for(const [id,key] of [["grad-depth","gradDepth"],["grad-depth-dark","gradDepthDark"],["glow-int","glowInt"],["glow-w","glowW"],["glow-b","glowB"],
+  ["s-scale","scale"],["s-rot","rot"],["s-spread","spread"],["s-corner","corner"],
+  ["s-gsize","gsize"],["s-gpos","gpos"],["s-jit","jit"],["s-emb","emb"],
+  ["st-ctilt","chipTilt"]]){
+  const inp=document.getElementById(id);
+  inp.addEventListener("input",e=>{ S[key]=+e.target.value; document.getElementById(id+"-o").value=e.target.value; render(); });
+}
+document.getElementById("rot-prev").onclick=()=>{ for(const md of ["light","dark"]) S.colors[md].unshift(S.colors[md].pop()); render(); };
+document.getElementById("rot-next").onclick=()=>{ for(const md of ["light","dark"]) S.colors[md].push(S.colors[md].shift()); render(); };
+document.getElementById("reset").onclick=()=>{
+  S=defaults();
+  for(const [id,val] of [["grad-depth",37],["grad-depth-dark",44],["glow-int",100],["glow-w",24],["glow-b",8],["s-scale",81],["s-rot",4],
+    ["s-spread",25],["s-corner",90],["s-gsize",120],["s-gpos",100],["s-jit",190],["s-emb",156],
+    ["st-ctilt",0]]){
+    document.getElementById(id).value=val; document.getElementById(id+"-o").value=val;
+  }
+  document.getElementById("bgl-color").value="#FFF7F0";
+  document.getElementById("bgd-color").value="#131D44";
+  document.querySelectorAll("#seg-mode button").forEach(x=>x.classList.toggle("on",x.dataset.v==="light"));
+  document.querySelectorAll("#seg-bgl button").forEach(x=>x.classList.toggle("on",x.dataset.v==="grad"));
+  document.querySelectorAll("#seg-bgd-style button").forEach(x=>x.classList.toggle("on",x.dataset.v==="grad"));
+  document.querySelectorAll("#seg-bgd button").forEach(x=>x.classList.toggle("on",x.dataset.v==="#131D44"));
+  document.querySelectorAll("#seg-glow button").forEach(x=>x.classList.toggle("on",x.dataset.v==="off"));
+  document.querySelectorAll("#seg-order button").forEach(x=>x.classList.toggle("on",x.dataset.v==="alt"));
+  document.querySelectorAll("#seg-ov button").forEach(x=>x.classList.toggle("on",x.dataset.v==="off"));
+  render();
+};
+document.getElementById("download").onclick=()=>{
+  const svg=buildSVG("dl");
+  const blob=new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(svg)],{type:"image/svg+xml"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`whatfun-icon-${S.mode}.svg`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+};
+render();
+</script>
