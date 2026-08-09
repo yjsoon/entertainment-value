@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WhatFun icon exploration B: negative-space center shapes.
+"""Entertainment Value icon exploration B: negative-space center shapes.
 Construction: each petal = angular wedge MINUS the center shape polygon,
 then buffer(-shrink).buffer(+grow) for rounded corners + seam channels.
 The center shape is therefore pure negative space (background shows through).

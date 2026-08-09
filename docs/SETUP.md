@@ -4,9 +4,9 @@
 
 Entertainment Value targets iOS and iPadOS 26 and uses Swift 6 language mode. Build it with Xcode 26; no package resolution or dependency bootstrap is required.
 
-1. Clone `https://github.com/yjsoon/whatfun.git`.
-2. Open `WhatFun.xcodeproj`.
-3. Select the `WhatFun` scheme and an iOS 26 simulator, then run.
+1. Clone `https://github.com/yjsoon/entertainment-value.git`.
+2. Open `EntertainmentValue.xcodeproj`.
+3. Select the `EntertainmentValue` scheme and an iOS 26 simulator, then run.
 4. For a physical device, select your development team under **Signing & Capabilities**. The checked-in bundle identifier is `com.yjsoon.whatfun`; use an identifier owned by your team if necessary.
 
 Run the Swift Testing suite with **Product > Test** (`Command-U`). Tests use an in-memory SwiftData store and do not need API credentials.
@@ -25,7 +25,7 @@ RAWG_API_KEY = your-key
 | Media | Provider | Setup |
 | --- | --- | --- |
 | Movies and TV | TMDB | Create an API read-access token in [TMDB API settings](https://www.themoviedb.org/settings/api), then save it in Settings or `Secrets.xcconfig.local`. |
-| Books and comics | Open Library | No key is required. Replace `YOUR_CONTACT_EMAIL` in `WhatFun/Support/Config.swift` with a contact address so requests identify the app responsibly. |
+| Books and comics | Open Library | No key is required. Replace `YOUR_CONTACT_EMAIL` in `EntertainmentValue/Support/Config.swift` with a contact address so requests identify the app responsibly. |
 | Games | RAWG | Request a key from the [RAWG API documentation](https://rawg.io/apidocs), then save it in Settings or `Secrets.xcconfig.local`. |
 | Podcasts | Apple Search and podcast RSS | No key is required. |
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WhatFun icon, exploration H: the G2 "bright" winner productionised.
+"""Entertainment Value icon, exploration H: the G2 "bright" winner productionised.
 
 - Rim glow: light leaking around the edges of the negative-space star only.
   Implemented as (a) a flat, contained interior tint filling the star cutout

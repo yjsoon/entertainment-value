@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WhatFun icon, exploration F: the E construction (icon-grid pinwheel, sparkle,
+"""Entertainment Value icon, exploration F: the E construction (icon-grid pinwheel, sparkle,
 squircle sixth glyph, letterpress deboss) carried unchanged, with five NEW
 saturated multi-hue schemes. Rules from the client: chroma up, band deepened
 (no pale/pastel cards against cream), no yellow/pale gold, hue assignment puts

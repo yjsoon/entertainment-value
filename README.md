@@ -23,7 +23,7 @@ Entertainment Value is under active development. The first milestones establish 
 - iOS 26 or iPadOS 26
 - A development team for device builds
 
-Clone the repository, open `WhatFun.xcodeproj`, choose the `WhatFun` scheme and an iOS 26 destination, then run. TMDB and RAWG search need developer credentials; everything else, including manual entry, remains usable without them. See [Setup](docs/SETUP.md) for signing, API-key, and test instructions.
+Clone the repository, open `EntertainmentValue.xcodeproj`, choose the `EntertainmentValue` scheme and an iOS 26 destination, then run. TMDB and RAWG search need developer credentials; everything else, including manual entry, remains usable without them. See [Setup](docs/SETUP.md) for signing, API-key, and test instructions.
 
 ## Principles
 

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WhatFun Icon Configurator</title>
+<title>Entertainment Value Icon Configurator</title>
 <style>
 :root{
   --ground:#F1F0EB; --card:#FAF9F6; --ink:#231F1A; --muted:#7D766A;
@@ -79,7 +79,7 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
 .hidden{display:none !important}
 </style>
 <div class="wrap">
-  <div class="eyebrow">WhatFun &middot; icon configurator &middot; v2</div>
+  <div class="eyebrow">Entertainment Value &middot; icon configurator &middot; v2</div>
   <h1>The full mixing desk</h1>
   <p class="lede">Preview stays put; controls live in the tabs. Download the exact SVG of what you compose.</p>
 
@@ -997,7 +997,7 @@ document.getElementById("download").onclick=()=>{
   const blob=new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(svg)],{type:"image/svg+xml"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download=`whatfun-icon-${S.mode}.svg`;
+  a.download=`entertainment-value-icon-${S.mode}.svg`;
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
 };

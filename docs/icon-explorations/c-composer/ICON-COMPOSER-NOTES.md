@@ -1,6 +1,6 @@
-# WhatFun — Icon Composer (Liquid Glass) rebuild notes
+# Entertainment Value — Icon Composer (Liquid Glass) rebuild notes
 
-Layered rebuild of the WhatFun pinwheel icon for iOS 26 Icon Composer (.icon format, WWDC25).
+Layered rebuild of the Entertainment Value pinwheel icon for iOS 26 Icon Composer (.icon format, WWDC25).
 All mockups in this folder are **simulations** — see caveats at the bottom.
 
 ## Files
@@ -113,12 +113,12 @@ fill and per-group toggles listed above → check all four appearance tabs → s
 
 ## Wiring the .icon file into the Xcode project (iOS 26)
 
-1. Drag `AppIcon.icon` into the WhatFun project in Xcode 26 (copy if needed; add to the app
+1. Drag `AppIcon.icon` into the Entertainment Value project in Xcode 26 (copy if needed; add to the app
    target). It sits alongside `Assets.xcassets` — it does **not** go inside the catalog.
 2. Target → **General → App Icons and Launch Screen → App Icon → `AppIcon`** (equivalently the
    build setting `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`). Because the .icon document
    and the legacy set share the name, Xcode uses the .icon for iOS 26+ and falls back to the
-   `AppIcon.appiconset` in `WhatFun/Resources/Assets.xcassets` for older OS versions — keep a
+   `AppIcon.appiconset` in `EntertainmentValue/Resources/Assets.xcassets` for older OS versions — keep a
    re-exported flat PNG (with the rebalanced ramp) there for iOS ≤ 18.
 3. Build & run on iOS 26: verify Settings → Home Screen appearance switches
    (Default / Dark / Clear / Tinted) against mockups 01–04.

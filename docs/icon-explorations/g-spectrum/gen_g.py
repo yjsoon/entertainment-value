@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WhatFun icon, exploration G: refinement of F1 vivid-spectrum. Global change:
+"""Entertainment Value icon, exploration G: refinement of F1 vivid-spectrum. Global change:
 glyphs moved 10% closer to canvas centre (anchor -330 -> -297 pre-scale, i.e.
 ~264px -> ~238px effective radius). Variants isolate: the move itself (01),
 brighter hues (02), a non-beige ground (03), a radial-gradient ground with a

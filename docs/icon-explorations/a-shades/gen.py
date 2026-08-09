@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WhatFun icon variations: single-hue progressive ramps, etched glyphs, sparkle center."""
+"""Entertainment Value icon variations: single-hue progressive ramps, etched glyphs, sparkle center."""
 import os
 
 OUT = os.path.dirname(os.path.abspath(__file__))

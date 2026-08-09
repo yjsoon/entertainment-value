@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WhatFun icon exploration D: rating-star negative space, lapped cards, 5 color schemes.
+"""Entertainment Value icon exploration D: rating-star negative space, lapped cards, 5 color schemes.
 
 Construction:
 - 5 petals at 72deg; petal k spans [P_k, P_k + 88deg] (16deg extension laps over the

@@ -1,0 +1,428 @@
+import Foundation
+import Testing
+@testable import EntertainmentValue
+
+@Suite("Metadata providers")
+struct MetadataProviderTests {
+    @Test("TMDB maps movies and sends a bearer token")
+    func tmdbMovieSearch() async throws {
+        let client = try FixtureHTTPClient(data: Fixture.data(named: "tmdb-search", extension: "json"))
+        let provider = TMDBMetadataProvider(httpClient: client, readAccessToken: "test-token")
+
+        let page = try await provider.search(
+            MetadataSearchRequest(query: "Fight Club", mediaType: .movie)
+        )
+
+        let result = try #require(page.results.first)
+        #expect(result.id == MetadataResultID(provider: .tmdb, externalID: "550"))
+        #expect(result.title == "Fight Club")
+        #expect(result.releaseYear == 1999)
+        #expect(result.coverImageURL?.host == "image.tmdb.org")
+
+        let request = try #require(await client.request(at: 0))
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer test-token")
+        let requestURL = try #require(request.url)
+        #expect(URLComponents(url: requestURL, resolvingAgainstBaseURL: false)?
+            .queryItems?.contains(URLQueryItem(name: "query", value: "Fight Club")) == true)
+    }
+
+    @Test("TMDB discovery uses the media-specific trending feed")
+    func tmdbDiscovery() async throws {
+        let client = try FixtureHTTPClient(data: Fixture.data(named: "tmdb-search", extension: "json"))
+        let provider = TMDBMetadataProvider(httpClient: client, readAccessToken: "test-token")
+
+        let page = try await provider.featured(
+            MetadataDiscoveryRequest(
+                mediaType: .tvShow,
+                languageCode: "en",
+                countryCode: "SG"
+            )
+        )
+
+        #expect(page.results.first?.mediaType == .tvShow)
+        let request = try #require(await client.request(at: 0))
+        #expect(request.url?.path == "/3/trending/tv/day")
+        #expect(URLComponents(url: try #require(request.url), resolvingAgainstBaseURL: false)?
+            .queryItems?.contains(URLQueryItem(name: "language", value: "en-SG")) == true)
+    }
+
+    @Test("TMDB missing credentials fails before networking and supports manual fallback")
+    func tmdbMissingCredentials() async throws {
+        let client = FixtureHTTPClient(data: Data())
+        let provider = TMDBMetadataProvider(
+            httpClient: client,
+            readAccessToken: "YOUR_TMDB_READ_ACCESS_TOKEN"
+        )
+
+        do {
+            _ = try await provider.search(
+                MetadataSearchRequest(query: "Arrival", mediaType: .movie)
+            )
+            Issue.record("Expected a missing credential error")
+        } catch let error as MetadataProviderError {
+            guard case .missingCredential(provider: .tmdb, _) = error else {
+                Issue.record("Unexpected provider error: \(error)")
+                return
+            }
+            #expect(error.supportsManualFallback)
+        }
+        #expect(await client.requestCount == 0)
+    }
+
+    @Test("Open Library maps a collected comic and applies the comics subject")
+    func openLibraryComicSearch() async throws {
+        let client = try FixtureHTTPClient(
+            data: Fixture.data(named: "open-library-search", extension: "json")
+        )
+        let provider = OpenLibraryMetadataProvider(
+            httpClient: client,
+            applicationName: "EntertainmentValue",
+            contactEmail: "developer@example.com"
+        )
+
+        let page = try await provider.search(
+            MetadataSearchRequest(query: "Watchmen", mediaType: .comic, limit: 10)
+        )
+        let result = try #require(page.results.first)
+        #expect(result.mediaType == .comic)
+        #expect(result.creators == ["Alan Moore", "Dave Gibbons"])
+        #expect(result.pageCount == 416)
+        #expect(result.genres.contains("Comics"))
+        #expect(page.totalResults == 1)
+
+        let request = try #require(await client.request(at: 0))
+        let requestURL = try #require(request.url)
+        let components = try #require(
+            URLComponents(url: requestURL, resolvingAgainstBaseURL: false)
+        )
+        #expect(components.queryItems?.contains(URLQueryItem(name: "subject", value: "comics")) == true)
+        #expect(request.value(forHTTPHeaderField: "User-Agent")?.contains("mailto:developer@example.com") == true)
+    }
+
+    @Test("Open Library keeps only visible title and individual-creator matches")
+    func openLibrarySearchRelevance() async throws {
+        let client = FixtureHTTPClient(data: Data(#"""
+        {
+          "numFound": 4,
+          "docs": [
+            { "key": "/works/weak-title", "title": "Stern der Leidenschaft", "author_name": ["Johanna Lindsey"] },
+            { "key": "/works/split-creators", "title": "Ladakh", "author_name": ["Joanna Van Gruisen", "Kenneth S. Stern"] },
+            { "key": "/works/anthology", "title": "Collected Essays", "author_name": ["Joanna Russ", "Steven H. Stern"] },
+            { "key": "/works/exact", "title": "Technology Notes", "author_name": ["Joanna Stern"] }
+          ]
+        }
+        """#.utf8))
+        let provider = OpenLibraryMetadataProvider(
+            httpClient: client,
+            applicationName: "EntertainmentValue",
+            contactEmail: nil
+        )
+
+        let page = try await provider.search(
+            MetadataSearchRequest(query: "Joanna Stern", mediaType: .book)
+        )
+
+        #expect(page.results.map(\.id.externalID) == ["exact"])
+        #expect(page.totalPages == nil)
+        #expect(page.totalResults == nil)
+    }
+
+    @Test("Open Library ranks exact, mixed, prefix, and typo matches conservatively")
+    func openLibrarySearchRanking() async throws {
+        let results = [
+            openLibraryResult(id: "prefix", title: "Dunes", creators: ["Frank Herbertson"]),
+            openLibraryResult(id: "mixed", title: "Dune", creators: ["Frank Herbert"]),
+            openLibraryResult(id: "exact", title: "Dune Frank Herbert", creators: ["Someone Else"]),
+        ]
+        #expect(
+            TitleCreatorSearchRelevance.ranked(results, for: "Dune Frank Herbert")
+                .map(\.id.externalID) == ["exact", "mixed", "prefix"]
+        )
+
+        let typoResults = [
+            openLibraryResult(id: "typo", title: "Harry Potter", creators: []),
+            openLibraryResult(id: "hidden", title: "Unrelated", creators: ["Harry", "Potter"]),
+        ]
+        #expect(
+            TitleCreatorSearchRelevance.ranked(typoResults, for: "Hary Potter")
+                .map(\.id.externalID) == ["typo"]
+        )
+        #expect(TitleCreatorSearchRelevance.ranked(typoResults, for: "Hary").isEmpty)
+    }
+
+    @Test("Open Library relevance normalizes punctuation and preserves repeated terms")
+    func openLibrarySearchNormalization() {
+        let results = [
+            openLibraryResult(
+                id: "normalized",
+                title: "Cien años",
+                creators: ["Gabriel García-Márquez"]
+            ),
+            openLibraryResult(id: "missing-repeat", title: "La Land", creators: []),
+            openLibraryResult(id: "repeated", title: "La La Land", creators: []),
+        ]
+
+        #expect(
+            TitleCreatorSearchRelevance.ranked(results, for: "CIEN ANOS, Garcia Marquez")
+                .map(\.id.externalID) == ["normalized"]
+        )
+        #expect(
+            TitleCreatorSearchRelevance.ranked(results, for: "La La Land")
+                .map(\.id.externalID) == ["repeated"]
+        )
+        #expect(
+            TitleCreatorSearchRelevance.ranked(
+                [openLibraryResult(id: "prefix-assignment", title: "Joanna Jones", creators: [])],
+                for: "Jo Joa"
+            ).map(\.id.externalID) == ["prefix-assignment"]
+        )
+    }
+
+    @Test("Open Library discovery requests trending works")
+    func openLibraryDiscovery() async throws {
+        let client = try FixtureHTTPClient(
+            data: Fixture.data(named: "open-library-search", extension: "json")
+        )
+        let provider = OpenLibraryMetadataProvider(
+            httpClient: client,
+            applicationName: "EntertainmentValue",
+            contactEmail: "developer@example.com"
+        )
+
+        _ = try await provider.featured(MetadataDiscoveryRequest(mediaType: .book))
+
+        let request = try #require(await client.request(at: 0))
+        let queryItems = URLComponents(
+            url: try #require(request.url),
+            resolvingAgainstBaseURL: false
+        )?.queryItems
+        #expect(queryItems?.contains(URLQueryItem(name: "sort", value: "trending")) == true)
+        #expect(queryItems?.contains(URLQueryItem(name: "q", value: "trending_z_score:{0 TO *]")) == true)
+    }
+
+    @Test("Apple Books maps Joanna Stern metadata and artwork")
+    func appleBooksSearch() async throws {
+        let client = FixtureHTTPClient(data: appleBooksFixture)
+        let provider = AppleBooksMetadataProvider(httpClient: client)
+
+        let page = try await provider.search(
+            MetadataSearchRequest(
+                query: "Joanna Stern",
+                mediaType: .book,
+                countryCode: "US"
+            )
+        )
+
+        let result = try #require(page.results.first)
+        #expect(result.id == MetadataResultID(provider: .appleBooks, externalID: "6751840712"))
+        #expect(result.title == "I Am Not a Robot")
+        #expect(result.creators == ["Joanna Stern"])
+        #expect(result.releaseYear == 2026)
+        #expect(result.genres == ["Industries & Professions", "Business & Personal Finance"])
+        #expect(result.sourceURL == nil)
+        #expect(result.coverImageURL?.path.contains("/600x600bb.jpg") == true)
+        #expect(result.thumbnailImageURL?.path.contains("/100x100bb.jpg") == true)
+        #expect(provider.attribution == nil)
+
+        let request = try #require(await client.request(at: 0))
+        let queryItems = URLComponents(
+            url: try #require(request.url),
+            resolvingAgainstBaseURL: false
+        )?.queryItems
+        #expect(queryItems?.contains(URLQueryItem(name: "media", value: "ebook")) == true)
+        #expect(queryItems?.contains(URLQueryItem(name: "entity", value: "ebook")) == true)
+        #expect(queryItems?.contains(URLQueryItem(name: "country", value: "US")) == true)
+
+        let details = try await provider.details(for: result)
+        #expect(details.result == result)
+        #expect(details.artworkURLs == [result.coverImageURL].compactMap(\.self))
+        #expect(await client.requestCount == 1)
+    }
+
+    @Test("Book search falls back from Open Library to Apple Books")
+    func bookSearchFallback() async throws {
+        let openLibraryClient = FixtureHTTPClient(data: Data(#"{"numFound":0,"docs":[]}"#.utf8))
+        let appleBooksClient = FixtureHTTPClient(data: appleBooksFixture)
+        let catalog = MetadataProviderCatalog(providers: [
+            OpenLibraryMetadataProvider(
+                httpClient: openLibraryClient,
+                applicationName: "EntertainmentValue",
+                contactEmail: nil
+            ),
+            AppleBooksMetadataProvider(httpClient: appleBooksClient),
+        ])
+
+        let page = try await catalog.search(
+            MetadataSearchRequest(query: "Joanna Stern", mediaType: .book)
+        )
+
+        #expect(page.results.first?.id.provider == .appleBooks)
+        #expect(page.results.first?.title == "I Am Not a Robot")
+        #expect(await openLibraryClient.requestCount == 1)
+        #expect(await appleBooksClient.requestCount == 1)
+        #expect(catalog.primaryProvider(for: .book)?.id == .openLibrary)
+    }
+
+    private var appleBooksFixture: Data {
+        Data(#"""
+        {
+          "resultCount": 2,
+          "results": [
+          {
+            "trackId": 1,
+            "kind": "ebook"
+          },
+          {
+            "trackId": 6751840712,
+            "trackName": "I Am Not a Robot",
+            "artistName": "Joanna Stern",
+            "artistIds": [1837139438],
+            "kind": "ebook",
+            "releaseDate": "2026-05-12T07:00:00Z",
+            "trackViewUrl": "https://books.apple.com/us/book/i-am-not-a-robot/id6751840712",
+            "artworkUrl60": "https://example.com/image/60x60bb.jpg",
+            "artworkUrl100": "https://example.com/image/100x100bb.jpg",
+            "genres": ["Industries & Professions", "Books", "Business & Personal Finance"]
+          }]
+        }
+        """#.utf8)
+    }
+
+    private func openLibraryResult(
+        id: String,
+        title: String,
+        creators: [String]
+    ) -> MetadataSearchResult {
+        MetadataSearchResult(
+            id: MetadataResultID(provider: .openLibrary, externalID: id),
+            mediaType: .book,
+            title: title,
+            subtitle: nil,
+            creators: creators,
+            overview: nil,
+            releaseYear: nil,
+            coverImageURL: nil,
+            thumbnailImageURL: nil,
+            sourceURL: nil,
+            feedURL: nil,
+            genres: [],
+            pageCount: nil,
+            durationMinutes: nil,
+            seasonCount: nil,
+            episodeCount: nil,
+            platformNames: []
+        )
+    }
+
+    @Test("RAWG maps games, platforms, and exposes required attribution")
+    func rawgGameSearch() async throws {
+        let client = try FixtureHTTPClient(data: Fixture.data(named: "rawg-search", extension: "json"))
+        let provider = RAWGMetadataProvider(httpClient: client, apiKey: "test-key")
+
+        let page = try await provider.search(
+            MetadataSearchRequest(query: "Grand Theft Auto", mediaType: .game)
+        )
+        let result = try #require(page.results.first)
+        #expect(result.id.externalID == "3498")
+        #expect(result.releaseYear == 2013)
+        #expect(result.platformNames == ["PlayStation 5", "PC"])
+        #expect(provider.attribution?.label == "Data by RAWG")
+
+        let request = try #require(await client.request(at: 0))
+        let requestURL = try #require(request.url)
+        #expect(URLComponents(url: requestURL, resolvingAgainstBaseURL: false)?
+            .queryItems?.contains(URLQueryItem(name: "key", value: "test-key")) == true)
+    }
+
+    @Test("RAWG discovery requests the most-added games")
+    func rawgDiscovery() async throws {
+        let client = try FixtureHTTPClient(data: Fixture.data(named: "rawg-search", extension: "json"))
+        let provider = RAWGMetadataProvider(httpClient: client, apiKey: "test-key")
+
+        _ = try await provider.featured(MetadataDiscoveryRequest(mediaType: .game))
+
+        let request = try #require(await client.request(at: 0))
+        let queryItems = URLComponents(
+            url: try #require(request.url),
+            resolvingAgainstBaseURL: false
+        )?.queryItems
+        #expect(queryItems?.contains(URLQueryItem(name: "ordering", value: "-added")) == true)
+        #expect(queryItems?.contains(where: { $0.name == "search" }) == false)
+    }
+
+    @Test("Apple podcast discovery preserves the RSS feed URL")
+    func applePodcastSearch() async throws {
+        let client = try FixtureHTTPClient(
+            data: Fixture.data(named: "apple-podcast-search", extension: "json")
+        )
+        let provider = ApplePodcastMetadataProvider(httpClient: client)
+
+        let page = try await provider.search(
+            MetadataSearchRequest(
+                query: "Example",
+                mediaType: .podcast,
+                countryCode: "SG"
+            )
+        )
+        let result = try #require(page.results.first)
+        #expect(result.title == "The Example Show")
+        #expect(result.creators == ["Example Studio"])
+        #expect(result.feedURL == URL(string: "https://example.com/feed.xml"))
+        #expect(result.episodeCount == 42)
+
+        let request = try #require(await client.request(at: 0))
+        let requestURL = try #require(request.url)
+        #expect(URLComponents(url: requestURL, resolvingAgainstBaseURL: false)?
+            .queryItems?.contains(URLQueryItem(name: "country", value: "SG")) == true)
+    }
+
+    @Test("Apple podcast discovery uses the regional top-shows chart")
+    func applePodcastDiscovery() async throws {
+        let client = try FixtureHTTPClient(
+            data: Fixture.data(named: "apple-podcast-chart", extension: "json")
+        )
+        let provider = ApplePodcastMetadataProvider(httpClient: client)
+
+        let page = try await provider.featured(
+            MetadataDiscoveryRequest(mediaType: .podcast, limit: 10, countryCode: "SG")
+        )
+
+        let result = try #require(page.results.first)
+        #expect(result.title == "The Example Show")
+        #expect(result.genres == ["Technology", "Education"])
+        let request = try #require(await client.request(at: 0))
+        #expect(request.url?.path == "/api/v2/sg/podcasts/top/10/podcasts.json")
+    }
+}
+
+private actor FixtureHTTPClient: HTTPClient {
+    private let response: HTTPResponse
+    private var requests = [URLRequest]()
+
+    init(data: Data, statusCode: Int = 200, headers: [String: String] = [:]) {
+        response = HTTPResponse(data: data, statusCode: statusCode, headers: headers)
+    }
+
+    var requestCount: Int { requests.count }
+
+    func request(at index: Int) -> URLRequest? {
+        requests.indices.contains(index) ? requests[index] : nil
+    }
+
+    func send(
+        _ request: URLRequest,
+        accepting statusPolicy: HTTPStatusPolicy
+    ) async throws -> HTTPResponse {
+        requests.append(request)
+        return try response.validated(using: statusPolicy)
+    }
+}
+
+private enum Fixture {
+    static func data(named name: String, extension fileExtension: String) throws -> Data {
+        let directory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appending(path: "Fixtures", directoryHint: .isDirectory)
+        return try Data(contentsOf: directory.appendingPathComponent(name).appendingPathExtension(fileExtension))
+    }
+}

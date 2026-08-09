@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generator for WhatFun Icon Composer mockups + layer sources.
+"""Generator for Entertainment Value Icon Composer mockups + layer sources.
 All geometry defined once; emits mode mockups 01-04, context 05-06, layer sources.
 """
 import math, os

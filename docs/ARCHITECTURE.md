@@ -14,12 +14,13 @@ Home answers “what am I consuming?” and “what did I consume?” Library is
 
 ## Data boundaries
 
-- `WhatFunSchemaV1` starts explicit SwiftData versioning on the first release.
+- `EntertainmentValueSchemaV1` starts explicit SwiftData versioning on the first release.
 - Relationships are optional with explicit inverses, stable UUIDs have no uniqueness constraints, and delete rules avoid `.deny` for future CloudKit compatibility.
 - Sessions, activity events, ratings, and nested units are source records. Query-friendly status, rating, count, date, and progress fields on the root item are rebuildable projections.
 - Network and import actors exchange `Sendable` DTOs or persistent identifiers, never live SwiftData models.
 - Remote artwork is durably cached in Application Support and downsampled for display. User artwork is archival data.
 - Private podcast feeds live in Keychain; SwiftData stores only an opaque credential identifier.
+- The existing bundle ID, SwiftData store name, Keychain service, artwork directory, backup filenames, and archive identifiers retain their legacy `WhatFun` values so app updates continue to find users’ data and files.
 
 ## Navigation
 

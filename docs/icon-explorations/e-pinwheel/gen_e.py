@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WhatFun icon, exploration E: v2 pinwheel construction rescaled to Apple's
+"""Entertainment Value icon, exploration E: v2 pinwheel construction rescaled to Apple's
 icon-grid proportion (circular motif ~768px of the 1024 canvas), five colour
 schemes, each light + dark. Construction is identical to a-shades 05-ember-v2:
 six tilted petal cards, negative-space sparkle, squircle glyph on the top petal,

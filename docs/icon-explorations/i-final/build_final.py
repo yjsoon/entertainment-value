@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the final WhatFun icon from geometry.json + the approved configurator state.
+"""Build the final Entertainment Value icon from geometry.json + the approved configurator state.
 
 Reproduces the configurator's render math exactly (same gamma-encoded sRGB mixes,
 same transform composition), then emits:
@@ -177,7 +177,7 @@ if __name__ == "__main__":
     # write them here so regeneration never needs a manual copy step.
     repo_root = HERE.parent.parent.parent
     for assets in (HERE / "AppIcon.icon" / "Assets",
-                   repo_root / "WhatFun" / "AppIcon.icon" / "Assets"):
+                   repo_root / "EntertainmentValue" / "AppIcon.icon" / "Assets"):
         if assets.parent.exists():
             assets.mkdir(exist_ok=True)
             (assets / "petals.svg").write_text(out["layer-2-petals.svg"])

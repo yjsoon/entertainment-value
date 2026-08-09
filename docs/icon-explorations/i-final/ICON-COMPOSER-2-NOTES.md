@@ -1,4 +1,4 @@
-# WhatFun icon in Icon Composer 2 (WWDC26 / iOS 27)
+# Entertainment Value icon in Icon Composer 2 (WWDC26 / iOS 27)
 
 Icon Composer 2 shipped as a beta alongside SF Symbols 8 after WWDC26. What it
 adds over the original Icon Composer, per Apple's announcements: per-layer
