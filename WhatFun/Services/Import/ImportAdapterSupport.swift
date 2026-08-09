@@ -163,7 +163,7 @@ nonisolated enum ImportAdapterSupport {
             warnings.append(ImportWarning(
                 code: .invalidRating,
                 severity: .warning,
-                message: "The rating is outside WhatFun's 0.5–5 range.",
+                message: "The rating is outside Entertainment Value's 0.5–5 range.",
                 field: field,
                 rawValue: rawValue,
             ))

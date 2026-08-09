@@ -68,7 +68,7 @@ nonisolated enum PortableArchiveError: Error, Equatable, Sendable, LocalizedErro
     var errorDescription: String? {
         switch self {
         case let .invalidManifestFormat(format):
-            "The package format \(format) is not a WhatFun portable archive."
+            "The package format \(format) is not an Entertainment Value portable archive."
         case let .unsupportedSchemaVersion(version):
             "Portable archive schema version \(version) is not supported."
         case let .missingFile(path):

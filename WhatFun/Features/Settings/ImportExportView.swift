@@ -65,7 +65,7 @@ struct ImportExportView: View {
             isPresented: $presentsPortableExporter,
             document: portableDocument,
             contentType: .whatFunArchive,
-            defaultFilename: "WhatFun-\(dateStamp)-portable.whatfunarchive"
+            defaultFilename: "Entertainment-Value-\(dateStamp)-portable.whatfunarchive"
         ) { result in
             handleExportResult(result, label: "Portable archive")
             portableDocument = nil
@@ -74,7 +74,7 @@ struct ImportExportView: View {
             isPresented: $presentsFullExporter,
             document: fullDocument,
             contentType: .whatFunBackup,
-            defaultFilename: "WhatFun-\(dateStamp)-full.whatfunbackup"
+            defaultFilename: "Entertainment-Value-\(dateStamp)-full.whatfunbackup"
         ) { result in
             handleExportResult(result, label: "Full backup")
             fullDocument = nil
@@ -131,7 +131,7 @@ struct ImportExportView: View {
             Button("Cancel", role: .cancel) { pendingRestore = nil }
         } message: { request in
             if request.mode == .replaceAll {
-                Text("The file is validated first. WhatFun then replaces local semantic records while retaining a rotating recovery snapshot.")
+                Text("The file is validated first. Entertainment Value then replaces local semantic records while retaining a rotating recovery snapshot.")
             } else {
                 Text("Stable IDs already in your library are kept; new records and their history are inserted.")
             }
@@ -170,9 +170,9 @@ struct ImportExportView: View {
                 presentsFullExportOptions = true
             }
         } header: {
-            Text("WhatFun Backup")
+            Text("Entertainment Value Backup")
         } footer: {
-            Text("For restoring WhatFun’s native relationships. Replace restores supported settings; merge leaves current preferences untouched. Private podcast feeds are optional and encrypted separately.")
+            Text("For restoring Entertainment Value’s native relationships. Replace restores supported settings; merge leaves current preferences untouched. Private podcast feeds are optional and encrypted separately.")
         }
     }
 
@@ -194,7 +194,7 @@ struct ImportExportView: View {
         } header: {
             Text("Restore")
         } footer: {
-            Text("Restores a portable archive or full backup created by WhatFun — see the sections above.")
+            Text("Restores a portable archive or full backup created by Entertainment Value — see the sections above.")
         }
     }
 
@@ -248,7 +248,7 @@ struct ImportExportView: View {
         } header: {
             Text("Local Recovery")
         } footer: {
-            Text("WhatFun keeps one validated, private-feed-redacted JSON snapshot per day and retains the seven newest days on this device.")
+            Text("Entertainment Value keeps one validated, private-feed-redacted JSON snapshot per day and retains the seven newest days on this device.")
         }
     }
 
@@ -314,7 +314,7 @@ struct ImportExportView: View {
     }
 
     private func makeCoordinator(
-        generator: String = "WhatFun 0.1"
+        generator: String = "Entertainment Value 0.1"
     ) throws -> DurabilityCoordinator {
         let store = try DailyBackupStore.applicationSupport()
         return DurabilityCoordinator(
@@ -362,7 +362,7 @@ struct ImportExportView: View {
 
             let envelope = FullFidelityArchiveEnvelope(
                 exportedAt: .now,
-                generator: "WhatFun 0.1",
+                generator: "Entertainment Value 0.1",
                 payload: snapshot.payload,
                 preferences: archivePreferences,
                 encryptedPrivateData: encryptedPrivateData
@@ -757,7 +757,7 @@ private struct BackupUnlockView: View {
                     SecureField("Backup Passphrase", text: $passphrase)
                         .textContentType(.password)
                 } footer: {
-                    Text("WhatFun authenticates the encrypted private-feed block before changing your library.")
+                    Text("Entertainment Value authenticates the encrypted private-feed block before changing your library.")
                 }
             }
             .navigationTitle("Unlock Backup")

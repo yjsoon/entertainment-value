@@ -2,7 +2,7 @@
 
 ## Toolchain
 
-WhatFun targets iOS and iPadOS 26 and uses Swift 6 language mode. Build it with Xcode 26; no package resolution or dependency bootstrap is required.
+Entertainment Value targets iOS and iPadOS 26 and uses Swift 6 language mode. Build it with Xcode 26; no package resolution or dependency bootstrap is required.
 
 1. Clone `https://github.com/yjsoon/whatfun.git`.
 2. Open `WhatFun.xcodeproj`.
@@ -39,4 +39,4 @@ Credentials supplied through `Secrets.xcconfig.local` are build configuration, w
 - User-selected artwork is imported through system pickers.
 - Private podcast feed URLs are stored in Keychain rather than SwiftData.
 
-There is no account, analytics SDK, or WhatFun server.
+There is no account, analytics SDK, or Entertainment Value server.

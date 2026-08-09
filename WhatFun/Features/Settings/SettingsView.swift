@@ -102,7 +102,7 @@ struct SettingsView: View {
             }
 
             Section("About") {
-                Link("WhatFun on GitHub", destination: URL(string: "https://github.com/yjsoon/whatfun")!)
+                Link("Entertainment Value on GitHub", destination: URL(string: "https://github.com/yjsoon/whatfun")!)
                 Link("Metadata by TMDB", destination: URL(string: "https://www.themoviedb.org")!)
                 Link("Data by RAWG", destination: URL(string: "https://rawg.io")!)
                 Text("Local-first · no account · no backend")
@@ -227,7 +227,7 @@ private struct MetadataKeyEditorView: View {
                 if status == .unreadable {
                     Section {
                         Label(
-                            "WhatFun couldn’t read your saved key from the Keychain, so it can’t tell whether one is stored. Unlock your device and reopen Settings. Saving a key below will overwrite whatever is there.",
+                            "Entertainment Value couldn’t read your saved key from the Keychain, so it can’t tell whether one is stored. Unlock your device and reopen Settings. Saving a key below will overwrite whatever is there.",
                             systemImage: "exclamationmark.triangle.fill"
                         )
                         .foregroundStyle(WhatFunTheme.coral)

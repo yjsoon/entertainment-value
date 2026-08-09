@@ -38,9 +38,9 @@ private struct StartupFailureView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label("WhatFun couldn’t open", systemImage: "exclamationmark.triangle")
+            Label("Entertainment Value couldn’t open", systemImage: "exclamationmark.triangle")
         } description: {
-            Text("Your archive was left untouched. Quit and reopen the app; if the problem continues, preserve your WhatFun data before reinstalling.\n\n\(error.localizedDescription)")
+            Text("Your archive was left untouched. Quit and reopen the app; if the problem continues, preserve your Entertainment Value data before reinstalling.\n\n\(error.localizedDescription)")
         }
         .padding()
         .archiveBackground()

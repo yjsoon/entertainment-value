@@ -280,7 +280,7 @@ struct ItemEditorView: View {
                     selection: $draft.startReminderDate,
                     displayedComponents: [.date, .hourAndMinute]
                 )
-                Text("If it becomes overdue, WhatFun leaves it quietly on Home without repeated nags.")
+                Text("If it becomes overdue, Entertainment Value leaves it quietly on Home without repeated nags.")
                     .font(.footnote)
                     .foregroundStyle(WhatFunTheme.secondaryInk)
             }

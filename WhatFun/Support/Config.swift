@@ -11,7 +11,7 @@ enum Config {
     static let openLibraryContactEmail = "YOUR_CONTACT_EMAIL"
 
     /// Apple’s iTunes Search API does not require a key for podcast discovery.
-    static let applicationName = "WhatFun"
+    static let applicationName = "EVal"
 
     static var hasTMDBCredentials: Bool {
         !tmdbReadAccessToken.isEmpty

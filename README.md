@@ -1,6 +1,6 @@
-# WhatFun
+# Entertainment Value
 
-WhatFun is a local-first entertainment tracker for iPhone and iPad. It keeps a durable history of books, comics, movies, TV shows, games, and podcasts: what you plan to consume, each session, and when you finished.
+Entertainment Value is a local-first entertainment tracker for iPhone and iPad. It keeps a durable history of books, comics, movies, TV shows, games, and podcasts: what you plan to consume, each session, and when you finished.
 
 The app is built with SwiftUI and SwiftData for iOS 26. It has no third-party dependencies and no backend. Its data model is intentionally ready for a later private CloudKit configuration, while portable CSV archives remain the long-term interoperability format.
 
@@ -15,7 +15,7 @@ The app is built with SwiftUI and SwiftData for iOS 26. It has no third-party de
 
 ## Status
 
-WhatFun is under active development. The first milestones establish the versioned history model, native metadata clients, offline artwork, import/export, and the Liquid Glass interface.
+Entertainment Value is under active development. The first milestones establish the versioned history model, native metadata clients, offline artwork, import/export, and the Liquid Glass interface.
 
 ## Requirements
 
@@ -32,12 +32,12 @@ Clone the repository, open `WhatFun.xcodeproj`, choose the `WhatFun` scheme and 
 - Export formats are documented, versioned, and based on stable UUIDs.
 - Provider credentials and private podcast feed URLs never enter portable exports.
 
-The portable multi-file CSV package is the archive of record for moving data between apps. The versioned JSON format is for exact WhatFun restore; private podcast feed URLs can be included only in its separately encrypted block. See [Data portability and privacy](docs/DATA_PORTABILITY.md) for the contract and import limitations.
+The portable multi-file CSV package is the archive of record for moving data between apps. The versioned JSON format is for exact Entertainment Value restore; private podcast feed URLs can be included only in its separately encrypted block. See [Data portability and privacy](docs/DATA_PORTABILITY.md) for the contract and import limitations.
 
 ## Architecture
 
-WhatFun currently stores data only on the device. CloudKit is deliberately disabled, not silently active. The schema and service boundaries are shaped to make a future private-database sync migration possible; see [Architecture](docs/ARCHITECTURE.md).
+Entertainment Value currently stores data only on the device. CloudKit is deliberately disabled, not silently active. The schema and service boundaries are shaped to make a future private-database sync migration possible; see [Architecture](docs/ARCHITECTURE.md).
 
 ## License
 
-WhatFun is available under the MIT License.
+Entertainment Value is available under the MIT License.

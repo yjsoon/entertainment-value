@@ -81,7 +81,7 @@ nonisolated struct SofaCSVImporter: Sendable {
                 ))
                 ambiguities.append(ImportAmbiguity(
                     field: "Media Type",
-                    message: "Choose a WhatFun media type for this Sofa row.",
+                    message: "Choose an Entertainment Value media type for this Sofa row.",
                     candidates: ArchiveMediaKind.allCases.map(\.rawValue),
                 ))
             }

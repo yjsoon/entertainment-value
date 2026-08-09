@@ -7,7 +7,7 @@ import Foundation
 final class DurabilityCoordinator {
     /// Generator recorded in unattended recovery snapshots. Single source for the
     /// automatic daily-backup path so the view layer never re-spells the literal.
-    static let automaticRecoveryGenerator = "WhatFun 0.1 automatic recovery"
+    static let automaticRecoveryGenerator = "Entertainment Value 0.1 automatic recovery"
 
     /// App-only preferences that are safe to embed in a backup, keyed by a documented
     /// stable name. Shared so the automatic and manual paths stay in lockstep.
@@ -40,7 +40,7 @@ final class DurabilityCoordinator {
     init(
         bridge: SwiftDataArchiveBridge,
         dailyStore: DailyBackupStore? = nil,
-        generator: String = "WhatFun"
+        generator: String = "Entertainment Value"
     ) {
         self.bridge = bridge
         self.dailyStore = dailyStore

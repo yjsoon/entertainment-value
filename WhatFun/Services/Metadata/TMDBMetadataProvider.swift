@@ -21,7 +21,7 @@ nonisolated struct TMDBMetadataProvider: MetadataProvider {
     ) -> MetadataProviderAvailability {
         guard let readAccessToken = resolution.token else {
             return .credentialRequired(
-                instructions: "WhatFun could not read your saved TMDB key from the Keychain. Unlock your device, then try again.",
+                instructions: "Entertainment Value could not read your saved TMDB key from the Keychain. Unlock your device, then try again.",
                 setupURL: nil
             )
         }
@@ -190,7 +190,7 @@ nonisolated struct TMDBMetadataProvider: MetadataProvider {
         guard let token = resolution.token else {
             throw MetadataProviderError.missingCredential(
                 provider: id,
-                instructions: "WhatFun could not read your saved TMDB key from the Keychain."
+                instructions: "Entertainment Value could not read your saved TMDB key from the Keychain."
             )
         }
         return token

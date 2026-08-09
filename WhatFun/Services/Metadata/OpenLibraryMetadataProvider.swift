@@ -20,7 +20,7 @@ nonisolated struct OpenLibraryMetadataProvider: MetadataProvider {
         contactEmail: String?
     ) {
         self.httpClient = httpClient
-        self.applicationName = applicationName.metadataNilIfBlank ?? "WhatFun"
+        self.applicationName = applicationName.metadataNilIfBlank ?? "EVal"
         if let contactEmail = contactEmail?.metadataNilIfBlank,
            !contactEmail.hasPrefix("YOUR_")
         {

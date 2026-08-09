@@ -162,9 +162,9 @@ extension MetadataProviderError: LocalizedError {
         case let .missingCredential(provider, _):
             "\(provider.displayName) needs an API credential before it can search."
         case let .invalidRequest(provider):
-            "WhatFun could not create the \(provider.displayName) request."
+            "Entertainment Value could not create the \(provider.displayName) request."
         case let .invalidResponse(provider, _):
-            "\(provider.displayName) returned metadata WhatFun could not understand."
+            "\(provider.displayName) returned metadata Entertainment Value could not understand."
         }
     }
 

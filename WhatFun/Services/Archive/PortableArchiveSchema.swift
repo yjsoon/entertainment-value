@@ -80,9 +80,9 @@ nonisolated enum PortableArchiveSchema {
 
     static var documentation: String {
         var sections = [
-            "# WhatFun portable archive schema v\(PortableArchiveManifest.currentSchemaVersion)",
+            "# Entertainment Value portable archive schema v\(PortableArchiveManifest.currentSchemaVersion)",
             "",
-            "This directory is the long-term, app-neutral archive of record for WhatFun. " +
+            "This directory is the long-term, app-neutral archive of record for Entertainment Value. " +
                 "Every table is UTF-8 RFC 4180 CSV with a header row and CRLF record endings.",
             "",
             "## Conventions",

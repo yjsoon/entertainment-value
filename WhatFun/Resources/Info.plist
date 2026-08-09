@@ -5,12 +5,12 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>WhatFun</string>
+	<string>EVal</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>WhatFun Full Backup</string>
+			<string>Entertainment Value Full Backup</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
@@ -22,7 +22,7 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>WhatFun Portable Archive</string>
+			<string>Entertainment Value Portable Archive</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSTypeIsPackage</key>
@@ -89,7 +89,7 @@
 				<string>public.json</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>WhatFun Full Backup</string>
+			<string>Entertainment Value Full Backup</string>
 			<key>UTTypeIdentifier</key>
 			<string>com.yjsoon.whatfun.backup</string>
 			<key>UTTypeTagSpecification</key>
@@ -108,7 +108,7 @@
 				<string>com.apple.package</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>WhatFun Portable Archive</string>
+			<string>Entertainment Value Portable Archive</string>
 			<key>UTTypeIdentifier</key>
 			<string>com.yjsoon.whatfun.portable-archive</string>
 			<key>UTTypeTagSpecification</key>

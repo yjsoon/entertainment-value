@@ -65,7 +65,7 @@ extension HTTPClientError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidResponse:
-            "The server returned a response WhatFun could not understand."
+            "The server returned a response Entertainment Value could not understand."
         case let .unacceptableStatus(code, _, _):
             "The metadata service returned HTTP status \(code)."
         case let .transport(_, message):

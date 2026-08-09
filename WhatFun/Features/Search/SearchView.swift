@@ -76,7 +76,7 @@ struct SearchView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle(presentation == .quickAdd ? "Add to WhatFun" : "Search")
+        .navigationTitle(presentation == .quickAdd ? "Add to Entertainment Value" : "Search")
         .navigationBarTitleDisplayMode(presentation == .quickAdd ? .inline : .automatic)
         .searchable(
             text: $query,
@@ -141,7 +141,7 @@ struct SearchView: View {
 
             Spacer()
 
-            Text("Add to WhatFun")
+            Text("Add to Entertainment Value")
                 .font(.headline)
 
             Spacer()

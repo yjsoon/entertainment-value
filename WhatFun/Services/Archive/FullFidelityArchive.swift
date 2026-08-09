@@ -176,7 +176,7 @@ nonisolated enum FullFidelityArchiveError: Error, Equatable, Sendable, Localized
     var errorDescription: String? {
         switch self {
         case let .unsupportedFormat(format):
-            "This is not a WhatFun full backup (found \(format))."
+            "This is not an Entertainment Value full backup (found \(format))."
         case let .unsupportedSchemaVersion(version):
             "This backup uses unsupported schema version \(version)."
         case let .privateFeedSecretOutsideEncryptedBlock(referenceID):

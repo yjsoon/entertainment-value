@@ -80,7 +80,7 @@ struct HomeView: View {
             }
             .padding(.vertical, 12)
         }
-        .navigationTitle("WhatFun")
+        .navigationTitle("Entertainment Value")
         .archiveBackground()
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {

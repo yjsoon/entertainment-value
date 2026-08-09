@@ -128,7 +128,7 @@ struct SmartRuleEditor: View {
                     }
                 } else {
                     Label(
-                        "This rule came from a newer or different WhatFun version. It will be ignored until you choose a supported field.",
+                        "This rule came from a newer or different Entertainment Value version. It will be ignored until you choose a supported field.",
                         systemImage: "exclamationmark.triangle"
                     )
                     .font(.footnote)

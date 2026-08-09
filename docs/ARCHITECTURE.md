@@ -2,13 +2,13 @@
 
 ## Product shape
 
-WhatFun is a personal archive, not a playback client. One canonical library item can have many consumption cycles and many timestamped sessions. Marking an item complete is a lifecycle event separate from logging a session.
+Entertainment Value is a personal archive, not a playback client. One canonical library item can have many consumption cycles and many timestamped sessions. Marking an item complete is a lifecycle event separate from logging a session.
 
 The six root media kinds are books, comics, movies, TV shows, games, and podcasts. A generic nested content unit represents TV seasons and episodes, comic volumes and issues, and podcast episodes. This keeps shared history behavior uniform without SwiftData inheritance.
 
 ## Visual and interaction thesis
 
-WhatFun is a warm personal archive: beige paper and coral signals in light mode, aubergine ink and softened coral in dark mode. Cover art carries the emotion. Liquid Glass belongs to navigation and actions rather than content cards.
+Entertainment Value is a warm personal archive: beige paper and coral signals in light mode, aubergine ink and softened coral in dark mode. Cover art carries the emotion. Liquid Glass belongs to navigation and actions rather than content cards.
 
 Home answers “what am I consuming?” and “what did I consume?” Library is a cover-first archive, Lists organize intent, and Search adds or finds media. Session logging is a brief acknowledgement; filters move smoothly; cover-to-detail is the one richer transition. Motion always respects system accessibility settings.
 

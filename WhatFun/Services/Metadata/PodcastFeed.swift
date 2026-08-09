@@ -72,7 +72,7 @@ nonisolated struct RSSPodcastFeedClient: PodcastFeedRefreshing {
     private let httpClient: any HTTPClient
     private let applicationName: String
 
-    init(httpClient: any HTTPClient, applicationName: String = "WhatFun") {
+    init(httpClient: any HTTPClient, applicationName: String = "EVal") {
         self.httpClient = httpClient
         self.applicationName = applicationName
     }
