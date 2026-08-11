@@ -52,6 +52,5 @@
   ],
   "supported-platforms": {
     "squares": "shared"
-  },
-  "color-space-for-untagged-svg-colors": "srgb"
+  }
 }
