@@ -24,7 +24,14 @@ enum LibraryGridStyle: String, CaseIterable, Identifiable {
 struct LibraryItemTile: View {
     let item: LibraryItem
     let style: LibraryGridStyle
+    /// Crops the cover to the shared poster shape and reserves both title lines,
+    /// so tiles sitting side by side in a rail keep their rows level.
+    var uniformSize = false
     let action: () -> Void
+
+    private var coverAspectRatio: CGFloat {
+        style == .flow && !uniformSize ? item.coverAspectRatio : 2.0 / 3.0
+    }
 
     var body: some View {
         Button(action: action) {
@@ -32,12 +39,9 @@ struct LibraryItemTile: View {
                 ZStack(alignment: .topTrailing) {
                     CoverArtworkView(
                         item: item,
-                        contentMode: style == .flow ? .fill : .fit
+                        contentMode: style == .flow || uniformSize ? .fill : .fit
                     )
-                    .aspectRatio(
-                        style == .flow ? item.coverAspectRatio : 2.0 / 3.0,
-                        contentMode: .fit
-                    )
+                    .aspectRatio(coverAspectRatio, contentMode: .fit)
                     .background(EntertainmentValueTheme.raisedBackground)
                     .clipShape(CoverShape(cornerRadius: style == .flow ? 22 : 16))
                     .overlay {
@@ -61,7 +65,7 @@ struct LibraryItemTile: View {
                     .font(style == .flow ? .headline : .subheadline.weight(.semibold))
                     .fontDesign(.rounded)
                     .foregroundStyle(EntertainmentValueTheme.ink)
-                    .lineLimit(2)
+                    .lineLimit(2, reservesSpace: uniformSize)
                     .multilineTextAlignment(.leading)
 
                 HStack(spacing: 5) {
