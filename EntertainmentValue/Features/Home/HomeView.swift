@@ -290,18 +290,31 @@ private struct ActiveItemTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            LibraryItemTile(item: item, style: .flow, action: open)
+            LibraryItemTile(item: item, style: .flow, uniformSize: true, action: open)
 
-            if !focusSessions.isEmpty {
-                Text(period.sessionCountSummary(focusSessions.count))
-                    .font(.caption)
-                    .foregroundStyle(EntertainmentValueTheme.secondaryInk)
-                    .lineLimit(2)
+            // Reserved rather than conditional: every tile in the rail keeps the
+            // same height, so the log buttons stay level across the row.
+            Text(focusSessions.isEmpty ? "" : period.sessionCountSummary(focusSessions.count))
+                .font(.caption)
+                .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+                .lineLimit(2, reservesSpace: true)
+                .accessibilityHidden(focusSessions.isEmpty)
+
+            // A tile is a third of the screen wide, so anything longer than
+            // "Log" wraps and leaves the row uneven. The fuller wording lives
+            // in the accessibility label instead.
+            Button(action: log) {
+                Label("Log", systemImage: "plus.circle.fill")
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity)
             }
-
-            Button(focusSessions.isEmpty ? "Log Session" : "Log Again", systemImage: "plus.circle.fill", action: log)
-                .buttonStyle(.glassProminent)
-                .controlSize(.small)
+            .buttonStyle(.glass)
+            .controlSize(.small)
+            .accessibilityLabel(
+                focusSessions.isEmpty
+                    ? "Log a session for \(item.title)"
+                    : "Log another session for \(item.title)"
+            )
         }
     }
 }
