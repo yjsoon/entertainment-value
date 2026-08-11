@@ -76,6 +76,8 @@ nonisolated enum PortableArchiveSchema {
             "attribution_url", "is_active_feed", "is_private_feed", "credential_keychain_id", "created_at",
             "updated_at",
         ],
+        .mediaSubscriptions: ["id", "name", "normalized_name", "expected_monthly_amount", "currency_code", "started_at", "created_at", "updated_at"],
+        .mediaAccessAssignments: ["id", "item_id", "type", "purchase_amount", "purchase_currency_code", "purchased_at", "subscription_id", "created_at", "updated_at"],
     ]
 
     static var documentation: String {
@@ -137,6 +139,8 @@ nonisolated enum PortableArchiveSchema {
             .credits: "Ordered creator, cast, author, developer, and other credited names.",
             .reminders: "Semantic start reminders; device notification identifiers are regenerated on restore.",
             .externalReferences: "Provider identities, public URLs, refresh validators, and attribution.",
+            .mediaSubscriptions: "Media subscriptions and their expected monthly monetary amount.",
+            .mediaAccessAssignments: "Bought or subscription access assigned to a library item.",
         ]
 
         for table in PortableArchiveTable.allCases {

@@ -6,7 +6,7 @@ Entertainment Value has two first-party export formats with different jobs. They
 
 A portable export is a directory package containing UTF-8 RFC 4180 CSV tables, `manifest.json`, `SCHEMA.md`, and any user-owned artwork assets. It is intended to remain understandable and realistically importable without Entertainment Value.
 
-The tables preserve stable UUID joins for canonical items, nested units, consumption cycles, sessions, lifecycle events, notable quotes, lists and smart rules, list and tag membership, artwork, credits, reminders, and metadata references. Dates use ISO 8601 instants; sessions also retain their original IANA time-zone identifier. Ratings use half steps on a 0.5–5 scale, and page, elapsed-time, playtime, and percentage progress have named columns.
+The tables preserve stable UUID joins for canonical items, nested units, consumption cycles, sessions, lifecycle events, notable quotes, lists and smart rules, list and tag membership, artwork, credits, reminders, metadata references, media subscriptions, and bought/subscription access assignments. Dates use ISO 8601 instants; sessions also retain their original IANA time-zone identifier. Ratings use half steps on a 0.5–5 scale, and page, elapsed-time, playtime, percentage progress, and monetary amounts have named columns. Monetary amounts use locale-independent decimal strings and are included by default in both export formats.
 
 Each listed file has a SHA-256 checksum, byte count, and, for tables, row count. Entertainment Value validates the manifest, safe relative paths, required tables, and checksums before decoding a restore. The generated `SCHEMA.md` inside every package documents its exact table version and stable value vocabulary.
 

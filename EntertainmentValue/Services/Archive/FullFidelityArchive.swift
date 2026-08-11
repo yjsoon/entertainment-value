@@ -132,7 +132,7 @@ nonisolated enum ArchivePrivateDataCipher {
 }
 
 nonisolated struct FullFidelityArchiveEnvelope: Codable, Equatable, Sendable {
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
     static let formatIdentifier = "app.whatfun.full-backup"
 
     var format: String = Self.formatIdentifier
@@ -198,6 +198,17 @@ nonisolated enum FullFidelityArchiveCodec {
     }
 
     static func decode(_ data: Data) throws -> FullFidelityArchiveEnvelope {
+        var decodingData = data
+        // V1 required all original arrays but predates Media Value. Add only the two V2 arrays.
+        if var object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           (object["schemaVersion"] as? Int) == 1,
+           var payload = object["payload"] as? [String: Any]
+        {
+            payload["mediaSubscriptions"] = payload["mediaSubscriptions"] ?? []
+            payload["mediaAccessAssignments"] = payload["mediaAccessAssignments"] ?? []
+            object["payload"] = payload
+            decodingData = try JSONSerialization.data(withJSONObject: object)
+        }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
@@ -210,7 +221,7 @@ nonisolated enum FullFidelityArchiveCodec {
             }
             return date
         }
-        let envelope = try decoder.decode(FullFidelityArchiveEnvelope.self, from: data)
+        let envelope = try decoder.decode(FullFidelityArchiveEnvelope.self, from: decodingData)
         try envelope.validate()
         return envelope
     }

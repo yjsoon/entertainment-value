@@ -35,6 +35,10 @@ nonisolated enum PortableArchiveTables {
             payload.reminders.map(reminderRow)
         case .externalReferences:
             payload.externalReferences.map(externalReferenceRow)
+        case .mediaSubscriptions:
+            payload.mediaSubscriptions.map(mediaSubscriptionRow)
+        case .mediaAccessAssignments:
+            payload.mediaAccessAssignments.map(mediaAccessAssignmentRow)
         }
         return CSVDocument(headers: PortableArchiveSchema.headers[table, default: []], rows: rows)
     }
@@ -81,6 +85,10 @@ nonisolated enum PortableArchiveTables {
             payload.reminders = try decodeRows(document, table: table, transform: decodeReminder)
         case .externalReferences:
             payload.externalReferences = try decodeRows(document, table: table, transform: decodeExternalReference)
+        case .mediaSubscriptions:
+            payload.mediaSubscriptions = try decodeRows(document, table: table, transform: decodeMediaSubscription)
+        case .mediaAccessAssignments:
+            payload.mediaAccessAssignments = try decodeRows(document, table: table, transform: decodeMediaAccessAssignment)
         }
     }
 
@@ -382,6 +390,21 @@ nonisolated enum PortableArchiveTables {
             "created_at": ArchiveCSVValue.date(value.createdAt),
             "updated_at": ArchiveCSVValue.date(value.updatedAt),
         ]
+    }
+
+    private static func mediaSubscriptionRow(_ value: ArchiveMediaSubscriptionRecord) -> [String: String] {
+        ["id": value.id.uuidString, "name": value.name, "normalized_name": value.normalizedName,
+         "expected_monthly_amount": NSDecimalNumber(decimal: value.expectedMonthlyAmount).stringValue,
+         "currency_code": value.currencyCode, "started_at": ArchiveCSVValue.date(value.startedAt),
+         "created_at": ArchiveCSVValue.date(value.createdAt), "updated_at": ArchiveCSVValue.date(value.updatedAt)]
+    }
+
+    private static func mediaAccessAssignmentRow(_ value: ArchiveMediaAccessAssignmentRecord) -> [String: String] {
+        ["id": value.id.uuidString, "item_id": value.itemID.uuidString, "type": value.typeRaw,
+         "purchase_amount": value.purchaseAmount.map { NSDecimalNumber(decimal: $0).stringValue } ?? "",
+         "purchase_currency_code": value.purchaseCurrencyCode ?? "", "purchased_at": ArchiveCSVValue.date(value.purchasedAt),
+         "subscription_id": ArchiveCSVValue.uuid(value.subscriptionID), "created_at": ArchiveCSVValue.date(value.createdAt),
+         "updated_at": ArchiveCSVValue.date(value.updatedAt)]
     }
 }
 
@@ -692,6 +715,14 @@ private nonisolated extension PortableArchiveTables {
             updatedAt: row.date("updated_at"),
         )
     }
+
+    static func decodeMediaSubscription(_ row: ArchiveCSVRow) throws -> ArchiveMediaSubscriptionRecord {
+        try ArchiveMediaSubscriptionRecord(id: row.uuid("id"), name: row.string("name"), normalizedName: row.string("normalized_name"), expectedMonthlyAmount: row.decimal("expected_monthly_amount"), currencyCode: row.string("currency_code"), startedAt: row.date("started_at"), createdAt: row.date("created_at"), updatedAt: row.date("updated_at"))
+    }
+
+    static func decodeMediaAccessAssignment(_ row: ArchiveCSVRow) throws -> ArchiveMediaAccessAssignmentRecord {
+        try ArchiveMediaAccessAssignmentRecord(id: row.uuid("id"), itemID: row.uuid("item_id"), typeRaw: row.string("type"), purchaseAmount: row.optionalDecimal("purchase_amount"), purchaseCurrencyCode: row.optionalString("purchase_currency_code"), purchasedAt: row.optionalDate("purchased_at"), subscriptionID: row.optionalUUID("subscription_id"), createdAt: row.date("created_at"), updatedAt: row.date("updated_at"))
+    }
 }
 
 private nonisolated struct ArchiveCSVRow {
@@ -748,6 +779,17 @@ private nonisolated struct ArchiveCSVRow {
         guard let value = optionalString(column) else { return nil }
         guard let result = Double(value), result.isFinite else { throw invalid(column, value) }
         return result
+    }
+
+    func decimal(_ column: String) throws -> Decimal {
+        let value = string(column)
+        guard let result = Decimal(string: value, locale: Locale(identifier: "en_US_POSIX")) else { throw invalid(column, value) }
+        return result
+    }
+
+    func optionalDecimal(_ column: String) throws -> Decimal? {
+        guard optionalString(column) != nil else { return nil }
+        return try decimal(column)
     }
 
     func bool(_ column: String) throws -> Bool {

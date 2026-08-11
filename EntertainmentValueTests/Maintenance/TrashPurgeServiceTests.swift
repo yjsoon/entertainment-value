@@ -14,6 +14,13 @@ struct TrashPurgeServiceTests {
         let reminders = InMemoryReminderScheduler()
         let item = LibraryItem(mediaKind: .podcast, title: "Private Show")
         try ActivityService(context: context).register(item)
+        context.insert(MediaAccessAssignment(
+            itemID: item.id,
+            type: .bought,
+            purchaseAmount: 12.50,
+            purchaseCurrencyCode: "USD",
+            purchasedAt: Date(timeIntervalSince1970: 500)
+        ))
 
         let reference = ExternalReference(
             ownerItem: item,
@@ -57,6 +64,7 @@ struct TrashPurgeServiceTests {
 
         #expect(result.itemCount == 1)
         #expect(try context.fetch(FetchDescriptor<LibraryItem>()).isEmpty)
+        #expect(try context.fetch(FetchDescriptor<MediaAccessAssignment>()).isEmpty)
         #expect(await credentials.value(for: "feed-key") == nil)
         #expect(await reminders.request(identifier: reminder.notificationIdentifier) == nil)
     }
@@ -81,4 +89,3 @@ struct TrashPurgeServiceTests {
         #expect(try context.fetch(FetchDescriptor<LibraryItem>()).count == 1)
     }
 }
-

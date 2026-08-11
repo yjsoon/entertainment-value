@@ -18,6 +18,8 @@ nonisolated enum PortableArchiveTable: String, Codable, CaseIterable, Sendable {
     case credits
     case reminders
     case externalReferences = "external_references"
+    case mediaSubscriptions = "media_subscriptions"
+    case mediaAccessAssignments = "media_access_assignments"
 
     var filename: String { "\(rawValue).csv" }
 }
@@ -30,7 +32,7 @@ nonisolated struct PortableArchiveManifestFile: Codable, Equatable, Sendable {
 }
 
 nonisolated struct PortableArchiveManifest: Codable, Equatable, Sendable {
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
     static let formatIdentifier = "app.whatfun.portable-archive"
 
     var format: String = Self.formatIdentifier
@@ -147,7 +149,7 @@ nonisolated enum PortableArchiveBuilder {
     static func decodePayload(from package: PortableArchivePackage) throws -> ArchivePayload {
         try validate(package)
         var payload = ArchivePayload()
-        for table in PortableArchiveTable.allCases {
+        for table in requiredTables(for: package.manifest.schemaVersion) {
             guard let data = package.files[table.filename] else {
                 throw PortableArchiveError.missingFile(table.filename)
             }
@@ -174,7 +176,7 @@ nonisolated enum PortableArchiveBuilder {
             throw PortableArchiveError.manifestDoesNotMatchFile
         }
 
-        let requiredPaths = Set(PortableArchiveTable.allCases.map(\.filename) + [PortableArchivePackage.schemaFilename])
+        let requiredPaths = Set(requiredTables(for: package.manifest.schemaVersion).map(\.filename) + [PortableArchivePackage.schemaFilename])
         let listedPaths = Set(package.manifest.files.map(\.path))
         for path in requiredPaths where !listedPaths.contains(path) {
             throw PortableArchiveError.missingFile(path)
@@ -222,6 +224,34 @@ nonisolated enum PortableArchiveBuilder {
               manifest.schemaVersion <= PortableArchiveManifest.currentSchemaVersion
         else {
             throw PortableArchiveError.unsupportedSchemaVersion(manifest.schemaVersion)
+        }
+    }
+
+    private static let v1Tables: [PortableArchiveTable] = [
+        .items,
+        .units,
+        .cycles,
+        .sessions,
+        .events,
+        .quotes,
+        .lists,
+        .smartListRules,
+        .smartListRuleValues,
+        .listMemberships,
+        .tags,
+        .tagMemberships,
+        .artworks,
+        .credits,
+        .reminders,
+        .externalReferences,
+    ]
+
+    private static func requiredTables(for version: Int) -> [PortableArchiveTable] {
+        switch version {
+        case 1:
+            v1Tables
+        default:
+            v1Tables + [.mediaSubscriptions, .mediaAccessAssignments]
         }
     }
 
@@ -307,7 +337,7 @@ actor PortableArchiveStore {
     }
 }
 
-private nonisolated enum PortableManifestCodec {
+nonisolated enum PortableManifestCodec {
     static func encode(_ manifest: PortableArchiveManifest) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]

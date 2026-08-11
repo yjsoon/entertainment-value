@@ -268,6 +268,27 @@ enum ArchiveFixture {
                 createdAt: timestamp,
                 updatedAt: timestamp,
             )],
+            mediaSubscriptions: [ArchiveMediaSubscriptionRecord(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000019")!,
+                name: "Fixture Plus",
+                normalizedName: "fixture plus",
+                expectedMonthlyAmount: Decimal(string: "19.99")!,
+                currencyCode: "SGD",
+                startedAt: timestamp,
+                createdAt: timestamp,
+                updatedAt: timestamp,
+            )],
+            mediaAccessAssignments: [ArchiveMediaAccessAssignmentRecord(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000020")!,
+                itemID: itemID,
+                typeRaw: MediaAccessType.subscription.rawValue,
+                purchaseAmount: nil,
+                purchaseCurrencyCode: nil,
+                purchasedAt: nil,
+                subscriptionID: UUID(uuidString: "00000000-0000-0000-0000-000000000019")!,
+                createdAt: timestamp,
+                updatedAt: timestamp,
+            )],
         )
     }
 }

@@ -29,6 +29,10 @@ struct TrashPurgeService {
     }
 
     func permanentlyDelete(_ item: LibraryItem) async throws {
+        let assignments = try context.fetch(FetchDescriptor<MediaAccessAssignment>())
+        for assignment in assignments where assignment.itemID == item.id {
+            context.delete(assignment)
+        }
         for reminder in item.reminders ?? [] {
             await reminders.cancel(identifier: reminder.notificationIdentifier)
         }
@@ -59,4 +63,3 @@ struct TrashPurgeService {
         context.delete(list)
     }
 }
-

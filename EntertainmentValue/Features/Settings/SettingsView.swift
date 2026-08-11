@@ -28,6 +28,14 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Your Data") {
+                NavigationLink(value: AppRoute.mediaValueSetup) {
+                    SettingsRow(
+                        title: "Media Value",
+                        subtitle: "Subscriptions and expected monthly amounts",
+                        symbol: "dollarsign.circle"
+                    )
+                }
+
                 NavigationLink(value: AppRoute.importExport) {
                     SettingsRow(
                         title: "Import & Export",

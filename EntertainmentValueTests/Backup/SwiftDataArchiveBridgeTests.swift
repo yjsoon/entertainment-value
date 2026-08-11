@@ -28,6 +28,8 @@ struct SwiftDataArchiveBridgeTests {
         #expect(snapshot.payload.externalReferences.first?.canonicalURL == nil)
         #expect(snapshot.payload.externalReferences.first?.credentialKeychainID == nil)
         #expect(snapshot.payload.externalReferences.first?.externalID.hasPrefix("private.") == true)
+        #expect(snapshot.payload.mediaSubscriptions.first?.expectedMonthlyAmount == Decimal(string: "21.45"))
+        #expect(snapshot.payload.mediaAccessAssignments.first?.subscriptionID == fixture.subscriptionID)
         #expect(snapshot.privatePayload?.privateFeedSecrets.first?.feedURL == fixture.privateFeedURL)
 
         let plainPayloadData = try JSONEncoder().encode(snapshot.payload)
@@ -55,6 +57,8 @@ struct SwiftDataArchiveBridgeTests {
         let event = try #require(try context.fetch(FetchDescriptor<ActivityEvent>()).first)
         let quote = try #require(try context.fetch(FetchDescriptor<NotableQuote>()).first)
         let reference = try #require(try context.fetch(FetchDescriptor<ExternalReference>()).first)
+        let subscription = try #require(try context.fetch(FetchDescriptor<MediaSubscription>()).first)
+        let assignment = try #require(try context.fetch(FetchDescriptor<MediaAccessAssignment>()).first)
 
         #expect(item.id == fixture.itemID)
         #expect(unit.id == fixture.unitID)
@@ -76,6 +80,10 @@ struct SwiftDataArchiveBridgeTests {
         #expect(session.source == .manual)
         #expect(quote.sortOrder == 7)
         #expect(quote.updatedAt == timestamp.addingTimeInterval(10))
+        #expect(subscription.id == fixture.subscriptionID)
+        #expect(subscription.expectedMonthlyAmount == Decimal(string: "21.45"))
+        #expect(assignment.itemID == fixture.itemID)
+        #expect(assignment.subscriptionID == fixture.subscriptionID)
 
         let restoredCredentialKey = try #require(reference.credentialKeychainID)
         #expect(restoredCredentialKey != fixture.sourceCredentialKey)
@@ -89,6 +97,8 @@ struct SwiftDataArchiveBridgeTests {
         )
         #expect(mergeReport.insertedRecords == 0)
         #expect(try context.fetch(FetchDescriptor<LibraryItem>()).count == 1)
+        #expect(try context.fetch(FetchDescriptor<MediaSubscription>()).count == 1)
+        #expect(try context.fetch(FetchDescriptor<MediaAccessAssignment>()).count == 1)
         #expect(reference.credentialKeychainID == beforeMergeKey)
     }
 
@@ -283,6 +293,149 @@ struct SwiftDataArchiveBridgeTests {
         #expect(merged.repeatCount == 1)
         #expect(merged.status == .inProgress)
         #expect(merged.lastSessionAt == timestamp.addingTimeInterval(7_500))
+    }
+
+    @Test("Invalid Media Value joins fail before replace-all mutates the store")
+    func mediaValuePreflightIsAtomic() async throws {
+        let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let sentinel = LibraryItem(mediaKind: .book, title: "Keep me")
+        context.insert(sentinel)
+        try context.save()
+
+        var payload = ArchiveFixture.payload
+        let existing = try #require(payload.mediaAccessAssignments.first)
+        payload.mediaAccessAssignments.append(ArchiveMediaAccessAssignmentRecord(
+            id: UUID(),
+            itemID: existing.itemID,
+            typeRaw: MediaAccessType.bought.rawValue,
+            purchaseAmount: 10,
+            purchaseCurrencyCode: "USD",
+            purchasedAt: timestamp,
+            subscriptionID: nil,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        ))
+
+        do {
+            _ = try await SwiftDataArchiveBridge(
+                context: context,
+                credentials: InMemoryCredentialStore()
+            ).restore(payload: payload, mode: .replaceAll)
+            Issue.record("Expected duplicate item attribution to fail preflight")
+        } catch {}
+
+        #expect(try context.fetch(FetchDescriptor<LibraryItem>()).map(\.id) == [sentinel.id])
+    }
+
+    @Test("Snapshot rejects duplicate Media Value assignments instead of creating an unrestorable backup")
+    func snapshotRejectsInvalidMediaValueState() async throws {
+        let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let item = LibraryItem(mediaKind: .movie, title: "Duplicated access")
+        context.insert(item)
+        context.insert(MediaAccessAssignment(
+            itemID: item.id,
+            type: .bought,
+            purchaseAmount: 10,
+            purchaseCurrencyCode: "USD",
+            purchasedAt: timestamp
+        ))
+        context.insert(MediaAccessAssignment(
+            itemID: item.id,
+            type: .bought,
+            purchaseAmount: 12,
+            purchaseCurrencyCode: "USD",
+            purchasedAt: timestamp
+        ))
+        try context.save()
+
+        do {
+            _ = try await SwiftDataArchiveBridge(
+                context: context,
+                credentials: InMemoryCredentialStore()
+            ).snapshot(includePrivateFeedSecrets: false)
+            Issue.record("Expected snapshot validation to reject duplicate assignments")
+        } catch let error as DurabilityError {
+            guard case .invalidArchive = error else {
+                Issue.record("Unexpected durability error: \(error)")
+                return
+            }
+        }
+    }
+
+    @Test("Snapshot omits orphaned and incoherent Media Value rows and remains restorable")
+    func snapshotOmitsInvalidMediaValueRows() async throws {
+        let source = try AppModelContainer.make(isStoredInMemoryOnly: true)
+        let context = source.mainContext
+        let validItem = LibraryItem(mediaKind: .movie, title: "Valid purchase")
+        let incoherentItem = LibraryItem(mediaKind: .movie, title: "Incomplete purchase")
+        let invalidPlanItem = LibraryItem(mediaKind: .movie, title: "Invalid plan")
+        context.insert(validItem)
+        context.insert(incoherentItem)
+        context.insert(invalidPlanItem)
+        let validAssignment = MediaAccessAssignment(
+            itemID: validItem.id,
+            type: .bought,
+            purchaseAmount: 10,
+            purchaseCurrencyCode: "USD",
+            purchasedAt: timestamp
+        )
+        context.insert(validAssignment)
+        context.insert(MediaAccessAssignment(itemID: incoherentItem.id, type: .bought))
+        context.insert(MediaAccessAssignment(
+            itemID: UUID(),
+            type: .bought,
+            purchaseAmount: 12,
+            purchaseCurrencyCode: "USD",
+            purchasedAt: timestamp
+        ))
+        let invalidPlan = MediaSubscription(
+            name: " ",
+            expectedMonthlyAmount: 10,
+            currencyCode: "USD",
+            startedAt: timestamp
+        )
+        context.insert(invalidPlan)
+        context.insert(MediaAccessAssignment(
+            itemID: invalidPlanItem.id,
+            type: .subscription,
+            subscriptionID: invalidPlan.id
+        ))
+        try context.save()
+
+        let snapshot = try await SwiftDataArchiveBridge(
+            context: context,
+            credentials: InMemoryCredentialStore()
+        ).snapshot(includePrivateFeedSecrets: false)
+        #expect(snapshot.payload.mediaSubscriptions.isEmpty)
+        #expect(snapshot.payload.mediaAccessAssignments.map(\.id) == [validAssignment.id])
+
+        let destination = try AppModelContainer.make(isStoredInMemoryOnly: true)
+        _ = try await SwiftDataArchiveBridge(
+            context: destination.mainContext,
+            credentials: InMemoryCredentialStore()
+        ).restore(payload: snapshot.payload, mode: .replaceAll)
+        #expect(try destination.mainContext.fetch(FetchDescriptor<MediaAccessAssignment>()).count == 1)
+    }
+
+    @Test("Frozen V1 full and portable archives restore with empty Media Value data")
+    func restoresFrozenV1Archives() async throws {
+        let fullPayload = try ArchiveV1Fixture.fullEnvelope().payload
+        let portablePayload = try PortableArchiveBuilder.decodePayload(
+            from: ArchiveV1Fixture.portablePackage()
+        )
+
+        for payload in [fullPayload, portablePayload] {
+            let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
+            _ = try await SwiftDataArchiveBridge(
+                context: container.mainContext,
+                credentials: InMemoryCredentialStore()
+            ).restore(payload: payload, mode: .replaceAll)
+            #expect(try container.mainContext.fetch(FetchDescriptor<LibraryItem>()).count == 1)
+            #expect(try container.mainContext.fetch(FetchDescriptor<MediaSubscription>()).isEmpty)
+            #expect(try container.mainContext.fetch(FetchDescriptor<MediaAccessAssignment>()).isEmpty)
+        }
     }
 
     @Test("Full JSON authenticates private data before replace-all mutates SwiftData")
@@ -526,6 +679,24 @@ struct SwiftDataArchiveBridgeTests {
         item.externalReferences = [reference]
         await credentials.set(ids.privateFeedURL, for: ids.sourceCredentialKey)
 
+        let subscription = MediaSubscription(
+            id: ids.subscriptionID,
+            name: "Fixture TV",
+            expectedMonthlyAmount: Decimal(string: "21.45")!,
+            currencyCode: "SGD",
+            startedAt: timestamp,
+            createdAt: timestamp
+        )
+        let assignment = MediaAccessAssignment(
+            id: ids.assignmentID,
+            itemID: item.id,
+            type: .subscription,
+            subscriptionID: subscription.id,
+            createdAt: timestamp
+        )
+        context.insert(subscription)
+        context.insert(assignment)
+
         ActivityProjection.rebuild(item, now: timestamp.addingTimeInterval(3_600))
         // Distinct stale timestamps: a restore that rewrote or cross-copied any
         // updatedAt would break the round-trip assertions unambiguously.
@@ -551,6 +722,8 @@ private nonisolated struct FixtureIDs: Sendable {
     let listMembershipID = UUID(uuidString: "20000000-0000-0000-0000-00000000000A")!
     let referenceID = UUID(uuidString: "20000000-0000-0000-0000-00000000000B")!
     let episodeUnitID = UUID(uuidString: "20000000-0000-0000-0000-00000000000C")!
+    let subscriptionID = UUID(uuidString: "20000000-0000-0000-0000-00000000000D")!
+    let assignmentID = UUID(uuidString: "20000000-0000-0000-0000-00000000000E")!
     let sourceCredentialKey = "source-private-feed-key"
     let privateFeedURL = "https://private.example/feed?token=private"
 }

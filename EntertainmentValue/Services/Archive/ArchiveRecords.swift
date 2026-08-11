@@ -376,6 +376,71 @@ nonisolated struct ArchiveExternalReferenceRecord: Codable, Equatable, Sendable,
     var updatedAt: Date
 }
 
+nonisolated struct ArchiveMediaSubscriptionRecord: Codable, Equatable, Sendable, Identifiable {
+    var id: UUID
+    var name: String
+    var normalizedName: String
+    var expectedMonthlyAmount: Decimal
+    var currencyCode: String
+    var startedAt: Date
+    var createdAt: Date
+    var updatedAt: Date
+
+    private enum CodingKeys: String, CodingKey { case id, name, normalizedName, expectedMonthlyAmount, currencyCode, startedAt, createdAt, updatedAt }
+    init(id: UUID, name: String, normalizedName: String, expectedMonthlyAmount: Decimal, currencyCode: String, startedAt: Date, createdAt: Date, updatedAt: Date) {
+        self.id = id; self.name = name; self.normalizedName = normalizedName
+        self.expectedMonthlyAmount = expectedMonthlyAmount; self.currencyCode = currencyCode
+        self.startedAt = startedAt; self.createdAt = createdAt; self.updatedAt = updatedAt
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id); name = try c.decode(String.self, forKey: .name)
+        normalizedName = try c.decode(String.self, forKey: .normalizedName)
+        let amountString = try c.decode(String.self, forKey: .expectedMonthlyAmount)
+        guard let amount = Decimal(string: amountString, locale: Locale(identifier: "en_US_POSIX")) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .expectedMonthlyAmount,
+                in: c,
+                debugDescription: "Invalid decimal"
+            )
+        }
+        expectedMonthlyAmount = amount
+        currencyCode = try c.decode(String.self, forKey: .currencyCode); startedAt = try c.decode(Date.self, forKey: .startedAt)
+        createdAt = try c.decode(Date.self, forKey: .createdAt); updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+    }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id); try c.encode(name, forKey: .name); try c.encode(normalizedName, forKey: .normalizedName)
+        try c.encode(NSDecimalNumber(decimal: expectedMonthlyAmount).stringValue, forKey: .expectedMonthlyAmount)
+        try c.encode(currencyCode, forKey: .currencyCode); try c.encode(startedAt, forKey: .startedAt)
+        try c.encode(createdAt, forKey: .createdAt); try c.encode(updatedAt, forKey: .updatedAt)
+    }
+}
+
+nonisolated struct ArchiveMediaAccessAssignmentRecord: Codable, Equatable, Sendable, Identifiable {
+    var id: UUID; var itemID: UUID; var typeRaw: String
+    var purchaseAmount: Decimal?; var purchaseCurrencyCode: String?; var purchasedAt: Date?; var subscriptionID: UUID?
+    var createdAt: Date; var updatedAt: Date
+    private enum CodingKeys: String, CodingKey { case id, itemID, typeRaw, purchaseAmount, purchaseCurrencyCode, purchasedAt, subscriptionID, createdAt, updatedAt }
+    init(id: UUID, itemID: UUID, typeRaw: String, purchaseAmount: Decimal?, purchaseCurrencyCode: String?, purchasedAt: Date?, subscriptionID: UUID?, createdAt: Date, updatedAt: Date) {
+        self.id=id; self.itemID=itemID; self.typeRaw=typeRaw; self.purchaseAmount=purchaseAmount; self.purchaseCurrencyCode=purchaseCurrencyCode; self.purchasedAt=purchasedAt; self.subscriptionID=subscriptionID; self.createdAt=createdAt; self.updatedAt=updatedAt
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self); id = try c.decode(UUID.self, forKey: .id); itemID = try c.decode(UUID.self, forKey: .itemID); typeRaw = try c.decode(String.self, forKey: .typeRaw)
+        if let value = try c.decodeIfPresent(String.self, forKey: .purchaseAmount) {
+            guard let decimal = Decimal(string: value, locale: Locale(identifier: "en_US_POSIX")) else {
+                throw DecodingError.dataCorruptedError(forKey: .purchaseAmount, in: c, debugDescription: "Invalid decimal")
+            }
+            purchaseAmount = decimal
+        } else { purchaseAmount = nil }
+        purchaseCurrencyCode = try c.decodeIfPresent(String.self, forKey: .purchaseCurrencyCode); purchasedAt = try c.decodeIfPresent(Date.self, forKey: .purchasedAt); subscriptionID = try c.decodeIfPresent(UUID.self, forKey: .subscriptionID); createdAt = try c.decode(Date.self, forKey: .createdAt); updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+    }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self); try c.encode(id, forKey: .id); try c.encode(itemID, forKey: .itemID); try c.encode(typeRaw, forKey: .typeRaw)
+        try c.encodeIfPresent(purchaseAmount.map { NSDecimalNumber(decimal: $0).stringValue }, forKey: .purchaseAmount); try c.encodeIfPresent(purchaseCurrencyCode, forKey: .purchaseCurrencyCode); try c.encodeIfPresent(purchasedAt, forKey: .purchasedAt); try c.encodeIfPresent(subscriptionID, forKey: .subscriptionID); try c.encode(createdAt, forKey: .createdAt); try c.encode(updatedAt, forKey: .updatedAt)
+    }
+}
+
 nonisolated struct ArchivePayload: Codable, Equatable, Sendable {
     var items: [ArchiveItemRecord] = []
     var units: [ArchiveUnitRecord] = []
@@ -393,6 +458,8 @@ nonisolated struct ArchivePayload: Codable, Equatable, Sendable {
     var credits: [ArchiveCreditRecord] = []
     var reminders: [ArchiveReminderRecord] = []
     var externalReferences: [ArchiveExternalReferenceRecord] = []
+    var mediaSubscriptions: [ArchiveMediaSubscriptionRecord] = []
+    var mediaAccessAssignments: [ArchiveMediaAccessAssignmentRecord] = []
 
     /// Stable ordering makes checksums and source-control diffs reproducible.
     func stablySorted() -> ArchivePayload {
@@ -413,6 +480,8 @@ nonisolated struct ArchivePayload: Codable, Equatable, Sendable {
             credits: credits.sorted(by: Self.idOrder),
             reminders: reminders.sorted(by: Self.idOrder),
             externalReferences: externalReferences.sorted(by: Self.idOrder),
+            mediaSubscriptions: mediaSubscriptions.sorted(by: Self.idOrder),
+            mediaAccessAssignments: mediaAccessAssignments.sorted(by: Self.idOrder),
         )
     }
 
