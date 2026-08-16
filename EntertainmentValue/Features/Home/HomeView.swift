@@ -64,6 +64,7 @@ struct HomeView: View {
                 } else {
                     ConsumedHistorySection(
                         items: visibleItems,
+                        valueItems: items,
                         period: focusPeriod,
                         referenceDate: .now,
                         calendar: calendar
@@ -323,22 +324,34 @@ private struct ActiveItemTile: View {
 
 private struct ConsumedHistorySection: View {
     @Query private var sessions: [ConsumptionSession]
+    @Query private var assignments: [MediaAccessAssignment]
+    @Query(sort: \MediaSubscription.normalizedName) private var subscriptions: [MediaSubscription]
 
     let items: [LibraryItem]
+    let valueItems: [LibraryItem]
     let period: HistoryPeriod
+    let referenceDate: Date
+    let calendar: Calendar
+    private let periodInterval: DateInterval
 
     init(
         items: [LibraryItem],
+        valueItems: [LibraryItem],
         period: HistoryPeriod,
         referenceDate: Date,
         calendar: Calendar
     ) {
         self.items = items
+        self.valueItems = valueItems
         self.period = period
+        self.referenceDate = referenceDate
+        self.calendar = calendar
 
-        let interval = period.interval(containing: referenceDate, calendar: calendar)
-        let start = interval.start
-        let end = interval.end
+        let periodInterval = period.interval(containing: referenceDate, calendar: calendar)
+        let monthInterval = HistoryPeriod.month.interval(containing: referenceDate, calendar: calendar)
+        self.periodInterval = periodInterval
+        let start = min(periodInterval.start, monthInterval.start)
+        let end = max(periodInterval.end, monthInterval.end)
         _sessions = Query(
             filter: #Predicate<ConsumptionSession> { session in
                 session.deletedAt == nil && session.occurredAt >= start && session.occurredAt < end
@@ -349,25 +362,57 @@ private struct ConsumedHistorySection: View {
 
     private var loggedSessions: [ConsumptionSession] {
         let itemIDs = Set(items.map(\.id))
-        return sessions.filter { itemIDs.contains($0.rootItemID) }
+        return sessions.filter {
+            itemIDs.contains($0.rootItemID) &&
+                $0.occurredAt >= periodInterval.start && $0.occurredAt < periodInterval.end
+        }
     }
 
-    private var counts: [(item: LibraryItem, summary: SessionCount, durationSeconds: Int)] {
+    private var subscriptionValuesByItemID: [UUID: LoggedSubscriptionValue] {
+        let subscriptionsByID = Dictionary(uniqueKeysWithValues: subscriptions.map { ($0.id, $0) })
+        let monthlyValuesByID = Dictionary(uniqueKeysWithValues: MediaValueCalculator.subscriptionValues(
+            subscriptions: subscriptions,
+            assignments: assignments,
+            items: valueItems,
+            sessions: sessions,
+            monthContaining: referenceDate,
+            calendar: calendar
+        ).map { ($0.subscriptionID, $0) })
+
+        return assignments.reduce(into: [UUID: LoggedSubscriptionValue]()) { values, assignment in
+            guard assignment.type == .subscription,
+                  let subscriptionID = assignment.subscriptionID,
+                  let subscription = subscriptionsByID[subscriptionID]
+            else { return }
+            let monthlyValue = monthlyValuesByID[subscriptionID]
+            values[assignment.itemID] = LoggedSubscriptionValue(
+                name: subscription.name,
+                estimatedShare: monthlyValue?.items.first { $0.itemID == assignment.itemID }?.estimatedShare,
+                currencyCode: subscription.currencyCode
+            )
+        }
+    }
+
+    private var counts: [LoggedItemSummary] {
+        let loggedSessions = loggedSessions
+        let subscriptionValuesByItemID = subscriptionValuesByItemID
         let byID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
         let durationsByItemID = loggedSessions.reduce(into: [UUID: Int]()) { durations, session in
             durations[session.rootItemID, default: 0] += session.durationSeconds ?? 0
         }
-        let interval: DateInterval
-        if let first = loggedSessions.last?.occurredAt, let last = loggedSessions.first?.occurredAt {
-            interval = DateInterval(start: first, end: last.addingTimeInterval(0.001))
-        } else {
-            interval = DateInterval(start: .distantPast, end: .distantFuture)
-        }
         return SessionAggregator.counts(
             for: loggedSessions.map { SessionOccurrence(itemID: $0.rootItemID, occurredAt: $0.occurredAt) },
-            in: interval
+            in: periodInterval
         ).compactMap { summary in
-            byID[summary.itemID].map { ($0, summary, durationsByItemID[summary.itemID, default: 0]) }
+            byID[summary.itemID].map {
+                LoggedItemSummary(
+                    item: $0,
+                    sessionCount: summary.count,
+                    durationSeconds: durationsByItemID[summary.itemID, default: 0],
+                    lastOccurredAt: summary.lastOccurredAt,
+                    subscriptionValue: subscriptionValuesByItemID[summary.itemID]
+                )
+            }
         }
     }
 
@@ -399,11 +444,16 @@ private struct ConsumedHistorySection: View {
                 .frame(minHeight: 190)
             } else {
                 LazyVStack(spacing: 0) {
-                    ForEach(counts, id: \.item.id) { entry in
+                    ForEach(counts) { entry in
                         ConsumedItemRow(
                             item: entry.item,
-                            count: entry.summary.count,
-                            durationSeconds: entry.durationSeconds
+                            count: entry.sessionCount,
+                            durationSeconds: entry.durationSeconds,
+                            lastOccurredAt: entry.lastOccurredAt,
+                            subscriptionValue: entry.subscriptionValue,
+                            showsValue: period == .month,
+                            referenceDate: referenceDate,
+                            calendar: calendar
                         )
                     }
                 }
@@ -577,49 +627,119 @@ private struct MediaValueMonthCard: View {
     }
 }
 
+private struct LoggedSubscriptionValue {
+    let name: String
+    let estimatedShare: Decimal?
+    let currencyCode: String
+}
+
+private struct LoggedItemSummary: Identifiable {
+    var id: UUID { item.id }
+
+    let item: LibraryItem
+    let sessionCount: Int
+    let durationSeconds: Int
+    let lastOccurredAt: Date
+    let subscriptionValue: LoggedSubscriptionValue?
+}
+
 private struct ConsumedItemRow: View {
     let item: LibraryItem
     let count: Int
     let durationSeconds: Int
+    let lastOccurredAt: Date
+    let subscriptionValue: LoggedSubscriptionValue?
+    let showsValue: Bool
+    let referenceDate: Date
+    let calendar: Calendar
     @Environment(AppNavigation.self) private var navigation
 
     var body: some View {
-        Button {
-            navigation.showItem(item.id, from: .home)
-        } label: {
-            HStack(spacing: 10) {
-                CoverArtworkView(item: item)
-                    .aspectRatio(item.coverAspectRatio, contentMode: .fit)
-                    .frame(width: 34, height: 44)
-                    .clipShape(CoverShape(cornerRadius: 7))
+        HStack(spacing: 4) {
+            Button {
+                navigation.showItem(item.id, from: .home)
+            } label: {
+                HStack(spacing: 10) {
+                    CoverArtworkView(item: item)
+                        .aspectRatio(item.coverAspectRatio, contentMode: .fit)
+                        .frame(width: 34, height: 44)
+                        .clipShape(CoverShape(cornerRadius: 7))
 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(item.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(EntertainmentValueTheme.ink)
-                        .lineLimit(1)
-                    LoggedActivitySummary(sessionCount: count, durationSeconds: durationSeconds)
-                        .font(.caption)
-                        .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(item.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(EntertainmentValueTheme.ink)
+                            .lineLimit(1)
+                        LoggedActivitySummary(
+                            sessionCount: count,
+                            durationSeconds: durationSeconds,
+                            sourceName: subscriptionValue?.name
+                        )
+                            .font(.caption)
+                            .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+
+                        Text(tertiarySummary)
+                            .font(.caption2)
+                            .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+                    }
                 }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-                    .accessibilityHidden(true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(.rect)
             }
-            .padding(.vertical, 3)
-            .contentShape(.rect)
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button {
+                navigation.presentedSheet = .logSession(item.id)
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(EntertainmentValueTheme.coral)
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Log another session for \(item.title)")
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 3)
+    }
+
+    private var valueSummary: String? {
+        guard showsValue,
+              let subscriptionValue,
+              let share = subscriptionValue.estimatedShare,
+              share > 0,
+              count > 0
+        else { return nil }
+        let total = MediaValueFormatting.currency(share, code: subscriptionValue.currencyCode)
+        let each = MediaValueFormatting.currency(share / Decimal(count), code: subscriptionValue.currencyCode)
+        return "\(total) value · \(each) ea"
+    }
+
+    private var tertiarySummary: String {
+        [lastLoggedText, valueSummary].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    private var lastLoggedText: String {
+        let loggedDay = calendar.startOfDay(for: lastOccurredAt)
+        let referenceDay = calendar.startOfDay(for: referenceDate)
+        guard let daysAgo = calendar.dateComponents([.day], from: loggedDay, to: referenceDay).day else {
+            return lastOccurredAt.formatted(.dateTime.month(.abbreviated).day())
+        }
+        switch daysAgo {
+        case 0: return "Today"
+        case 1: return "Yesterday"
+        case 2 ... 6: return "\(daysAgo) days ago"
+        default: return lastOccurredAt.formatted(.dateTime.month(.abbreviated).day())
+        }
     }
 }
 
 private struct LoggedActivitySummary: View {
     let sessionCount: Int
     let durationSeconds: Int
+    var sourceName: String?
 
     var body: some View {
         Text(summary)
@@ -629,7 +749,9 @@ private struct LoggedActivitySummary: View {
 
     private var summary: String {
         let sessions = "\(sessionCount) \(sessionCount == 1 ? "session" : "sessions")"
-        guard durationSeconds > 0 else { return sessions }
-        return "\(sessions) · \(MediaValueFormatting.duration(durationSeconds))"
+        var components = [sessions]
+        if let sourceName { components.insert(sourceName, at: 0) }
+        if durationSeconds > 0 { components.append(MediaValueFormatting.duration(durationSeconds)) }
+        return components.joined(separator: " · ")
     }
 }
