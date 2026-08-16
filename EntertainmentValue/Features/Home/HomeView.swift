@@ -210,10 +210,7 @@ struct HomeView: View {
 
     private var activeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeading(
-                title: "In Your Orbit",
-                subtitle: "One session at a time"
-            )
+            SectionHeading(title: "Current")
             .padding(.horizontal, 16)
 
             ScrollView(.horizontal) {
@@ -241,10 +238,7 @@ struct HomeView: View {
 
     private var upNextSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeading(
-                title: "Up Next",
-                subtitle: "Planned, whenever you feel like it"
-            )
+            SectionHeading(title: "Planned")
             .padding(.horizontal, 16)
 
             ScrollView(.horizontal) {
@@ -353,27 +347,47 @@ private struct ConsumedHistorySection: View {
         )
     }
 
-    private var counts: [(item: LibraryItem, summary: SessionCount)] {
+    private var loggedSessions: [ConsumptionSession] {
+        let itemIDs = Set(items.map(\.id))
+        return sessions.filter { itemIDs.contains($0.rootItemID) }
+    }
+
+    private var counts: [(item: LibraryItem, summary: SessionCount, durationSeconds: Int)] {
         let byID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+        let durationsByItemID = loggedSessions.reduce(into: [UUID: Int]()) { durations, session in
+            durations[session.rootItemID, default: 0] += session.durationSeconds ?? 0
+        }
         let interval: DateInterval
-        if let first = sessions.last?.occurredAt, let last = sessions.first?.occurredAt {
+        if let first = loggedSessions.last?.occurredAt, let last = loggedSessions.first?.occurredAt {
             interval = DateInterval(start: first, end: last.addingTimeInterval(0.001))
         } else {
             interval = DateInterval(start: .distantPast, end: .distantFuture)
         }
         return SessionAggregator.counts(
-            for: sessions.map { SessionOccurrence(itemID: $0.rootItemID, occurredAt: $0.occurredAt) },
+            for: loggedSessions.map { SessionOccurrence(itemID: $0.rootItemID, occurredAt: $0.occurredAt) },
             in: interval
         ).compactMap { summary in
-            byID[summary.itemID].map { ($0, summary) }
+            byID[summary.itemID].map { ($0, summary, durationsByItemID[summary.itemID, default: 0]) }
         }
     }
 
+    private var totalDurationSeconds: Int {
+        loggedSessions.lazy.compactMap(\.durationSeconds).reduce(0, +)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 SectionHeading(title: heading)
                 Spacer()
+                if !loggedSessions.isEmpty {
+                    LoggedActivitySummary(
+                        sessionCount: loggedSessions.count,
+                        durationSeconds: totalDurationSeconds
+                    )
+                    .font(.caption)
+                    .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+                }
             }
 
             if counts.isEmpty {
@@ -384,9 +398,13 @@ private struct ConsumedHistorySection: View {
                 )
                 .frame(minHeight: 190)
             } else {
-                LazyVStack(spacing: 4) {
+                LazyVStack(spacing: 0) {
                     ForEach(counts, id: \.item.id) { entry in
-                        ConsumedItemRow(item: entry.item, count: entry.summary.count)
+                        ConsumedItemRow(
+                            item: entry.item,
+                            count: entry.summary.count,
+                            durationSeconds: entry.durationSeconds
+                        )
                     }
                 }
             }
@@ -562,44 +580,56 @@ private struct MediaValueMonthCard: View {
 private struct ConsumedItemRow: View {
     let item: LibraryItem
     let count: Int
+    let durationSeconds: Int
     @Environment(AppNavigation.self) private var navigation
 
     var body: some View {
         Button {
             navigation.showItem(item.id, from: .home)
         } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 CoverArtworkView(item: item)
                     .aspectRatio(item.coverAspectRatio, contentMode: .fit)
-                    .frame(width: 48, height: 62)
-                    .clipShape(CoverShape(cornerRadius: 10))
+                    .frame(width: 34, height: 44)
+                    .clipShape(CoverShape(cornerRadius: 7))
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(item.title)
-                        .font(.headline)
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(EntertainmentValueTheme.ink)
-                        .lineLimit(2)
-                    Text(item.mediaKind.displayName)
+                        .lineLimit(1)
+                    LoggedActivitySummary(sessionCount: count, durationSeconds: durationSeconds)
                         .font(.caption)
                         .foregroundStyle(EntertainmentValueTheme.secondaryInk)
                 }
 
                 Spacer()
 
-                if count > 1 {
-                    Text("× \(count)")
-                        .font(.headline.monospacedDigit())
-                        .foregroundStyle(EntertainmentValueTheme.coral)
-                        .accessibilityLabel("\(count) sessions")
-                } else {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(EntertainmentValueTheme.sage)
-                        .accessibilityLabel("1 session")
-                }
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, 3)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct LoggedActivitySummary: View {
+    let sessionCount: Int
+    let durationSeconds: Int
+
+    var body: some View {
+        Text(summary)
+            .monospacedDigit()
+            .lineLimit(1)
+    }
+
+    private var summary: String {
+        let sessions = "\(sessionCount) \(sessionCount == 1 ? "session" : "sessions")"
+        guard durationSeconds > 0 else { return sessions }
+        return "\(sessions) · \(MediaValueFormatting.duration(durationSeconds))"
     }
 }
