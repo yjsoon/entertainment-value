@@ -188,6 +188,67 @@ struct MediaValueServiceTests {
         #expect(try context.fetch(FetchDescriptor<MediaAccessAssignment>()).isEmpty)
     }
 
+    @Test("Staged source and activity commit in one save")
+    func stagedSourceAndActivityCommit() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let item = LibraryItem(mediaKind: .movie, title: "Moonlight")
+        context.insert(item)
+        let mediaValue = MediaValueService(context: context)
+        let plan = try mediaValue.saveSubscription(
+            name: "Criterion Channel",
+            amount: 10.99,
+            currencyCode: "USD",
+            startedAt: date(2026, 1, 1)
+        )
+        let activity = ActivityService(context: context)
+        let cycle = try activity.startCycle(for: item, saveChanges: false)
+        try mediaValue.setSubscription(
+            itemID: item.id,
+            subscriptionID: plan.id,
+            saveChanges: false
+        )
+
+        _ = try activity.logSession(
+            for: item,
+            in: cycle,
+            at: date(2026, 8, 16),
+            durationSeconds: 7_200
+        )
+
+        #expect(try context.fetch(FetchDescriptor<MediaAccessAssignment>()).count == 1)
+        #expect(try context.fetch(FetchDescriptor<ConsumptionCycle>()).count == 1)
+        #expect(try context.fetch(FetchDescriptor<ConsumptionSession>()).count == 1)
+    }
+
+    @Test("Staged source and activity roll back together")
+    func stagedSourceAndActivityRollback() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let item = LibraryItem(mediaKind: .movie, title: "Moonlight")
+        context.insert(item)
+        let mediaValue = MediaValueService(context: context)
+        let plan = try mediaValue.saveSubscription(
+            name: "Criterion Channel",
+            amount: 10.99,
+            currencyCode: "USD",
+            startedAt: date(2026, 1, 1)
+        )
+        let activity = ActivityService(context: context)
+        _ = try activity.startCycle(for: item, saveChanges: false)
+        try mediaValue.setSubscription(
+            itemID: item.id,
+            subscriptionID: plan.id,
+            saveChanges: false
+        )
+
+        context.rollback()
+
+        #expect(try context.fetch(FetchDescriptor<MediaAccessAssignment>()).isEmpty)
+        #expect(try context.fetch(FetchDescriptor<ConsumptionCycle>()).isEmpty)
+        #expect(try context.fetch(FetchDescriptor<ConsumptionSession>()).isEmpty)
+    }
+
     @Test("Service rejects assignments for missing library items")
     func rejectsMissingItems() throws {
         let container = try makeContainer()

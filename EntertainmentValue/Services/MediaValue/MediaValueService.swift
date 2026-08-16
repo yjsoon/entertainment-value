@@ -72,7 +72,11 @@ struct MediaValueService {
         try context.save()
     }
 
-    func setSubscription(itemID: UUID, subscriptionID: UUID) throws {
+    func setSubscription(
+        itemID: UUID,
+        subscriptionID: UUID,
+        saveChanges: Bool = true
+    ) throws {
         try validateItem(id: itemID)
         let subscriptions = try context.fetch(FetchDescriptor<MediaSubscription>())
         guard subscriptions.contains(where: { $0.id == subscriptionID }) else {
@@ -85,7 +89,7 @@ struct MediaValueService {
         assignment.purchasedAt = nil
         assignment.subscriptionID = subscriptionID
         assignment.updatedAt = .now
-        try context.save()
+        if saveChanges { try context.save() }
     }
 
     func clearAssignment(itemID: UUID) throws {

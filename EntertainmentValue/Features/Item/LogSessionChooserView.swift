@@ -31,9 +31,10 @@ struct LogSessionChooserView: View {
 
     private var recentlyLoggedItems: [LibraryItem] {
         let activeIDs = Set(activeItems.map(\.id))
-        return availableItems
+        return Array(availableItems
             .filter { $0.lastSessionAt != nil && !activeIDs.contains($0.id) }
             .sorted { ($0.lastSessionAt ?? .distantPast) > ($1.lastSessionAt ?? .distantPast) }
+            .prefix(8))
     }
 
     private var remainingItems: [LibraryItem] {
@@ -89,7 +90,7 @@ struct LogSessionChooserView: View {
             }
 
             if !remainingItems.isEmpty {
-                Section("All Titles") {
+                Section("More Titles") {
                     itemRows(remainingItems)
                 }
             }

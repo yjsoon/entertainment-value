@@ -1,6 +1,22 @@
 import SwiftData
 import SwiftUI
 
+nonisolated enum SessionDurationDefaults {
+    static func automatic(
+        mediaKind: MediaKind,
+        selectedUnitKind: ContentUnitKind?,
+        selectedUnitDurationSeconds: Int?,
+        itemRuntimeSeconds: Int?
+    ) -> Int? {
+        guard [.movie, .tvShow, .podcast].contains(mediaKind) else { return nil }
+        let duration = selectedUnitKind == .tvSeason
+            ? selectedUnitDurationSeconds
+            : selectedUnitDurationSeconds ?? itemRuntimeSeconds
+        guard let duration, duration > 0 else { return nil }
+        return duration
+    }
+}
+
 struct SessionEditorView: View {
     private let itemID: UUID
 
@@ -45,18 +61,13 @@ struct SessionEditorView: View {
     private var accessAssignment: MediaAccessAssignment? { assignments.first }
 
     private var automaticallyLoggedDurationSeconds: Int? {
-        guard let item, [.movie, .tvShow, .podcast].contains(item.mediaKind) else {
-            return nil
-        }
-        let duration = if selectedUnit?.unitKind == .tvSeason {
-            selectedUnit?.durationSeconds
-        } else {
-            selectedUnit?.durationSeconds ?? item.runtimeSeconds
-        }
-        guard let duration,
-              duration > 0
-        else { return nil }
-        return duration
+        guard let item else { return nil }
+        return SessionDurationDefaults.automatic(
+            mediaKind: item.mediaKind,
+            selectedUnitKind: selectedUnit?.unitKind,
+            selectedUnitDurationSeconds: selectedUnit?.durationSeconds,
+            itemRuntimeSeconds: item.runtimeSeconds
+        )
     }
 
     private var manuallyLoggedDurationSeconds: Int? {
@@ -218,17 +229,25 @@ struct SessionEditorView: View {
                     }
 
                     if let accessContext {
-                        Section(accessSectionTitle) {
+                        Section {
                             LabeledContent("Current access", value: accessContext)
+                        } header: {
+                            Text(accessSectionTitle)
+                        } footer: {
+                            Text("This source is saved for the title and used for every session.")
                         }
                     } else if !subscriptions.isEmpty {
-                        Section(accessSectionTitle) {
-                            Picker("Subscription (optional)", selection: $watchedWithSubscriptionID) {
+                        Section {
+                            Picker("Subscription for this title", selection: $watchedWithSubscriptionID) {
                                 Text("No plan selected").tag(UUID?.none)
                                 ForEach(subscriptions) { subscription in
                                     Text(subscription.name).tag(UUID?.some(subscription.id))
                                 }
                             }
+                        } header: {
+                            Text(accessSectionTitle)
+                        } footer: {
+                            Text("Optional. The selected source is remembered for future sessions.")
                         }
                     }
 
@@ -378,13 +397,14 @@ struct SessionEditorView: View {
 
         do {
             let service = ActivityService(context: modelContext)
+            let cycle = try cycleForNewSession(item: item, service: service)
             if accessAssignment == nil, let watchedWithSubscriptionID {
                 try MediaValueService(context: modelContext).setSubscription(
                     itemID: item.id,
-                    subscriptionID: watchedWithSubscriptionID
+                    subscriptionID: watchedWithSubscriptionID,
+                    saveChanges: false
                 )
             }
-            let cycle = try cycleForNewSession(item: item, service: service)
             _ = try service.logSession(
                 for: item,
                 targetUnit: selectedUnit,
@@ -407,6 +427,7 @@ struct SessionEditorView: View {
             )
             dismiss()
         } catch {
+            modelContext.rollback()
             errorMessage = error.localizedDescription
         }
     }
@@ -417,7 +438,12 @@ struct SessionEditorView: View {
     ) throws -> ConsumptionCycle? {
         if let activeCycle { return activeCycle }
         if repeatConfirmationRequired {
-            return try service.startRepeat(for: item, targetUnit: selectedUnit, at: occurredAt)
+            return try service.startRepeat(
+                for: item,
+                targetUnit: selectedUnit,
+                at: occurredAt,
+                saveChanges: false
+            )
         }
 
         let hasEarlierInstallment = selectedUnit != nil && (item.cycles ?? []).contains {
@@ -427,7 +453,8 @@ struct SessionEditorView: View {
             return try service.startNextInstallment(
                 for: item,
                 targetUnit: selectedUnit!,
-                at: occurredAt
+                at: occurredAt,
+                saveChanges: false
             )
         }
         return nil

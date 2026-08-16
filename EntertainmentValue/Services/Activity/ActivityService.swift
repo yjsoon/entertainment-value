@@ -82,7 +82,8 @@ final class ActivityService {
         targetUnit: ContentUnit? = nil,
         kind: ConsumptionCycleKind = .initial,
         at date: Date = .now,
-        source: RecordSource = .manual
+        source: RecordSource = .manual,
+        saveChanges: Bool = true
     ) throws -> ConsumptionCycle {
         try validate(item: item, targetUnit: targetUnit)
         let cycle = makeCycle(
@@ -93,7 +94,7 @@ final class ActivityService {
             source: source
         )
         ActivityProjection.rebuild(item)
-        try context.save()
+        if saveChanges { try context.save() }
         return cycle
     }
 
@@ -101,13 +102,15 @@ final class ActivityService {
     func startRepeat(
         for item: LibraryItem,
         targetUnit: ContentUnit? = nil,
-        at date: Date = .now
+        at date: Date = .now,
+        saveChanges: Bool = true
     ) throws -> ConsumptionCycle {
         try startCycle(
             for: item,
             targetUnit: targetUnit,
             kind: .repeatConsumption,
-            at: date
+            at: date,
+            saveChanges: saveChanges
         )
     }
 
@@ -115,13 +118,15 @@ final class ActivityService {
     func startNextInstallment(
         for item: LibraryItem,
         targetUnit: ContentUnit,
-        at date: Date = .now
+        at date: Date = .now,
+        saveChanges: Bool = true
     ) throws -> ConsumptionCycle {
         try startCycle(
             for: item,
             targetUnit: targetUnit,
             kind: .installmentContinuation,
-            at: date
+            at: date,
+            saveChanges: saveChanges
         )
     }
 
@@ -135,7 +140,8 @@ final class ActivityService {
         note: String? = nil,
         progress: SessionProgress = SessionProgress(),
         source: RecordSource = .manual,
-        timeZone: TimeZone = .current
+        timeZone: TimeZone = .current,
+        saveChanges: Bool = true
     ) throws -> ConsumptionSession {
         try validate(item: item, targetUnit: targetUnit)
         guard explicitCycle?.rootItemID == item.id || explicitCycle == nil else {
@@ -202,7 +208,7 @@ final class ActivityService {
         attach(session, to: cycle)
 
         ActivityProjection.rebuild(item)
-        try context.save()
+        if saveChanges { try context.save() }
         return session
     }
 

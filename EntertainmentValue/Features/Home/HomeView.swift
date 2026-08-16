@@ -9,7 +9,9 @@ struct HomeView: View {
 
     @Environment(AppNavigation.self) private var navigation
     @Environment(\.calendar) private var calendar
+    @Environment(\.scenePhase) private var scenePhase
     @State private var mediaFilter = MediaFilter.all
+    @State private var referenceDate = Date.now
     @AppStorage(HistoryPeriod.preferenceKey) private var focusPeriodRaw = HistoryPeriod.defaultFocus.rawValue
 
     private var focusPeriod: HistoryPeriod {
@@ -20,8 +22,20 @@ struct HomeView: View {
         items.filter { $0.archivedAt == nil && mediaFilter.includes($0) }
     }
 
+    private var focusInterval: DateInterval {
+        focusPeriod.interval(containing: referenceDate, calendar: calendar)
+    }
+
+    private var historyIdentity: String {
+        "\(focusPeriod.rawValue)-\(focusInterval.start.timeIntervalSinceReferenceDate)"
+    }
+
+    private var monthIdentity: Date {
+        HistoryPeriod.month.interval(containing: referenceDate, calendar: calendar).start
+    }
+
     private var rails: HomeRailPartition<LibraryItem> {
-        HomeRails.partition(visibleItems, now: .now) { item in
+        HomeRails.partition(visibleItems, now: referenceDate) { item in
             HomeRails.Snapshot(
                 status: item.status,
                 isFollowedPodcast: item.mediaKind == .podcast && item.podcastFollowState == .following,
@@ -58,24 +72,32 @@ struct HomeView: View {
                     welcome
                     MediaValueThisMonthSection(
                         items: items,
+                        referenceDate: referenceDate,
+                        calendar: calendar,
+                        isMediaFilterActive: mediaFilter != .all,
                         openSetup: { navigation.homePath.append(.mediaValueSetup) },
                         logSession: navigation.showLogChooser
                     )
+                    .id(monthIdentity)
                 } else {
                     ConsumedHistorySection(
                         items: visibleItems,
                         valueItems: items,
                         period: focusPeriod,
-                        referenceDate: .now,
+                        referenceDate: referenceDate,
                         calendar: calendar
                     )
-                    .id(focusPeriod)
+                    .id(historyIdentity)
 
                     MediaValueThisMonthSection(
                         items: items,
+                        referenceDate: referenceDate,
+                        calendar: calendar,
+                        isMediaFilterActive: mediaFilter != .all,
                         openSetup: { navigation.homePath.append(.mediaValueSetup) },
                         logSession: navigation.showLogChooser
                     )
+                    .id(monthIdentity)
 
                     if !overdueItems.isEmpty {
                         overdueSection
@@ -110,6 +132,20 @@ struct HomeView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 MediaFilterMenu(selection: $mediaFilter)
             }
+        }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            if phase == .active { referenceDate = .now }
+        }
+        .task(id: calendar.startOfDay(for: referenceDate)) {
+            guard let nextDay = calendar.date(
+                byAdding: .day,
+                value: 1,
+                to: calendar.startOfDay(for: referenceDate)
+            ) else { return }
+            let delay = max(1, nextDay.timeIntervalSinceNow)
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            referenceDate = .now
         }
     }
 
@@ -326,6 +362,7 @@ private struct ConsumedHistorySection: View {
     @Query private var sessions: [ConsumptionSession]
     @Query private var assignments: [MediaAccessAssignment]
     @Query(sort: \MediaSubscription.normalizedName) private var subscriptions: [MediaSubscription]
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let items: [LibraryItem]
     let valueItems: [LibraryItem]
@@ -348,10 +385,9 @@ private struct ConsumedHistorySection: View {
         self.calendar = calendar
 
         let periodInterval = period.interval(containing: referenceDate, calendar: calendar)
-        let monthInterval = HistoryPeriod.month.interval(containing: referenceDate, calendar: calendar)
         self.periodInterval = periodInterval
-        let start = min(periodInterval.start, monthInterval.start)
-        let end = max(periodInterval.end, monthInterval.end)
+        let start = periodInterval.start
+        let end = periodInterval.end
         _sessions = Query(
             filter: #Predicate<ConsumptionSession> { session in
                 session.deletedAt == nil && session.occurredAt >= start && session.occurredAt < end
@@ -370,14 +406,19 @@ private struct ConsumedHistorySection: View {
 
     private var subscriptionValuesByItemID: [UUID: LoggedSubscriptionValue] {
         let subscriptionsByID = Dictionary(uniqueKeysWithValues: subscriptions.map { ($0.id, $0) })
-        let monthlyValuesByID = Dictionary(uniqueKeysWithValues: MediaValueCalculator.subscriptionValues(
-            subscriptions: subscriptions,
-            assignments: assignments,
-            items: valueItems,
-            sessions: sessions,
-            monthContaining: referenceDate,
-            calendar: calendar
-        ).map { ($0.subscriptionID, $0) })
+        let monthlyValuesByID: [UUID: SubscriptionMonthValue]
+        if period == .month {
+            monthlyValuesByID = Dictionary(uniqueKeysWithValues: MediaValueCalculator.subscriptionValues(
+                subscriptions: subscriptions,
+                assignments: assignments,
+                items: valueItems,
+                sessions: sessions,
+                monthContaining: referenceDate,
+                calendar: calendar
+            ).map { ($0.subscriptionID, $0) })
+        } else {
+            monthlyValuesByID = [:]
+        }
 
         return assignments.reduce(into: [UUID: LoggedSubscriptionValue]()) { values, assignment in
             guard assignment.type == .subscription,
@@ -393,14 +434,21 @@ private struct ConsumedHistorySection: View {
         }
     }
 
-    private var counts: [LoggedItemSummary] {
+    private var historySummary: LoggedHistorySummary {
         let loggedSessions = loggedSessions
-        let subscriptionValuesByItemID = subscriptionValuesByItemID
+        guard !loggedSessions.isEmpty else {
+            return LoggedHistorySummary(items: [], sessionCount: 0, durationSeconds: 0)
+        }
         let byID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
         let durationsByItemID = loggedSessions.reduce(into: [UUID: Int]()) { durations, session in
-            durations[session.rootItemID, default: 0] += session.durationSeconds ?? 0
+            guard let item = byID[session.rootItemID] else { return }
+            durations[session.rootItemID, default: 0] += MediaValueCalculator.trackedSeconds(
+                for: session,
+                mediaKind: item.mediaKind
+            )
         }
-        return SessionAggregator.counts(
+        let subscriptionValuesByItemID = subscriptionValuesByItemID
+        let itemSummaries = SessionAggregator.counts(
             for: loggedSessions.map { SessionOccurrence(itemID: $0.rootItemID, occurredAt: $0.occurredAt) },
             in: periodInterval
         ).compactMap { summary in
@@ -414,28 +462,45 @@ private struct ConsumedHistorySection: View {
                 )
             }
         }
-    }
-
-    private var totalDurationSeconds: Int {
-        loggedSessions.lazy.compactMap(\.durationSeconds).reduce(0, +)
+        return LoggedHistorySummary(
+            items: itemSummaries,
+            sessionCount: loggedSessions.count,
+            durationSeconds: durationsByItemID.values.reduce(0, +)
+        )
     }
 
     var body: some View {
+        let summary = historySummary
+
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                SectionHeading(title: heading)
-                Spacer()
-                if !loggedSessions.isEmpty {
-                    LoggedActivitySummary(
-                        sessionCount: loggedSessions.count,
-                        durationSeconds: totalDurationSeconds
-                    )
-                    .font(.caption)
-                    .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    SectionHeading(title: heading)
+                    if summary.sessionCount > 0 {
+                        LoggedActivitySummary(
+                            sessionCount: summary.sessionCount,
+                            durationSeconds: summary.durationSeconds
+                        )
+                        .font(.caption)
+                        .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+                    }
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline) {
+                    SectionHeading(title: heading)
+                    Spacer()
+                    if summary.sessionCount > 0 {
+                        LoggedActivitySummary(
+                            sessionCount: summary.sessionCount,
+                            durationSeconds: summary.durationSeconds
+                        )
+                        .font(.caption)
+                        .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+                    }
                 }
             }
 
-            if counts.isEmpty {
+            if summary.items.isEmpty {
                 ContentUnavailableView(
                     "Nothing logged yet",
                     systemImage: "calendar",
@@ -444,7 +509,7 @@ private struct ConsumedHistorySection: View {
                 .frame(minHeight: 190)
             } else {
                 LazyVStack(spacing: 0) {
-                    ForEach(counts) { entry in
+                    ForEach(summary.items) { entry in
                         ConsumedItemRow(
                             item: entry.item,
                             count: entry.sessionCount,
@@ -475,10 +540,35 @@ private struct MediaValueThisMonthSection: View {
     @Query private var subscriptions: [MediaSubscription]
     @Query private var assignments: [MediaAccessAssignment]
     @Query private var sessions: [ConsumptionSession]
-    @Environment(\.calendar) private var calendar
     let items: [LibraryItem]
+    let referenceDate: Date
+    let calendar: Calendar
+    let isMediaFilterActive: Bool
     let openSetup: () -> Void
     let logSession: () -> Void
+
+    init(
+        items: [LibraryItem],
+        referenceDate: Date,
+        calendar: Calendar,
+        isMediaFilterActive: Bool,
+        openSetup: @escaping () -> Void,
+        logSession: @escaping () -> Void
+    ) {
+        self.items = items
+        self.referenceDate = referenceDate
+        self.calendar = calendar
+        self.isMediaFilterActive = isMediaFilterActive
+        self.openSetup = openSetup
+        self.logSession = logSession
+
+        let interval = HistoryPeriod.month.interval(containing: referenceDate, calendar: calendar)
+        let start = interval.start
+        let end = interval.end
+        _sessions = Query(filter: #Predicate<ConsumptionSession> { session in
+            session.deletedAt == nil && session.occurredAt >= start && session.occurredAt < end
+        })
+    }
 
     private var values: [SubscriptionMonthValue] {
         MediaValueCalculator.subscriptionValues(
@@ -486,7 +576,7 @@ private struct MediaValueThisMonthSection: View {
             assignments: assignments,
             items: items,
             sessions: sessions,
-            monthContaining: .now,
+            monthContaining: referenceDate,
             calendar: calendar
         )
     }
@@ -502,13 +592,16 @@ private struct MediaValueThisMonthSection: View {
         }
     }
 
-    private var populatedValues: [SubscriptionMonthValue] {
-        values.filter { $0.trackedSeconds > 0 }
-    }
-
     var body: some View {
+        let monthValues = values
+        let populatedValues = monthValues.filter { $0.trackedSeconds > 0 }
+
         VStack(alignment: .leading, spacing: 12) {
             SectionHeading(title: "Media Value This Month")
+            Text(valueExplanation)
+                .font(.footnote)
+                .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+                .fixedSize(horizontal: false, vertical: true)
 
             if subscriptions.isEmpty {
                 mediaValuePrompt(
@@ -520,11 +613,11 @@ private struct MediaValueThisMonthSection: View {
             } else if !hasAssignedItems {
                 mediaValuePrompt(
                     title: "Log something from a subscription",
-                    description: "Choose the subscription when you log a full watch or listen, and we’ll start calculating its value.",
-                    actionTitle: "Log a Watch or Listen",
+                    description: "Choose the subscription when you log activity, and we’ll start calculating its value.",
+                    actionTitle: "Log Activity",
                     action: logSession
                 )
-            } else if values.isEmpty {
+            } else if monthValues.isEmpty {
                 mediaValuePrompt(
                     title: "No subscriptions are active this month",
                     description: "This summary starts when a subscription begins. Update a subscription’s start date to include it this month.",
@@ -533,9 +626,9 @@ private struct MediaValueThisMonthSection: View {
                 )
             } else if populatedValues.isEmpty {
                 mediaValuePrompt(
-                    title: "Log a watch or listen to calculate value",
-                    description: "Log a full watch or listen with a known runtime, and we’ll calculate the cost per hour watched or listened this month.",
-                    actionTitle: "Log a Watch or Listen",
+                    title: "Log tracked time to calculate value",
+                    description: "Log activity with a known or entered duration, and we’ll calculate the cost per tracked hour this month.",
+                    actionTitle: "Log Activity",
                     action: logSession
                 )
             } else {
@@ -543,15 +636,22 @@ private struct MediaValueThisMonthSection: View {
                     MediaValueMonthCard(value: value, action: openSetup)
                 }
 
-                if populatedValues.count != values.count {
+                if populatedValues.count != monthValues.count {
                     Button("Manage Media Value", action: openSetup)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(EntertainmentValueTheme.coral)
-                        .accessibilityHint("Assign media or log a watch or listen for your other subscriptions")
+                        .accessibilityHint("Assign media or log activity for your other subscriptions")
                 }
             }
         }
         .padding(.horizontal, 16)
+    }
+
+    private var valueExplanation: String {
+        if isMediaFilterActive {
+            return "Monthly costs are distributed by logged runtime across all subscription activity, regardless of the Home filter."
+        }
+        return "Monthly costs are distributed across titles by logged runtime."
     }
 
     private func mediaValuePrompt(
@@ -602,9 +702,9 @@ private struct MediaValueMonthCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(MediaValueFormatting.duration(value.trackedSeconds)) watched/listened this month")
+                    Text("\(MediaValueFormatting.duration(value.trackedSeconds)) tracked this month")
                     if let rate = value.costPerHour {
-                        Text("\(MediaValueFormatting.currency(rate, code: value.currencyCode)) per hour watched/listened")
+                        Text("\(MediaValueFormatting.currency(rate, code: value.currencyCode)) per tracked hour")
                             .fontWeight(.semibold)
                             .foregroundStyle(EntertainmentValueTheme.ink)
                     }
@@ -633,6 +733,12 @@ private struct LoggedSubscriptionValue {
     let currencyCode: String
 }
 
+private struct LoggedHistorySummary {
+    let items: [LoggedItemSummary]
+    let sessionCount: Int
+    let durationSeconds: Int
+}
+
 private struct LoggedItemSummary: Identifiable {
     var id: UUID { item.id }
 
@@ -653,6 +759,7 @@ private struct ConsumedItemRow: View {
     let referenceDate: Date
     let calendar: Calendar
     @Environment(AppNavigation.self) private var navigation
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         HStack(spacing: 4) {
@@ -669,7 +776,7 @@ private struct ConsumedItemRow: View {
                         Text(item.title)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(EntertainmentValueTheme.ink)
-                            .lineLimit(1)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                         LoggedActivitySummary(
                             sessionCount: count,
                             durationSeconds: durationSeconds,
@@ -677,12 +784,12 @@ private struct ConsumedItemRow: View {
                         )
                             .font(.caption)
                             .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
 
                         Text(tertiarySummary)
                             .font(.caption2)
                             .foregroundStyle(EntertainmentValueTheme.secondaryInk)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.82)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -744,7 +851,6 @@ private struct LoggedActivitySummary: View {
     var body: some View {
         Text(summary)
             .monospacedDigit()
-            .lineLimit(1)
     }
 
     private var summary: String {

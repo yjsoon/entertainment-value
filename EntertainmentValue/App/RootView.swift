@@ -177,7 +177,8 @@ private struct GlobalLogToolbar: ToolbarContent {
             Button {
                 navigation.showLogChooser()
             } label: {
-                Label("Log Session", systemImage: "plus.circle.fill")
+                Text("Log")
+                    .fontWeight(.semibold)
             }
             .accessibilityLabel("Log a session")
         }

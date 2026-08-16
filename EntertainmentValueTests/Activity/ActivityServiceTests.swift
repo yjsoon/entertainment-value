@@ -6,6 +6,46 @@ import Testing
 @Suite("History-first activity service", .serialized)
 @MainActor
 struct ActivityServiceTests {
+    @Test("Known-runtime logging respects media and installment boundaries")
+    func automaticDurationDefaults() {
+        #expect(SessionDurationDefaults.automatic(
+            mediaKind: .movie,
+            selectedUnitKind: nil,
+            selectedUnitDurationSeconds: nil,
+            itemRuntimeSeconds: 7_200
+        ) == 7_200)
+        #expect(SessionDurationDefaults.automatic(
+            mediaKind: .tvShow,
+            selectedUnitKind: .tvEpisode,
+            selectedUnitDurationSeconds: 2_700,
+            itemRuntimeSeconds: 3_600
+        ) == 2_700)
+        #expect(SessionDurationDefaults.automatic(
+            mediaKind: .tvShow,
+            selectedUnitKind: .tvSeason,
+            selectedUnitDurationSeconds: nil,
+            itemRuntimeSeconds: 3_600
+        ) == nil)
+        #expect(SessionDurationDefaults.automatic(
+            mediaKind: .tvShow,
+            selectedUnitKind: .tvSeason,
+            selectedUnitDurationSeconds: 36_000,
+            itemRuntimeSeconds: 3_600
+        ) == 36_000)
+        #expect(SessionDurationDefaults.automatic(
+            mediaKind: .book,
+            selectedUnitKind: nil,
+            selectedUnitDurationSeconds: nil,
+            itemRuntimeSeconds: 7_200
+        ) == nil)
+        #expect(SessionDurationDefaults.automatic(
+            mediaKind: .podcast,
+            selectedUnitKind: nil,
+            selectedUnitDurationSeconds: nil,
+            itemRuntimeSeconds: 0
+        ) == nil)
+    }
+
     @Test("First session starts an item and completion stays separate")
     func initialSessionAndCompletion() throws {
         let container = try makeContainer()
