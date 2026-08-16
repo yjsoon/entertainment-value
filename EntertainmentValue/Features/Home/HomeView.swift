@@ -56,7 +56,11 @@ struct HomeView: View {
             LazyVStack(alignment: .leading, spacing: 28) {
                 if visibleItems.isEmpty {
                     welcome
-                    MediaValueThisMonthSection(items: items)
+                    MediaValueThisMonthSection(
+                        items: items,
+                        openSetup: { navigation.homePath.append(.mediaValueSetup) },
+                        logSession: navigation.showLogChooser
+                    )
                 } else {
                     ConsumedHistorySection(
                         items: visibleItems,
@@ -66,7 +70,11 @@ struct HomeView: View {
                     )
                     .id(focusPeriod)
 
-                    MediaValueThisMonthSection(items: items)
+                    MediaValueThisMonthSection(
+                        items: items,
+                        openSetup: { navigation.homePath.append(.mediaValueSetup) },
+                        logSession: navigation.showLogChooser
+                    )
 
                     if !overdueItems.isEmpty {
                         overdueSection
@@ -401,6 +409,8 @@ private struct MediaValueThisMonthSection: View {
     @Query private var sessions: [ConsumptionSession]
     @Environment(\.calendar) private var calendar
     let items: [LibraryItem]
+    let openSetup: () -> Void
+    let logSession: () -> Void
 
     private var values: [SubscriptionMonthValue] {
         MediaValueCalculator.subscriptionValues(
@@ -413,28 +423,139 @@ private struct MediaValueThisMonthSection: View {
         )
     }
 
+    private var hasAssignedItems: Bool {
+        let availableItemIDs = Set(items.lazy.filter { $0.trashedAt == nil }.map(\.id))
+        let subscriptionIDs = Set(subscriptions.map(\.id))
+        return assignments.contains { assignment in
+            guard let subscriptionID = assignment.subscriptionID else { return false }
+            return assignment.type == .subscription &&
+                subscriptionIDs.contains(subscriptionID) &&
+                availableItemIDs.contains(assignment.itemID)
+        }
+    }
+
+    private var populatedValues: [SubscriptionMonthValue] {
+        values.filter { $0.trackedSeconds > 0 }
+    }
+
     var body: some View {
-        if !subscriptions.isEmpty, !values.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                SectionHeading(title: "Media Value This Month")
-                ForEach(values) { value in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(value.name).font(.headline)
-                        Text("Expected \(MediaValueFormatting.currency(value.amount, code: value.currencyCode)) / month")
-                        Text("\(MediaValueFormatting.duration(value.trackedSeconds)) tracked")
-                        if let rate = value.costPerHour {
-                            Text("\(MediaValueFormatting.currency(rate, code: value.currencyCode)) per tracked hour")
-                        } else {
-                            Text("No tracked time")
-                        }
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(EntertainmentValueTheme.secondaryInk)
-                    .padding(.vertical, 3)
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeading(title: "Media Value This Month")
+
+            if subscriptions.isEmpty {
+                mediaValuePrompt(
+                    title: "Add a subscription to see its value",
+                    description: "Add the monthly cost of a service, then assign the media you use through it.",
+                    actionTitle: "Add Your First Subscription",
+                    action: openSetup
+                )
+            } else if !hasAssignedItems {
+                mediaValuePrompt(
+                    title: "Log something from a subscription",
+                    description: "Choose the subscription when you log a full watch or listen, and we’ll start calculating its value.",
+                    actionTitle: "Log a Watch or Listen",
+                    action: logSession
+                )
+            } else if values.isEmpty {
+                mediaValuePrompt(
+                    title: "No subscriptions are active this month",
+                    description: "This summary starts when a subscription begins. Update a subscription’s start date to include it this month.",
+                    actionTitle: "Manage Media Value",
+                    action: openSetup
+                )
+            } else if populatedValues.isEmpty {
+                mediaValuePrompt(
+                    title: "Log a watch or listen to calculate value",
+                    description: "Log a full watch or listen with a known runtime, and we’ll calculate the cost per hour watched or listened this month.",
+                    actionTitle: "Log a Watch or Listen",
+                    action: logSession
+                )
+            } else {
+                ForEach(populatedValues) { value in
+                    MediaValueMonthCard(value: value, action: openSetup)
+                }
+
+                if populatedValues.count != values.count {
+                    Button("Manage Media Value", action: openSetup)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(EntertainmentValueTheme.coral)
+                        .accessibilityHint("Assign media or log a watch or listen for your other subscriptions")
                 }
             }
-            .padding(.horizontal, 16)
         }
+        .padding(.horizontal, 16)
+    }
+
+    private func mediaValuePrompt(
+        title: String,
+        description: String,
+        actionTitle: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(EntertainmentValueTheme.ink)
+            Text(description)
+                .font(.subheadline)
+                .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(actionTitle, action: action)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(EntertainmentValueTheme.coral)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(EntertainmentValueTheme.raisedBackground, in: .rect(cornerRadius: 16))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(.white.opacity(0.14), lineWidth: 0.75)
+        }
+    }
+}
+
+private struct MediaValueMonthCard: View {
+    let value: SubscriptionMonthValue
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(value.name)
+                    .font(.headline)
+                    .foregroundStyle(EntertainmentValueTheme.ink)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Monthly cost")
+                        .font(.subheadline)
+                        .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+                    Text(MediaValueFormatting.currency(value.amount, code: value.currencyCode))
+                        .font(.title3.bold().monospacedDigit())
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(MediaValueFormatting.duration(value.trackedSeconds)) watched/listened this month")
+                    if let rate = value.costPerHour {
+                        Text("\(MediaValueFormatting.currency(rate, code: value.currencyCode)) per hour watched/listened")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(EntertainmentValueTheme.ink)
+                    }
+                }
+                .font(.subheadline)
+                .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .background(EntertainmentValueTheme.raisedBackground, in: .rect(cornerRadius: 16))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(.white.opacity(0.14), lineWidth: 0.75)
+            }
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens Media Value setup")
     }
 }
 

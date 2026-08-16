@@ -5,6 +5,8 @@ struct SessionEditorView: View {
     private let itemID: UUID
 
     @Query private var matchingItems: [LibraryItem]
+    @Query private var assignments: [MediaAccessAssignment]
+    @Query(sort: \MediaSubscription.normalizedName) private var subscriptions: [MediaSubscription]
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.calendar) private var calendar
@@ -12,6 +14,7 @@ struct SessionEditorView: View {
 
     @State private var selectedUnitID: UUID?
     @State private var occurredAt = Date.now
+    @State private var watchedWithSubscriptionID: UUID?
     @State private var timeSpentMinutes = ""
     @State private var note = ""
     @State private var currentPage = ""
@@ -32,9 +35,56 @@ struct SessionEditorView: View {
         _matchingItems = Query(
             filter: #Predicate<LibraryItem> { $0.id == itemID }
         )
+        _assignments = Query(
+            filter: #Predicate<MediaAccessAssignment> { $0.itemID == itemID }
+        )
     }
 
     private var item: LibraryItem? { matchingItems.first }
+
+    private var accessAssignment: MediaAccessAssignment? { assignments.first }
+
+    private var automaticallyLoggedDurationSeconds: Int? {
+        guard let item, [.movie, .tvShow, .podcast].contains(item.mediaKind) else {
+            return nil
+        }
+        let duration = if selectedUnit?.unitKind == .tvSeason {
+            selectedUnit?.durationSeconds
+        } else {
+            selectedUnit?.durationSeconds ?? item.runtimeSeconds
+        }
+        guard let duration,
+              duration > 0
+        else { return nil }
+        return duration
+    }
+
+    private var manuallyLoggedDurationSeconds: Int? {
+        guard let item, [.book, .comic, .unknown].contains(item.mediaKind) else {
+            return nil
+        }
+        return Int(timeSpentMinutes).map { max(0, $0) * 60 }
+    }
+
+    private var accessSectionTitle: LocalizedStringKey {
+        switch item?.mediaKind {
+        case .book, .comic: "Read with"
+        case .movie, .tvShow: "Watched with"
+        case .game: "Played with"
+        case .podcast: "Listened with"
+        case .unknown, nil: "Accessed with"
+        }
+    }
+
+    private var accessContext: String? {
+        guard let assignment = accessAssignment else { return nil }
+        if assignment.type == .subscription,
+           let subscription = subscriptions.first(where: { $0.id == assignment.subscriptionID }) {
+            return subscription.name
+        }
+        if assignment.type == .bought { return "Bought" }
+        return "Access configured"
+    }
 
     private var availableUnits: [ContentUnit] {
         guard let item else { return [] }
@@ -139,13 +189,15 @@ struct SessionEditorView: View {
 
                     Section {
                         DatePicker(
-                            "When",
+                            "Date",
                             selection: $occurredAt,
-                            displayedComponents: [.date, .hourAndMinute]
+                            displayedComponents: .date
                         )
                         DisclosureGroup("Add details (optional)") {
-                            TextField("Time spent in minutes", text: $timeSpentMinutes)
-                                .keyboardType(.numberPad)
+                            if [.book, .comic, .unknown].contains(item.mediaKind) {
+                                TextField("Time spent in minutes", text: $timeSpentMinutes)
+                                    .keyboardType(.numberPad)
+                            }
                             TextField("Session note", text: $note, axis: .vertical)
                                 .lineLimit(2 ... 6)
                             progressSection(for: item.mediaKind)
@@ -154,6 +206,30 @@ struct SessionEditorView: View {
                         Text("Session")
                     } footer: {
                         Text("A date is all you need. Add details when they will help you remember or continue.")
+                    }
+
+                    if let duration = automaticallyLoggedDurationSeconds {
+                        Section("Duration") {
+                            LabeledContent("Logged duration", value: MediaValueFormatting.duration(duration))
+                            Text("Full known duration is logged automatically.")
+                                .font(.footnote)
+                                .foregroundStyle(EntertainmentValueTheme.secondaryInk)
+                        }
+                    }
+
+                    if let accessContext {
+                        Section(accessSectionTitle) {
+                            LabeledContent("Current access", value: accessContext)
+                        }
+                    } else if !subscriptions.isEmpty {
+                        Section(accessSectionTitle) {
+                            Picker("Subscription (optional)", selection: $watchedWithSubscriptionID) {
+                                Text("No plan selected").tag(UUID?.none)
+                                ForEach(subscriptions) { subscription in
+                                    Text(subscription.name).tag(UUID?.some(subscription.id))
+                                }
+                            }
+                        }
                     }
 
                     if repeatConfirmationRequired {
@@ -302,13 +378,19 @@ struct SessionEditorView: View {
 
         do {
             let service = ActivityService(context: modelContext)
+            if accessAssignment == nil, let watchedWithSubscriptionID {
+                try MediaValueService(context: modelContext).setSubscription(
+                    itemID: item.id,
+                    subscriptionID: watchedWithSubscriptionID
+                )
+            }
             let cycle = try cycleForNewSession(item: item, service: service)
             _ = try service.logSession(
                 for: item,
                 targetUnit: selectedUnit,
                 in: cycle,
                 at: occurredAt,
-                durationSeconds: Int(timeSpentMinutes).map { max(0, $0) * 60 },
+                durationSeconds: automaticallyLoggedDurationSeconds ?? manuallyLoggedDurationSeconds,
                 note: note.sessionNilIfBlank,
                 progress: SessionProgress(
                     currentPage: Int(currentPage),

@@ -717,7 +717,7 @@ private struct SessionRow: View {
                 .padding(.top, 6)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(session.occurredAt, format: .dateTime.weekday(.abbreviated).day().month().year().hour().minute())
+                Text(session.occurredAt, format: .dateTime.weekday(.abbreviated).day().month().year())
                     .font(.headline)
 
                 HStack(spacing: 10) {

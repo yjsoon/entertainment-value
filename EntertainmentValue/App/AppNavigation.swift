@@ -22,6 +22,7 @@ enum AppSheet: Identifiable, Hashable, Sendable {
     case quickAdd(initialMediaKind: MediaKind? = nil, destinationListID: UUID? = nil)
     case addItem
     case addItemFor(MediaKind, String)
+    case chooseItemToLog
     case logSession(UUID)
     case editItem(UUID)
     case createList
@@ -34,6 +35,8 @@ enum AppSheet: Identifiable, Hashable, Sendable {
             "add-item"
         case let .addItemFor(kind, query):
             "add-item-\(kind.rawValue)-\(query)"
+        case .chooseItemToLog:
+            "choose-item-to-log"
         case let .logSession(id):
             "log-session-\(id.uuidString)"
         case let .editItem(id):
@@ -52,6 +55,24 @@ final class AppNavigation {
     var listsPath: [AppRoute] = []
     var searchPath: [AppRoute] = []
     var presentedSheet: AppSheet?
+    private var pendingLogSessionID: UUID?
+
+    func showLogChooser() {
+        presentedSheet = .chooseItemToLog
+    }
+
+    /// Defers the editor until the chooser's dismissal has completed so SwiftUI
+    /// never has to replace one sheet with another in the same update.
+    func chooseItemToLog(_ id: UUID) {
+        pendingLogSessionID = id
+        presentedSheet = nil
+    }
+
+    func presentPendingLogSessionIfNeeded() {
+        guard let pendingLogSessionID, presentedSheet == nil else { return }
+        self.pendingLogSessionID = nil
+        presentedSheet = .logSession(pendingLogSessionID)
+    }
 
     func showItem(_ id: UUID, from tab: AppTab? = nil) {
         let sourceTab = tab ?? selectedTab

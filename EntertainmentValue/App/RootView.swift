@@ -17,6 +17,7 @@ struct RootView: View {
                 NavigationStack(path: $navigation.homePath) {
                     HomeView()
                         .navigationDestination(for: AppRoute.self, destination: RouteDestination.init)
+                        .toolbar { GlobalLogToolbar() }
                 }
             }
 
@@ -24,6 +25,7 @@ struct RootView: View {
                 NavigationStack(path: $navigation.libraryPath) {
                     LibraryView()
                         .navigationDestination(for: AppRoute.self, destination: RouteDestination.init)
+                        .toolbar { GlobalLogToolbar() }
                 }
             }
 
@@ -31,6 +33,7 @@ struct RootView: View {
                 NavigationStack(path: $navigation.listsPath) {
                     ListsView()
                         .navigationDestination(for: AppRoute.self, destination: RouteDestination.init)
+                        .toolbar { GlobalLogToolbar() }
                 }
             }
 
@@ -43,13 +46,16 @@ struct RootView: View {
                         }
                     )
                     .navigationDestination(for: AppRoute.self, destination: RouteDestination.init)
+                    .toolbar { GlobalLogToolbar() }
                 }
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
         .archiveBackground()
         .environment(navigation)
-        .sheet(item: $navigation.presentedSheet) { sheet in
+        .sheet(item: $navigation.presentedSheet, onDismiss: {
+            navigation.presentPendingLogSessionIfNeeded()
+        }) { sheet in
             switch sheet {
             case let .quickAdd(initialMediaKind, destinationListID):
                 QuickAddView(
@@ -61,6 +67,8 @@ struct RootView: View {
                 ItemEditorView()
             case let .addItemFor(kind, query):
                 ItemEditorView(initialKind: kind, initialTitle: query)
+            case .chooseItemToLog:
+                LogSessionChooserView(onSelect: navigation.chooseItemToLog)
             case let .logSession(id):
                 SessionEditorView(itemID: id)
             case let .editItem(id):
@@ -157,6 +165,21 @@ struct RootView: View {
             defaults.set(Date.now.timeIntervalSince1970, forKey: "maintenance.last-purge")
         } catch {
             // Deferred to the next foreground; the trash grace window absorbs the delay.
+        }
+    }
+}
+
+private struct GlobalLogToolbar: ToolbarContent {
+    @Environment(AppNavigation.self) private var navigation
+
+    var body: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                navigation.showLogChooser()
+            } label: {
+                Label("Log Session", systemImage: "plus.circle.fill")
+            }
+            .accessibilityLabel("Log a session")
         }
     }
 }
