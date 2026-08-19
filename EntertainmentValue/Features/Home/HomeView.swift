@@ -49,22 +49,8 @@ struct HomeView: View {
   }
 
   private var activeItems: [LibraryItem] { rails.active }
-
   private var plannedItems: [LibraryItem] { rails.planned }
-
   private var overdueItems: [LibraryItem] { rails.overdue }
-
-  private var selectedMediaKind: MediaKind? {
-    if case .kind(let kind) = mediaFilter { kind } else { nil }
-  }
-
-  private var toolbarAddTitle: String {
-    selectedMediaKind.map { "Add \(String(localized: $0.singularName))" } ?? "Add Item"
-  }
-
-  private var emptyAddTitle: String {
-    selectedMediaKind.map { "Add \(String(localized: $0.singularName))" } ?? "Add Item"
-  }
 
   var body: some View {
     ScrollView {
@@ -81,18 +67,6 @@ struct HomeView: View {
           )
           .id(historyIdentity)
 
-          if !overdueItems.isEmpty {
-            overdueSection
-          }
-
-          if !activeItems.isEmpty {
-            activeSection
-          }
-
-          if !plannedItems.isEmpty {
-            upNextSection
-          }
-
           MediaValueThisMonthSection(
             items: items,
             referenceDate: referenceDate,
@@ -106,7 +80,7 @@ struct HomeView: View {
       }
       .padding(.vertical, 12)
     }
-    .navigationTitle("Entertainment Value")
+    .navigationTitle("Log")
     .archiveBackground()
     .toolbar {
       ToolbarItem(placement: .topBarLeading) {
@@ -116,8 +90,8 @@ struct HomeView: View {
       }
 
       ToolbarItem(placement: .topBarTrailing) {
-        Button(toolbarAddTitle, systemImage: "plus") {
-          navigation.presentedSheet = .quickAdd(initialMediaKind: selectedMediaKind)
+        Button("Add to Log", systemImage: "plus") {
+          navigation.showLogChooser()
         }
       }
 
@@ -145,30 +119,14 @@ struct HomeView: View {
 
   private var welcome: some View {
     ContentUnavailableView {
-      Label("Make room for fun", systemImage: "sparkles")
+      Label("Your log starts here", systemImage: "clock")
     } description: {
-      Text(
-        "Add something you want to read, watch, play, or hear. Each time you return to it, log a new session."
-      )
+      Text("Keep a simple record of what you watch, read, play, and hear.")
     } actions: {
-      HStack(alignment: .top, spacing: 32) {
-        welcomeAction(
-          title: emptyAddTitle,
-          symbol: "plus",
-          isPrimary: true
-        ) {
-          navigation.presentedSheet = .quickAdd(initialMediaKind: selectedMediaKind)
-        }
-
-        welcomeAction(
-          title: "Import",
-          symbol: "square.and.arrow.down",
-          isPrimary: false
-        ) {
-          navigation.showImportExport()
-        }
+      Button("Add to Log", systemImage: "plus") {
+        navigation.showLogChooser()
       }
-      .frame(maxWidth: 280)
+      .buttonStyle(.glassProminent)
     }
     .frame(maxWidth: .infinity, minHeight: 480)
   }
@@ -651,7 +609,7 @@ private struct MediaValueThisMonthSection: View {
   private var valueExplanation: String {
     if isMediaFilterActive {
       return
-        "Monthly costs are distributed by logged runtime across all subscription activity, regardless of the Home filter."
+        "Monthly costs are distributed by logged runtime across all subscription activity, regardless of the Log filter."
     }
     return "Monthly costs are distributed across titles by logged runtime."
   }
