@@ -38,17 +38,13 @@ nonisolated enum PodcastFeedPrivacy: Sendable, Equatable {
               url.scheme?.lowercased() == "https",
               !isSensitive(url)
         else {
-            // URLs outside the public Apple directory are treated as private by
-            // default. This errs toward Keychain storage instead of accidentally
-            // persisting a premium feed token in SwiftData or an export.
+            // Prefer Keychain over writing a premium feed token into SwiftData
+            // or an export.
             return .privateCredential
         }
         return .publicDirectoryFeed
     }
 
-    /// True when the URL carries userinfo or a query name that usually holds a
-    /// credential. Manual entry and import use this without the Apple-directory
-    /// rule, so a public RSS host is not Keychained just for being non-Apple.
     static func isSensitive(_ url: URL) -> Bool {
         if url.user != nil || url.password != nil { return true }
         return containsSensitiveQuery(in: url)

@@ -16,12 +16,11 @@ nonisolated enum RemoteHTTPURL {
         return url
     }
 
-    /// Artwork and public source links must not carry embedded credentials.
-    /// Those would land in the shared URL cache.
     static func parsePublic(_ value: String) -> URL? {
         parse(value).flatMap(parsePublic)
     }
 
+    /// Userinfo on a public URL is written to the shared URL cache on disk.
     static func parsePublic(_ url: URL) -> URL? {
         guard let url = parse(url), url.user == nil, url.password == nil else { return nil }
         return url

@@ -116,7 +116,6 @@ private struct CachedArtworkView: View {
             }
             loadedAssetID = asset.id
         } catch is CancellationError {
-            // A recycled grid cell should stop quietly.
         } catch {
             loadedAssetID = asset.id
             didFail = true
