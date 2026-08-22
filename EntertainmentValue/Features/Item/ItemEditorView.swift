@@ -472,11 +472,9 @@ struct ItemEditorView: View {
     }
 
     private func reconcilePodcastFeed(for item: LibraryItem) async throws {
-        guard item.mediaKind == .podcast,
-              let feedURL = draft.feedURL.nilIfBlank,
-              RemoteHTTPURL.parse(feedURL) != nil
-        else { return }
+        guard item.mediaKind == .podcast, let feedURL = draft.feedURL.nilIfBlank else { return }
         let existing = (item.externalReferences ?? []).first { $0.providerRaw == "rss" }
+        guard existing != nil || RemoteHTTPURL.parse(feedURL) != nil else { return }
         let reference = existing ?? ExternalReference(
             ownerItem: item,
             providerRaw: "rss",
