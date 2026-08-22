@@ -343,12 +343,21 @@ struct ItemEditorView: View {
 
     private func validateDraftURLs() throws {
         if let cover = draft.coverURL.nilIfBlank, RemoteHTTPURL.parsePublic(cover) == nil {
-            throw RemoteHTTPURLError.invalid
+            let existing = existingItem?.preferredArtwork?.remoteURLString?.nilIfBlank
+            if cover != existing {
+                throw RemoteHTTPURLError.invalid
+            }
         }
         if draft.mediaKind == .podcast,
            let feed = draft.feedURL.nilIfBlank,
            RemoteHTTPURL.parse(feed) == nil {
-            throw RemoteHTTPURLError.invalid
+            let existing = (existingItem?.externalReferences ?? [])
+                .first { $0.providerRaw == "rss" }?
+                .canonicalURLString?
+                .nilIfBlank
+            if feed != existing {
+                throw RemoteHTTPURLError.invalid
+            }
         }
     }
 
