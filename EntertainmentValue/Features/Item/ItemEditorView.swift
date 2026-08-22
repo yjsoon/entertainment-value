@@ -308,6 +308,7 @@ struct ItemEditorView: View {
         defer { isSaving = false }
 
         do {
+            try validateDraftURLs()
             let isNew = existingItem == nil
             let item = existingItem ?? LibraryItem(
                 mediaKind: draft.mediaKind,
@@ -337,6 +338,28 @@ struct ItemEditorView: View {
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func validateDraftURLs() throws {
+        if selectedCoverData == nil,
+           let cover = draft.coverURL.nilIfBlank,
+           RemoteHTTPURL.parsePublic(cover) == nil {
+            let existing = existingItem?.preferredArtwork?.remoteURLString?.nilIfBlank
+            if cover != existing {
+                throw RemoteHTTPURLError.invalid
+            }
+        }
+        if draft.mediaKind == .podcast,
+           let feed = draft.feedURL.nilIfBlank,
+           RemoteHTTPURL.parse(feed) == nil {
+            let existing = (existingItem?.externalReferences ?? [])
+                .first { $0.providerRaw == "rss" }?
+                .canonicalURLString?
+                .nilIfBlank
+            if feed != existing {
+                throw RemoteHTTPURLError.invalid
+            }
         }
     }
 
@@ -437,7 +460,7 @@ struct ItemEditorView: View {
         }
 
         guard let coverURL = draft.coverURL.nilIfBlank,
-              URL(string: coverURL) != nil,
+              RemoteHTTPURL.parsePublic(coverURL) != nil,
               item.preferredArtwork?.remoteURLString != coverURL
         else { return }
         let asset = ArtworkAsset(
@@ -451,18 +474,23 @@ struct ItemEditorView: View {
     }
 
     private func reconcilePodcastFeed(for item: LibraryItem) async throws {
-        guard item.mediaKind == .podcast, let feedURL = draft.feedURL.nilIfBlank else { return }
+        guard item.mediaKind == .podcast,
+              let feedURL = draft.feedURL.nilIfBlank
+        else { return }
         let existing = (item.externalReferences ?? []).first { $0.providerRaw == "rss" }
+        let url = RemoteHTTPURL.parse(feedURL)
+        guard url != nil || existing != nil else { return }
         let reference = existing ?? ExternalReference(
             ownerItem: item,
             providerRaw: "rss",
             recordKindRaw: "feed",
             externalID: ArtworkRepository.hash(feedURL)
         )
+        let treatAsPrivate = draft.isPrivateFeed || (url.map(PodcastFeedPrivacy.isSensitive) ?? false)
 
         reference.isActiveFeed = true
-        reference.isPrivateFeed = draft.isPrivateFeed
-        if draft.isPrivateFeed {
+        reference.isPrivateFeed = treatAsPrivate
+        if treatAsPrivate {
             let key = reference.credentialKeychainID ?? "private-feed-\(item.id.uuidString)"
             try await services.credentials.set(feedURL, for: key)
             reference.credentialKeychainID = key

@@ -27,6 +27,16 @@ struct HTTPClientTests {
         }
     }
 
+    @Test("Transport refuses non-HTTP URLs before opening a session")
+    func refusesFileURL() async {
+        let client = URLSessionHTTPClient.secretless()
+        var request = URLRequest(url: URL(string: "file:///tmp/secret")!)
+        request.timeoutInterval = 1
+        await #expect(throws: HTTPClientError.unsupportedURL) {
+            try await client.send(request)
+        }
+    }
+
     @Test("Podcast refresh policy accepts 304 while ordinary requests do not")
     func acceptsNotModifiedOnlyWhenRequested() throws {
         let response = HTTPResponse(data: Data(), statusCode: 304)

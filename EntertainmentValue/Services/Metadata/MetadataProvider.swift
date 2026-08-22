@@ -201,5 +201,10 @@ nonisolated func metadataYear(from value: String?) -> Int? {
 
 nonisolated func metadataURL(_ value: String?) -> URL? {
     guard let value = value?.metadataNilIfBlank else { return nil }
-    return URL(string: value)
+    return RemoteHTTPURL.parsePublic(value)
+}
+
+nonisolated func metadataFeedURL(_ value: String?) -> URL? {
+    guard let value = value?.metadataNilIfBlank else { return nil }
+    return RemoteHTTPURL.parse(value)
 }

@@ -53,6 +53,18 @@ struct PodcastFeedTests {
         #expect(request.value(forHTTPHeaderField: "If-None-Match") == "old-tag")
         #expect(request.value(forHTTPHeaderField: "If-Modified-Since") == "Sat, 20 Jun 2026 09:00:00 GMT")
     }
+
+    @Test("RSS refresh refuses a file URL before networking")
+    func refusesFileFeed() async {
+        let client = FeedFixtureHTTPClient(response: HTTPResponse(data: Data(), statusCode: 200))
+        let feedClient = RSSPodcastFeedClient(httpClient: client)
+        await #expect(throws: RemoteHTTPURLError.invalid) {
+            try await feedClient.refresh(
+                PodcastFeedRefreshRequest(feedURL: URL(string: "file:///tmp/feed.xml")!)
+            )
+        }
+        #expect(await client.lastRequest == nil)
+    }
 }
 
 private actor FeedFixtureHTTPClient: HTTPClient {

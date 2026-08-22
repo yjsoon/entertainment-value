@@ -36,16 +36,18 @@ nonisolated enum PodcastFeedPrivacy: Sendable, Equatable {
     static func classify(_ url: URL, discoveredBy provider: MetadataProviderID) -> Self {
         guard provider == .applePodcasts,
               url.scheme?.lowercased() == "https",
-              url.user == nil,
-              url.password == nil,
-              !containsSensitiveQuery(in: url)
+              !isSensitive(url)
         else {
-            // URLs outside the public Apple directory are treated as private by
-            // default. This errs toward Keychain storage instead of accidentally
-            // persisting a premium feed token in SwiftData or an export.
+            // Prefer Keychain over writing a premium feed token into SwiftData
+            // or an export.
             return .privateCredential
         }
         return .publicDirectoryFeed
+    }
+
+    static func isSensitive(_ url: URL) -> Bool {
+        if url.user != nil || url.password != nil { return true }
+        return containsSensitiveQuery(in: url)
     }
 
     private static func containsSensitiveQuery(in url: URL) -> Bool {
@@ -178,11 +180,6 @@ nonisolated enum MetadataDomainMapper {
     }
 
     private static func safePublicSourceURL(_ url: URL?) -> URL? {
-        guard let url,
-              ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
-              url.user == nil,
-              url.password == nil
-        else { return nil }
-        return url
+        url.flatMap(RemoteHTTPURL.parsePublic)
     }
 }

@@ -158,10 +158,11 @@ struct MetadataLibraryInserter {
 
         do {
             if item.title == baselineTitle, enrichedTitle != baselineTitle {
-                let canUpdateSortTitle = item.sortTitle == baselineTitle
+                let keepSortTitle = item.sortTitle != baselineTitle
+                let previousSortTitle = item.sortTitle
                 item.setTitle(enrichedTitle)
-                if canUpdateSortTitle {
-                    item.sortTitle = enrichedTitle
+                if keepSortTitle {
+                    item.sortTitle = previousSortTitle
                 }
             }
             if item.subtitle == baseline.subtitle, enriched.subtitle != baseline.subtitle {

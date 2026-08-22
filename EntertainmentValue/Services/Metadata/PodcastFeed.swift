@@ -78,6 +78,9 @@ nonisolated struct RSSPodcastFeedClient: PodcastFeedRefreshing {
     }
 
     func refresh(_ refreshRequest: PodcastFeedRefreshRequest) async throws -> PodcastFeedRefreshResult {
+        guard RemoteHTTPURL.parse(refreshRequest.feedURL) != nil else {
+            throw RemoteHTTPURLError.invalid
+        }
         var request = URLRequest(url: refreshRequest.feedURL)
         request.timeoutInterval = 30
         request.setValue(

@@ -151,7 +151,7 @@ nonisolated struct ApplePodcastMetadataProvider: MetadataProvider {
             coverImageURL: metadataURL(item.artworkURL600 ?? item.artworkURL100),
             thumbnailImageURL: metadataURL(item.artworkURL100 ?? item.artworkURL600),
             sourceURL: metadataURL(item.collectionViewURL),
-            feedURL: metadataURL(item.feedURL),
+            feedURL: metadataFeedURL(item.feedURL),
             genres: (item.genres ?? [item.primaryGenreName].compactMap(\.self)).metadataDeduplicated,
             pageCount: nil,
             durationMinutes: nil,

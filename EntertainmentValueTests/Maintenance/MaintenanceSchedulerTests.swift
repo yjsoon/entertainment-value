@@ -10,6 +10,13 @@ struct MaintenanceSchedulerTests {
         func record(_ event: String) { events.append(event) }
     }
 
+    private func ranExclusively(_ events: [String], _ first: String, _ second: String) -> Bool {
+        let firstPair = ["\(first)-start", "\(first)-end"]
+        let secondPair = ["\(second)-start", "\(second)-end"]
+        let stripped = events.filter { $0.hasPrefix(first) || $0.hasPrefix(second) }
+        return stripped == firstPair + secondPair || stripped == secondPair + firstPair
+    }
+
     @Test("Rapid foreground bounces coalesce into a single maintenance run")
     func rapidRequestsCoalesce() async {
         let scheduler = MaintenanceScheduler()
@@ -61,29 +68,6 @@ struct MaintenanceSchedulerTests {
         #expect(recorder.events == ["maintenance-start", "maintenance-end", "restore"])
     }
 
-    @Test("Overlapping restores keep the gate closed until both complete")
-    func overlappingRestoresKeepGateClosed() async {
-        let scheduler = MaintenanceScheduler()
-        let recorder = OrderRecorder()
-
-        await scheduler.withRestoreGate {
-            recorder.record("outer-start")
-            await scheduler.withRestoreGate {
-                recorder.record("inner")
-            }
-            // The inner gate has released, but the outer one is still active:
-            // a maintenance request must be deferred, not started.
-            let accepted = scheduler.scheduleMaintenance { recorder.record("maintenance") }
-            #expect(!accepted)
-            await Task.yield()
-            #expect(!recorder.events.contains("maintenance"))
-            recorder.record("outer-end")
-        }
-        await scheduler.waitForIdle()
-
-        #expect(recorder.events == ["outer-start", "inner", "outer-end", "maintenance"])
-    }
-
     @Test("Concurrent restores replay deferred maintenance only after the last one finishes")
     func concurrentRestoresReplayAfterLastRelease() async {
         let scheduler = MaintenanceScheduler()
@@ -113,6 +97,27 @@ struct MaintenanceSchedulerTests {
             #expect(maintenanceIndex > firstEnd)
             #expect(maintenanceIndex > secondEnd)
         }
+        #expect(ranExclusively(recorder.events, "restore1", "restore2"))
+    }
+
+    @Test("Concurrent gated mutations do not interleave")
+    func concurrentGatesAreExclusive() async {
+        let scheduler = MaintenanceScheduler()
+        let recorder = OrderRecorder()
+
+        async let first: Void = scheduler.withRestoreGate {
+            recorder.record("purge-start")
+            await Task.yield()
+            recorder.record("purge-end")
+        }
+        async let second: Void = scheduler.withRestoreGate {
+            recorder.record("restore-start")
+            await Task.yield()
+            recorder.record("restore-end")
+        }
+        _ = await (first, second)
+
+        #expect(ranExclusively(recorder.events, "purge", "restore"))
     }
 
     @Test("Maintenance runs again once the restore gate is released")

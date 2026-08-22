@@ -135,6 +135,9 @@ final class LibraryItem {
     }
 
     func setTitle(_ newValue: String) {
+        if sortTitle == title {
+            sortTitle = newValue
+        }
         title = newValue
         normalizedTitle = Self.normalize(newValue)
         updatedAt = .now

@@ -3,15 +3,11 @@ import SwiftUI
 
 struct ArchivedItemsView: View {
     @Query(
-        filter: #Predicate<LibraryItem> { $0.trashedAt == nil },
+        filter: #Predicate<LibraryItem> { $0.trashedAt == nil && $0.archivedAt != nil },
         sort: [SortDescriptor(\LibraryItem.title)]
-    ) private var items: [LibraryItem]
+    ) private var archivedItems: [LibraryItem]
     @Environment(\.modelContext) private var modelContext
     @State private var errorMessage: String?
-
-    private var archivedItems: [LibraryItem] {
-        items.filter { $0.archivedAt != nil }
-    }
 
     var body: some View {
         List {
@@ -66,16 +62,19 @@ struct ArchivedItemsView: View {
 }
 
 struct RecentlyDeletedView: View {
-    @Query(sort: \LibraryItem.trashedAt, order: .reverse) private var items: [LibraryItem]
-    @Query(sort: \UserList.trashedAt, order: .reverse) private var lists: [UserList]
+    @Query(
+        filter: #Predicate<LibraryItem> { $0.trashedAt != nil },
+        sort: [SortDescriptor(\LibraryItem.trashedAt, order: .reverse)]
+    ) private var deletedItems: [LibraryItem]
+    @Query(
+        filter: #Predicate<UserList> { $0.trashedAt != nil },
+        sort: [SortDescriptor(\UserList.trashedAt, order: .reverse)]
+    ) private var deletedLists: [UserList]
 
     @Environment(\.modelContext) private var modelContext
     @Environment(AppServices.self) private var services
     @State private var pendingPermanentDeletion: DeletedRecord?
     @State private var errorMessage: String?
-
-    private var deletedItems: [LibraryItem] { items.filter { $0.trashedAt != nil } }
-    private var deletedLists: [UserList] { lists.filter { $0.trashedAt != nil } }
 
     var body: some View {
         List {
@@ -205,7 +204,9 @@ struct RecentlyDeletedView: View {
 
     private func purgeExpired() async {
         do {
-            _ = try await service.purgeExpired()
+            _ = try await services.maintenance.withRestoreGate {
+                try await service.purgeExpired()
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -215,11 +216,13 @@ struct RecentlyDeletedView: View {
         guard let record = pendingPermanentDeletion else { return }
         pendingPermanentDeletion = nil
         do {
-            switch record {
-            case let .item(item): try await service.permanentlyDelete(item)
-            case let .list(list): service.permanentlyDelete(list)
+            try await services.maintenance.withRestoreGate {
+                switch record {
+                case let .item(item): try await service.permanentlyDelete(item)
+                case let .list(list): service.permanentlyDelete(list)
+                }
+                try modelContext.save()
             }
-            try modelContext.save()
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -275,6 +275,20 @@ struct MediaValueServiceTests {
         #expect(try container.mainContext.fetch(FetchDescriptor<MediaAccessAssignment>()).isEmpty)
     }
 
+    @Test("Service rejects a subscription ID that is not stored")
+    func rejectsMissingSubscription() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let item = LibraryItem(mediaKind: .movie, title: "Moonlight")
+        context.insert(item)
+        let service = MediaValueService(context: context)
+
+        #expect(throws: MediaValueError.missingSubscription) {
+            try service.setSubscription(itemID: item.id, subscriptionID: UUID())
+        }
+        #expect(try context.fetch(FetchDescriptor<MediaAccessAssignment>()).isEmpty)
+    }
+
     private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!

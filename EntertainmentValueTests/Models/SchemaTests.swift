@@ -6,6 +6,27 @@ import Testing
 @Suite("EntertainmentValue schema", .serialized)
 @MainActor
 struct SchemaTests {
+    @Test("Renaming an item updates the library sort key")
+    func setTitleUpdatesSortTitle() {
+        let item = LibraryItem(mediaKind: .book, title: "Old Title")
+        #expect(item.sortTitle == "Old Title")
+        item.setTitle("New Title")
+        #expect(item.title == "New Title")
+        #expect(item.sortTitle == "New Title")
+        #expect(item.normalizedTitle == LibraryItem.normalize("New Title"))
+    }
+
+    @Test("A custom sort key survives setTitle")
+    func setTitlePreservesCustomSortTitle() {
+        let item = LibraryItem(mediaKind: .book, title: "The Design of Everyday Things")
+        item.sortTitle = "Design of Everyday Things, The"
+        item.setTitle("The Design of Everyday Things")
+        #expect(item.sortTitle == "Design of Everyday Things, The")
+        item.setTitle("Design of Everyday Things")
+        #expect(item.title == "Design of Everyday Things")
+        #expect(item.sortTitle == "Design of Everyday Things, The")
+    }
+
     @Test("Current schema creates a complete in-memory store")
     func createsContainer() throws {
         let container = try makeContainer()

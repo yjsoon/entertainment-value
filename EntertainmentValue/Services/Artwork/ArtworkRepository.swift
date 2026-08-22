@@ -5,6 +5,7 @@ import UIKit
 
 enum ArtworkRepositoryError: Error, Equatable, LocalizedError {
     case invalidHTTPResponse
+    case unsupportedURL
     case unsuccessfulStatus(Int)
     case emptyResponse
     case invalidImage
@@ -13,6 +14,8 @@ enum ArtworkRepositoryError: Error, Equatable, LocalizedError {
         switch self {
         case .invalidHTTPResponse:
             "The artwork server returned an invalid response."
+        case .unsupportedURL:
+            RemoteHTTPURLError.invalid.errorDescription
         case let .unsuccessfulStatus(status):
             "The artwork server returned status \(status)."
         case .emptyResponse:
@@ -79,6 +82,9 @@ actor ArtworkRepository: ArtworkLoading {
     }
 
     func data(for remoteURL: URL, cacheKey explicitCacheKey: String? = nil) async throws -> Data {
+        guard RemoteHTTPURL.parsePublic(remoteURL) != nil else {
+            throw ArtworkRepositoryError.unsupportedURL
+        }
         let key = explicitCacheKey ?? Self.hash(remoteURL.absoluteString)
         let destination = cachedRemoteFileURL(forKey: key)
 

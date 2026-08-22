@@ -926,7 +926,9 @@ final class SwiftDataArchiveBridge {
                 artwork.aspectRatio = record.aspectRatio
                 artwork.providerRaw = record.provider
                 artwork.attributionText = record.attributionText
-                artwork.attributionURLString = record.attributionURL
+                artwork.attributionURLString = record.attributionURL.flatMap {
+                    RemoteHTTPURL.parsePublic($0)?.absoluteString
+                }
                 artwork.updatedAt = record.updatedAt
                 context.insert(artwork)
                 item.artworkAssets = appending(artwork, to: item.artworkAssets, id: \.id)
@@ -1018,7 +1020,9 @@ final class SwiftDataArchiveBridge {
                 reference.payloadHash = record.payloadHash
                 reference.payloadVersion = record.payloadVersion
                 reference.attributionText = record.attributionText
-                reference.attributionURLString = record.attributionURL
+                reference.attributionURLString = record.attributionURL.flatMap {
+                    RemoteHTTPURL.parsePublic($0)?.absoluteString
+                }
                 reference.isActiveFeed = record.isActiveFeed
                 reference.isPrivateFeed = record.isPrivateFeed
                 reference.credentialKeychainID = nil

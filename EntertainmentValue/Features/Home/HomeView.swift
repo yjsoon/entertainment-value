@@ -34,25 +34,6 @@ struct HomeView: View {
         HistoryPeriod.month.interval(containing: referenceDate, calendar: calendar).start
     }
 
-    private var rails: HomeRailPartition<LibraryItem> {
-        HomeRails.partition(visibleItems, now: referenceDate) { item in
-            HomeRails.Snapshot(
-                status: item.status,
-                isFollowedPodcast: item.mediaKind == .podcast && item.podcastFollowState == .following,
-                earliestPendingReminderFireDate: (item.reminders ?? [])
-                    .filter { $0.state == .pending }
-                    .map(\.fireAt)
-                    .min()
-            )
-        }
-    }
-
-    private var activeItems: [LibraryItem] { rails.active }
-
-    private var plannedItems: [LibraryItem] { rails.planned }
-
-    private var overdueItems: [LibraryItem] { rails.overdue }
-
     private var selectedMediaKind: MediaKind? {
         if case let .kind(kind) = mediaFilter { kind } else { nil }
     }
@@ -66,6 +47,17 @@ struct HomeView: View {
     }
 
     var body: some View {
+        let rails = HomeRails.partition(visibleItems, now: referenceDate) { item in
+            HomeRails.Snapshot(
+                status: item.status,
+                isFollowedPodcast: item.mediaKind == .podcast && item.podcastFollowState == .following,
+                earliestPendingReminderFireDate: (item.reminders ?? [])
+                    .filter { $0.state == .pending }
+                    .map(\.fireAt)
+                    .min()
+            )
+        }
+
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
                 if visibleItems.isEmpty {
@@ -99,16 +91,16 @@ struct HomeView: View {
                     )
                     .id(monthIdentity)
 
-                    if !overdueItems.isEmpty {
-                        overdueSection
+                    if !rails.overdue.isEmpty {
+                        overdueSection(rails.overdue)
                     }
 
-                    if !activeItems.isEmpty {
-                        activeSection
+                    if !rails.active.isEmpty {
+                        activeSection(rails.active)
                     }
 
-                    if !plannedItems.isEmpty {
-                        upNextSection
+                    if !rails.planned.isEmpty {
+                        upNextSection(rails.planned)
                     }
                 }
             }
@@ -214,7 +206,7 @@ struct HomeView: View {
         .accessibilityHint(title == "Import" ? "Imports your history from Sofa or Overcast" : "Adds something to your library")
     }
 
-    private var overdueSection: some View {
+    private func overdueSection(_ overdueItems: [LibraryItem]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeading(
                 title: "Ready When You Are",
@@ -245,7 +237,7 @@ struct HomeView: View {
         .padding(.horizontal, 16)
     }
 
-    private var activeSection: some View {
+    private func activeSection(_ activeItems: [LibraryItem]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeading(title: "Current")
             .padding(.horizontal, 16)
@@ -273,7 +265,7 @@ struct HomeView: View {
         }
     }
 
-    private var upNextSection: some View {
+    private func upNextSection(_ plannedItems: [LibraryItem]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeading(title: "Planned")
             .padding(.horizontal, 16)
