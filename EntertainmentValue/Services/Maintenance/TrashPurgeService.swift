@@ -13,10 +13,12 @@ struct TrashPurgeService {
     let reminders: any ReminderScheduling
 
     func purgeExpired(at date: Date = .now) async throws -> TrashPurgeResult {
-        let items = try context.fetch(FetchDescriptor<LibraryItem>())
-            .filter { $0.trashedAt != nil && ($0.purgeAfter ?? .distantFuture) <= date }
-        let lists = try context.fetch(FetchDescriptor<UserList>())
-            .filter { $0.trashedAt != nil && ($0.purgeAfter ?? .distantFuture) <= date }
+        let items = try context.fetch(
+            FetchDescriptor<LibraryItem>(predicate: #Predicate { $0.trashedAt != nil })
+        ).filter { ($0.purgeAfter ?? .distantFuture) <= date }
+        let lists = try context.fetch(
+            FetchDescriptor<UserList>(predicate: #Predicate { $0.trashedAt != nil })
+        ).filter { ($0.purgeAfter ?? .distantFuture) <= date }
 
         for item in items {
             try await permanentlyDelete(item)
@@ -29,8 +31,11 @@ struct TrashPurgeService {
     }
 
     func permanentlyDelete(_ item: LibraryItem) async throws {
-        let assignments = try context.fetch(FetchDescriptor<MediaAccessAssignment>())
-        for assignment in assignments where assignment.itemID == item.id {
+        let itemID = item.id
+        let assignments = try context.fetch(
+            FetchDescriptor<MediaAccessAssignment>(predicate: #Predicate { $0.itemID == itemID })
+        )
+        for assignment in assignments {
             context.delete(assignment)
         }
         for reminder in item.reminders ?? [] {
