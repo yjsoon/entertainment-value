@@ -36,9 +36,7 @@ nonisolated enum PodcastFeedPrivacy: Sendable, Equatable {
     static func classify(_ url: URL, discoveredBy provider: MetadataProviderID) -> Self {
         guard provider == .applePodcasts,
               url.scheme?.lowercased() == "https",
-              url.user == nil,
-              url.password == nil,
-              !containsSensitiveQuery(in: url)
+              !isSensitive(url)
         else {
             // URLs outside the public Apple directory are treated as private by
             // default. This errs toward Keychain storage instead of accidentally
@@ -46,6 +44,14 @@ nonisolated enum PodcastFeedPrivacy: Sendable, Equatable {
             return .privateCredential
         }
         return .publicDirectoryFeed
+    }
+
+    /// True when the URL carries userinfo or a query name that usually holds a
+    /// credential. Manual entry and import use this without the Apple-directory
+    /// rule, so a public RSS host is not Keychained just for being non-Apple.
+    static func isSensitive(_ url: URL) -> Bool {
+        if url.user != nil || url.password != nil { return true }
+        return containsSensitiveQuery(in: url)
     }
 
     private static func containsSensitiveQuery(in url: URL) -> Bool {

@@ -472,19 +472,23 @@ struct ItemEditorView: View {
     }
 
     private func reconcilePodcastFeed(for item: LibraryItem) async throws {
-        guard item.mediaKind == .podcast, let feedURL = draft.feedURL.nilIfBlank else { return }
+        guard item.mediaKind == .podcast,
+              let feedURL = draft.feedURL.nilIfBlank
+        else { return }
         let existing = (item.externalReferences ?? []).first { $0.providerRaw == "rss" }
-        guard existing != nil || RemoteHTTPURL.parse(feedURL) != nil else { return }
+        let url = RemoteHTTPURL.parse(feedURL)
+        guard url != nil || existing != nil else { return }
         let reference = existing ?? ExternalReference(
             ownerItem: item,
             providerRaw: "rss",
             recordKindRaw: "feed",
             externalID: ArtworkRepository.hash(feedURL)
         )
+        let treatAsPrivate = draft.isPrivateFeed || (url.map(PodcastFeedPrivacy.isSensitive) ?? false)
 
         reference.isActiveFeed = true
-        reference.isPrivateFeed = draft.isPrivateFeed
-        if draft.isPrivateFeed {
+        reference.isPrivateFeed = treatAsPrivate
+        if treatAsPrivate {
             let key = reference.credentialKeychainID ?? "private-feed-\(item.id.uuidString)"
             try await services.credentials.set(feedURL, for: key)
             reference.credentialKeychainID = key

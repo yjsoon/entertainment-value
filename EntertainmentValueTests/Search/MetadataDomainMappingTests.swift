@@ -127,9 +127,18 @@ struct MetadataDomainMappingTests {
         let tokenURL = try #require(URL(string: "https://feeds.example.com/show.xml?token=secret"))
         let privateURL = try #require(URL(string: "https://premium.example.com/member/abc123.xml"))
 
+        let userinfoURL = try #require(URL(string: "https://user:pass@feeds.example.com/show.xml"))
+        let publicRSS = try #require(URL(string: "https://feeds.npr.org/510289/podcast.xml"))
+
         #expect(PodcastFeedPrivacy.classify(publicURL, discoveredBy: .applePodcasts) == .publicDirectoryFeed)
         #expect(PodcastFeedPrivacy.classify(tokenURL, discoveredBy: .applePodcasts) == .privateCredential)
         #expect(PodcastFeedPrivacy.classify(privateURL, discoveredBy: .rss) == .privateCredential)
+        #expect(PodcastFeedPrivacy.classify(publicRSS, discoveredBy: .rss) == .privateCredential)
+
+        #expect(PodcastFeedPrivacy.isSensitive(publicURL) == false)
+        #expect(PodcastFeedPrivacy.isSensitive(publicRSS) == false)
+        #expect(PodcastFeedPrivacy.isSensitive(tokenURL) == true)
+        #expect(PodcastFeedPrivacy.isSensitive(userinfoURL) == true)
 
         let result = makeResult(
             provider: .applePodcasts,
