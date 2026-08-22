@@ -1,5 +1,9 @@
 import Foundation
 
+private enum RestoreGateTLS {
+    @TaskLocal static var nestDepth = 0
+}
+
 /// Serialises automatic maintenance against restore operations on the shared
 /// MainActor model context.
 ///
@@ -13,16 +17,16 @@ import Foundation
 ///   any restore holds the gate, and a restore first drains any in-flight
 ///   maintenance.
 ///
-/// Restores are counted rather than flagged so overlapping `withRestoreGate`
-/// calls keep the gate closed until every one of them has finished. A request
-/// that arrives while the gate is held is remembered and replayed once after
-/// the last restore releases it, so a foreground that lands mid-restore still
-/// gets that day's snapshot and purge.
+/// Concurrent `withRestoreGate` callers queue. Nested calls on the same task
+/// re-enter so import can wrap apply. A request that arrives while the gate is
+/// held is remembered and replayed once after the last restore releases it, so
+/// a foreground that lands mid-restore still gets that day's snapshot and purge.
 @MainActor
 final class MaintenanceScheduler {
     private var activeRestoreCount = 0
     private var maintenanceTask: Task<Void, Never>?
     private var pendingMaintenance: (@MainActor () async -> Void)?
+    private var exclusiveWaiters: [CheckedContinuation<Void, Never>] = []
 
     nonisolated init() {}
 
@@ -45,26 +49,50 @@ final class MaintenanceScheduler {
         return true
     }
 
-    /// Runs a restore or import mutation exclusively of maintenance: waits for
-    /// any in-flight maintenance to finish, then blocks new maintenance until
-    /// every overlapping gated operation has completed.
+    /// Runs a restore, import, or trash mutation exclusively of maintenance and
+    /// of other concurrent gated callers. Nested calls on the same task re-enter.
     func withRestoreGate<T>(_ operation: @MainActor () async throws -> T) async rethrows -> T {
-        await waitForIdle()
-        activeRestoreCount += 1
-        defer {
-            activeRestoreCount -= 1
-            if activeRestoreCount == 0, let pending = pendingMaintenance {
-                pendingMaintenance = nil
-                scheduleMaintenance(pending)
-            }
+        if RestoreGateTLS.nestDepth == 0 {
+            await waitForExclusiveSlot()
         }
-        return try await operation()
+        return try await RestoreGateTLS.$nestDepth.withValue(RestoreGateTLS.nestDepth + 1) {
+            activeRestoreCount += 1
+            defer { releaseRestoreGate() }
+            return try await operation()
+        }
     }
 
     /// Resumes once no maintenance is in flight.
     func waitForIdle() async {
         while let task = maintenanceTask {
             await task.value
+        }
+    }
+
+    private func waitForExclusiveSlot() async {
+        while true {
+            if activeRestoreCount > 0 {
+                await withCheckedContinuation { exclusiveWaiters.append($0) }
+                continue
+            }
+            if let task = maintenanceTask {
+                await task.value
+                continue
+            }
+            return
+        }
+    }
+
+    private func releaseRestoreGate() {
+        activeRestoreCount -= 1
+        guard activeRestoreCount == 0 else { return }
+        if !exclusiveWaiters.isEmpty {
+            exclusiveWaiters.removeFirst().resume()
+            return
+        }
+        if let pending = pendingMaintenance {
+            pendingMaintenance = nil
+            scheduleMaintenance(pending)
         }
     }
 }
