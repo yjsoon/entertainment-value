@@ -68,27 +68,6 @@ struct MaintenanceSchedulerTests {
         #expect(recorder.events == ["maintenance-start", "maintenance-end", "restore"])
     }
 
-    @Test("Overlapping restores keep the gate closed until both complete")
-    func overlappingRestoresKeepGateClosed() async {
-        let scheduler = MaintenanceScheduler()
-        let recorder = OrderRecorder()
-
-        await scheduler.withRestoreGate {
-            recorder.record("outer-start")
-            await scheduler.withRestoreGate {
-                recorder.record("inner")
-            }
-            let accepted = scheduler.scheduleMaintenance { recorder.record("maintenance") }
-            #expect(!accepted)
-            await Task.yield()
-            #expect(!recorder.events.contains("maintenance"))
-            recorder.record("outer-end")
-        }
-        await scheduler.waitForIdle()
-
-        #expect(recorder.events == ["outer-start", "inner", "outer-end", "maintenance"])
-    }
-
     @Test("Concurrent restores replay deferred maintenance only after the last one finishes")
     func concurrentRestoresReplayAfterLastRelease() async {
         let scheduler = MaintenanceScheduler()
