@@ -78,8 +78,12 @@ struct MediaValueService {
         saveChanges: Bool = true
     ) throws {
         try validateItem(id: itemID)
-        let subscriptions = try context.fetch(FetchDescriptor<MediaSubscription>())
-        guard subscriptions.contains(where: { $0.id == subscriptionID }) else {
+        let subscriptionID = subscriptionID
+        var subscriptionDescriptor = FetchDescriptor<MediaSubscription>(
+            predicate: #Predicate { $0.id == subscriptionID }
+        )
+        subscriptionDescriptor.fetchLimit = 1
+        guard try context.fetch(subscriptionDescriptor).first != nil else {
             throw MediaValueError.missingSubscription
         }
         let assignment = try assignmentForUpdate(itemID: itemID)
@@ -100,8 +104,13 @@ struct MediaValueService {
     }
 
     func deleteSubscription(_ subscription: MediaSubscription) throws {
-        let assignments = try context.fetch(FetchDescriptor<MediaAccessAssignment>())
-        for assignment in assignments where assignment.subscriptionID == subscription.id {
+        let subscriptionID = subscription.id
+        let assignments = try context.fetch(
+            FetchDescriptor<MediaAccessAssignment>(
+                predicate: #Predicate { $0.subscriptionID == subscriptionID }
+            )
+        )
+        for assignment in assignments {
             context.delete(assignment)
         }
         context.delete(subscription)
@@ -118,13 +127,21 @@ struct MediaValueService {
     }
 
     private func assignments(itemID: UUID) throws -> [MediaAccessAssignment] {
-        try context.fetch(FetchDescriptor<MediaAccessAssignment>())
-            .filter { $0.itemID == itemID }
+        let itemID = itemID
+        return try context.fetch(
+            FetchDescriptor<MediaAccessAssignment>(
+                predicate: #Predicate { $0.itemID == itemID }
+            )
+        )
     }
 
     private func validateItem(id: UUID) throws {
-        let items = try context.fetch(FetchDescriptor<LibraryItem>())
-        guard items.contains(where: { $0.id == id }) else {
+        let id = id
+        var descriptor = FetchDescriptor<LibraryItem>(
+            predicate: #Predicate { $0.id == id }
+        )
+        descriptor.fetchLimit = 1
+        guard try context.fetch(descriptor).first != nil else {
             throw MediaValueError.missingItem
         }
     }

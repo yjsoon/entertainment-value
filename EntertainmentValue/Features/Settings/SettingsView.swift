@@ -2,8 +2,12 @@ import SwiftData
 import SwiftUI
 
 struct SettingsView: View {
-    @Query private var items: [LibraryItem]
-    @Query private var lists: [UserList]
+    @Query(filter: #Predicate<LibraryItem> { $0.trashedAt != nil })
+    private var trashedItems: [LibraryItem]
+    @Query(filter: #Predicate<LibraryItem> { $0.archivedAt != nil && $0.trashedAt == nil })
+    private var archivedItems: [LibraryItem]
+    @Query(filter: #Predicate<UserList> { $0.trashedAt != nil })
+    private var trashedLists: [UserList]
 
     @AppStorage("library.grid-style") private var gridStyleRaw = LibraryGridStyle.flow.rawValue
     @AppStorage("reminders.default-hour") private var defaultReminderHour = 9
@@ -17,12 +21,11 @@ struct SettingsView: View {
     }
 
     private var recentlyDeletedCount: Int {
-        items.lazy.filter { $0.trashedAt != nil }.count +
-            lists.lazy.filter { $0.trashedAt != nil }.count
+        trashedItems.count + trashedLists.count
     }
 
     private var archivedCount: Int {
-        items.lazy.filter { $0.archivedAt != nil && $0.trashedAt == nil }.count
+        archivedItems.count
     }
 
     var body: some View {

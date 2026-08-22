@@ -12,7 +12,11 @@ struct SearchView: View {
     @Environment(AppNavigation.self) private var navigation
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \LibraryItem.updatedAt, order: .reverse) private var libraryItems: [LibraryItem]
+    @Query(
+        filter: #Predicate<LibraryItem> { $0.trashedAt == nil },
+        sort: [SortDescriptor(\LibraryItem.updatedAt, order: .reverse)]
+    )
+    private var libraryItems: [LibraryItem]
 
     @State private var query = ""
     @State private var selectedMediaKind: MediaKind
@@ -175,7 +179,7 @@ struct SearchView: View {
             .map(String.init)
         let matches = libraryItems
             .filter { item in
-                guard item.trashedAt == nil, item.mediaKind == selectedMediaKind else { return false }
+                guard item.mediaKind == selectedMediaKind else { return false }
                 let searchable = LibraryItem.normalize(
                     [item.title, item.subtitle, item.creatorLine]
                         .compactMap(\.self)
