@@ -48,12 +48,13 @@ struct PodcastFeedSyncService {
         if reference.isPrivateFeed {
             guard let key = reference.credentialKeychainID,
                   let value = try await credentials.value(for: key),
-                  let url = URL(string: value) else {
+                  let url = RemoteHTTPURL.parse(value) else {
                 throw PodcastFeedSyncError.missingPrivateCredential
             }
             feedURL = url
         } else {
-            guard let value = reference.canonicalURLString, let url = URL(string: value) else {
+            guard let value = reference.canonicalURLString,
+                  let url = RemoteHTTPURL.parse(value) else {
                 throw PodcastFeedSyncError.missingFeed
             }
             feedURL = url
@@ -143,7 +144,7 @@ struct PodcastFeedSyncService {
 
             if !privateFeed,
                unit.preferredArtworkID == nil,
-               let imageURL = episode.imageURL {
+               let imageURL = episode.imageURL.flatMap(RemoteHTTPURL.parsePublic) {
                 let artwork = ArtworkAsset(
                     ownerItem: item,
                     unit: unit,

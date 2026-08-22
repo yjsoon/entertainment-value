@@ -110,9 +110,8 @@ private final nonisolated class OPMLDelegate: NSObject, XMLParserDelegate {
             return
         }
 
-        let parsedURL = URL(string: normalizedFeedURL)
-        let scheme = parsedURL?.scheme?.lowercased()
-        let isHTTPURL = (scheme == "https" || scheme == "http") && parsedURL?.host()?.isEmpty == false
+        let parsedURL = RemoteHTTPURL.parse(normalizedFeedURL)
+        let isHTTPURL = parsedURL != nil
         let cleanTitle = rawTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
         let title = cleanTitle.flatMap { $0.isEmpty ? nil : $0 }
             ?? parsedURL?.host()

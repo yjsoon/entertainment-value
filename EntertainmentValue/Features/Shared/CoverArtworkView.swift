@@ -42,6 +42,7 @@ private struct CachedArtworkView: View {
     @Environment(\.displayScale) private var displayScale
     @State private var image: UIImage?
     @State private var didFail = false
+    @State private var loadedAssetID: UUID?
 
     var body: some View {
         GeometryReader { proxy in
@@ -77,19 +78,25 @@ private struct CachedArtworkView: View {
         guard targetSize.width > 1, targetSize.height > 1, let asset else {
             image = nil
             didFail = false
+            loadedAssetID = nil
             return
         }
 
-        image = nil
-        didFail = false
+        if loadedAssetID != asset.id {
+            image = nil
+            didFail = false
+        }
 
         do {
             let data: Data
             if let imageData = asset.imageData {
                 data = imageData
-            } else if let value = asset.remoteURLString, let url = URL(string: value) {
+            } else if let value = asset.remoteURLString, let url = RemoteHTTPURL.parsePublic(value) {
                 data = try await services.artwork.data(for: url, cacheKey: asset.cacheKey)
             } else {
+                image = nil
+                didFail = asset.remoteURLString != nil
+                loadedAssetID = asset.id
                 return
             }
 
@@ -99,10 +106,12 @@ private struct CachedArtworkView: View {
                 targetSize: targetSize,
                 displayScale: displayScale
             )
+            loadedAssetID = asset.id
             didFail = image == nil
         } catch is CancellationError {
             // A recycled grid cell should stop quietly.
         } catch {
+            loadedAssetID = asset.id
             didFail = true
         }
     }

@@ -955,9 +955,7 @@ final class StagedImportApplier {
         credentialMutations: inout [CredentialMutation],
         report: inout ImportApplicationReport
     ) async throws -> Bool {
-        guard let url = URL(string: rawValue),
-              ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
-              url.host()?.isEmpty == false else {
+        guard let url = RemoteHTTPURL.parse(rawValue) else {
             report.warnings.append(ImportApplicationWarning(
                 rowID: rowID,
                 message: "The podcast feed URL was invalid and was not saved."
@@ -1149,9 +1147,7 @@ final class StagedImportApplier {
     }
 
     private func safePublicURL(_ rawValue: String) -> String? {
-        guard let url = URL(string: rawValue),
-              ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
-              url.host()?.isEmpty == false,
+        guard let url = RemoteHTTPURL.parsePublic(rawValue),
               !isSensitiveURL(url) else { return nil }
         return rawValue
     }

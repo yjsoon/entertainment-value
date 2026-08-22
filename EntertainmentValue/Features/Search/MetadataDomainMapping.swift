@@ -178,11 +178,6 @@ nonisolated enum MetadataDomainMapper {
     }
 
     private static func safePublicSourceURL(_ url: URL?) -> URL? {
-        guard let url,
-              ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
-              url.user == nil,
-              url.password == nil
-        else { return nil }
-        return url
+        url.flatMap(RemoteHTTPURL.parsePublic)
     }
 }

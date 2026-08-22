@@ -308,6 +308,7 @@ struct ItemEditorView: View {
         defer { isSaving = false }
 
         do {
+            try validateDraftURLs()
             let isNew = existingItem == nil
             let item = existingItem ?? LibraryItem(
                 mediaKind: draft.mediaKind,
@@ -337,6 +338,17 @@ struct ItemEditorView: View {
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func validateDraftURLs() throws {
+        if let cover = draft.coverURL.nilIfBlank, RemoteHTTPURL.parsePublic(cover) == nil {
+            throw RemoteHTTPURLError.invalid
+        }
+        if draft.mediaKind == .podcast,
+           let feed = draft.feedURL.nilIfBlank,
+           RemoteHTTPURL.parse(feed) == nil {
+            throw RemoteHTTPURLError.invalid
         }
     }
 
@@ -437,7 +449,7 @@ struct ItemEditorView: View {
         }
 
         guard let coverURL = draft.coverURL.nilIfBlank,
-              URL(string: coverURL) != nil,
+              RemoteHTTPURL.parsePublic(coverURL) != nil,
               item.preferredArtwork?.remoteURLString != coverURL
         else { return }
         let asset = ArtworkAsset(
@@ -451,7 +463,10 @@ struct ItemEditorView: View {
     }
 
     private func reconcilePodcastFeed(for item: LibraryItem) async throws {
-        guard item.mediaKind == .podcast, let feedURL = draft.feedURL.nilIfBlank else { return }
+        guard item.mediaKind == .podcast,
+              let feedURL = draft.feedURL.nilIfBlank,
+              RemoteHTTPURL.parse(feedURL) != nil
+        else { return }
         let existing = (item.externalReferences ?? []).first { $0.providerRaw == "rss" }
         let reference = existing ?? ExternalReference(
             ownerItem: item,

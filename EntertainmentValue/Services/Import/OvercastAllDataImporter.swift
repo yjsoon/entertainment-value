@@ -178,8 +178,7 @@ nonisolated struct OvercastAllDataImporter: Sendable {
     }
 
     private func isHTTPURL(_ value: String) -> Bool {
-        guard let url = URL(string: value), let scheme = url.scheme?.lowercased() else { return false }
-        return (scheme == "https" || scheme == "http") && url.host()?.isEmpty == false
+        RemoteHTTPURL.parse(value) != nil
     }
 
     private func overcastMinutes(from rawValue: String?) -> Double? {

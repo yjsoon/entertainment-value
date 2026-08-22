@@ -14,6 +14,25 @@ struct ArtworkRepositoryTests {
         #expect(first.allSatisfy { $0.isHexDigit })
     }
 
+    @Test("Remote fetches reject non-HTTP URLs")
+    func rejectsNonHTTPRemoteURL() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let repository = try ArtworkRepository(
+            location: ArtworkCacheLocation(
+                remoteDirectory: root.appending(path: "remote"),
+                userDirectory: root.appending(path: "user")
+            )
+        )
+
+        await #expect(throws: ArtworkRepositoryError.unsupportedURL) {
+            try await repository.data(for: URL(string: "file:///tmp/secret.png")!)
+        }
+        await #expect(throws: ArtworkRepositoryError.unsupportedURL) {
+            try await repository.data(for: URL(string: "https://user:pass@cdn.example/cover.jpg")!)
+        }
+    }
+
     @Test("Invalid user artwork is rejected")
     func invalidUserArtworkIsRejected() async throws {
         let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)

@@ -57,6 +57,7 @@ nonisolated struct HTTPResponse: Sendable, Equatable {
 
 nonisolated enum HTTPClientError: Error, Sendable, Equatable {
     case invalidResponse
+    case unsupportedURL
     case unacceptableStatus(code: Int, retryAfter: String?, responsePreview: String?)
     case transport(code: Int, message: String)
 }
@@ -66,6 +67,8 @@ extension HTTPClientError: LocalizedError {
         switch self {
         case .invalidResponse:
             "The server returned a response Entertainment Value could not understand."
+        case .unsupportedURL:
+            RemoteHTTPURLError.invalid.errorDescription
         case let .unacceptableStatus(code, _, _):
             "The metadata service returned HTTP status \(code)."
         case let .transport(_, message):
@@ -81,6 +84,8 @@ extension HTTPClientError: LocalizedError {
             } else {
                 "Try again later, or add the item manually."
             }
+        case .unsupportedURL:
+            "Enter an HTTP or HTTPS address, or add the item manually."
         case .invalidResponse, .transport:
             "Check your connection and try again, or add the item manually."
         }
@@ -133,6 +138,9 @@ nonisolated struct URLSessionHTTPClient: HTTPClient {
         accepting statusPolicy: HTTPStatusPolicy
     ) async throws -> HTTPResponse {
         try Task.checkCancellation()
+        guard let url = request.url, RemoteHTTPURL.parse(url) != nil else {
+            throw HTTPClientError.unsupportedURL
+        }
 
         do {
             let (data, response) = try await session.data(for: request)
