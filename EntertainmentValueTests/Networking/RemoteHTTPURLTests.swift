@@ -39,4 +39,11 @@ struct RemoteHTTPURLTests {
         #expect(metadataURL("file:///tmp/cover.jpg") == nil)
         #expect(metadataURL("https://user:pass@cdn.example/x.jpg") == nil)
     }
+
+    @Test("Feed URL parsing allows userinfo and rejects other schemes")
+    func metadataFeedURLUsesFeedRule() {
+        #expect(metadataFeedURL("https://user:pass@feeds.example/show.xml")?.host() == "feeds.example")
+        #expect(metadataFeedURL("https://feeds.example/show.xml")?.host() == "feeds.example")
+        #expect(metadataFeedURL("file:///tmp/feed.xml") == nil)
+    }
 }

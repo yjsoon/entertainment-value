@@ -873,7 +873,11 @@ private struct MetadataAttributionFooter: View {
     var body: some View {
         if let attribution {
             VStack(alignment: .leading, spacing: 3) {
-                Link(attribution.label, destination: attribution.url)
+                if let url = RemoteHTTPURL.parsePublic(attribution.url) {
+                    Link(attribution.label, destination: url)
+                } else {
+                    Text(attribution.label)
+                }
                 if let notice = attribution.notice {
                     Text(notice)
                 }

@@ -79,10 +79,9 @@ struct MediaValueService {
     ) throws {
         try validateItem(id: itemID)
         let subscriptionID = subscriptionID
-        var subscriptionDescriptor = FetchDescriptor<MediaSubscription>(
+        let subscriptionDescriptor = FetchDescriptor<MediaSubscription>(
             predicate: #Predicate { $0.id == subscriptionID }
         )
-        subscriptionDescriptor.fetchLimit = 1
         guard try context.fetch(subscriptionDescriptor).first != nil else {
             throw MediaValueError.missingSubscription
         }
@@ -137,10 +136,9 @@ struct MediaValueService {
 
     private func validateItem(id: UUID) throws {
         let id = id
-        var descriptor = FetchDescriptor<LibraryItem>(
+        let descriptor = FetchDescriptor<LibraryItem>(
             predicate: #Predicate { $0.id == id }
         )
-        descriptor.fetchLimit = 1
         guard try context.fetch(descriptor).first != nil else {
             throw MediaValueError.missingItem
         }

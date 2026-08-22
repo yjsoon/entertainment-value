@@ -802,7 +802,7 @@ private struct PersonalMetadataSection: View {
 
                 ForEach((item.externalReferences ?? []).filter { $0.attributionText != nil }) { reference in
                     if let text = reference.attributionText {
-                        if let value = reference.attributionURLString, let url = URL(string: value) {
+                        if let value = reference.attributionURLString, let url = RemoteHTTPURL.parsePublic(value) {
                             Link(text, destination: url)
                                 .font(.footnote)
                         } else {
