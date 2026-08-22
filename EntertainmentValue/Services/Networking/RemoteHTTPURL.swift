@@ -1,7 +1,5 @@
 import Foundation
 
-/// An HTTP or HTTPS URL with a host. This is the only shape Entertainment Value
-/// will fetch or persist as a remote address.
 nonisolated enum RemoteHTTPURL {
     static func parse(_ value: String) -> URL? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)

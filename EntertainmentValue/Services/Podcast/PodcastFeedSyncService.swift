@@ -139,7 +139,7 @@ struct PodcastFeedSyncService {
             unit.episodeNumber = episode.episodeNumber
             unit.numberValue = episode.episodeNumber.map(Double.init)
             unit.sortOrder = index
-            unit.canonicalURLString = privateFeed ? nil : episode.webpageURL?.absoluteString
+            unit.canonicalURLString = privateFeed ? nil : episode.webpageURL.flatMap(RemoteHTTPURL.parsePublic)?.absoluteString
             unit.updatedAt = .now
 
             if !privateFeed,

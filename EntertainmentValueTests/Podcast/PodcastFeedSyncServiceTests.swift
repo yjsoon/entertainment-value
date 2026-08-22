@@ -76,6 +76,65 @@ struct PodcastFeedSyncServiceTests {
         #expect(await refresher.callCount == 0)
     }
 
+    @Test("Public refresh drops a non-HTTP episode webpage")
+    func dropsFileEpisodeWebpage() async throws {
+        let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let item = LibraryItem(mediaKind: .podcast, title: "Example")
+        try ActivityService(context: context).register(item)
+        let reference = ExternalReference(
+            ownerItem: item,
+            providerRaw: "rss",
+            recordKindRaw: "feed",
+            externalID: "example",
+            canonicalURLString: "https://example.com/feed.xml"
+        )
+        reference.isActiveFeed = true
+        context.insert(reference)
+        item.externalReferences = [reference]
+        try context.save()
+
+        let feed = PodcastFeed(
+            title: "Example",
+            author: nil,
+            summary: nil,
+            websiteURL: nil,
+            imageURL: nil,
+            languageCode: nil,
+            isExplicit: nil,
+            lastUpdatedAt: nil,
+            episodes: [
+                PodcastFeedEpisode(
+                    id: "episode-file",
+                    title: "Local link",
+                    summary: nil,
+                    publishedAt: nil,
+                    durationSeconds: 60,
+                    webpageURL: URL(string: "file:///tmp/episode.html"),
+                    enclosureURL: nil,
+                    imageURL: nil,
+                    seasonNumber: nil,
+                    episodeNumber: 1,
+                    episodeType: nil,
+                    isExplicit: nil
+                ),
+            ]
+        )
+        let service = PodcastFeedSyncService(
+            context: context,
+            credentials: InMemoryCredentialStore(),
+            refresher: StubPodcastRefresher(result: .updated(
+                feed: feed,
+                eTag: nil,
+                lastModified: nil
+            ))
+        )
+
+        _ = try await service.refresh(item)
+        let unit = try #require(item.units?.first)
+        #expect(unit.canonicalURLString == nil)
+    }
+
     @Test("Private feed URLs and URL-shaped GUIDs stay out of SwiftData")
     func redactsPrivateFeedDetails() async throws {
         let container = try AppModelContainer.make(isStoredInMemoryOnly: true)

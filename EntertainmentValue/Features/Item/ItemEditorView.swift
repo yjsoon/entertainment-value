@@ -342,7 +342,9 @@ struct ItemEditorView: View {
     }
 
     private func validateDraftURLs() throws {
-        if let cover = draft.coverURL.nilIfBlank, RemoteHTTPURL.parsePublic(cover) == nil {
+        if selectedCoverData == nil,
+           let cover = draft.coverURL.nilIfBlank,
+           RemoteHTTPURL.parsePublic(cover) == nil {
             let existing = existingItem?.preferredArtwork?.remoteURLString?.nilIfBlank
             if cover != existing {
                 throw RemoteHTTPURLError.invalid

@@ -101,13 +101,20 @@ private struct CachedArtworkView: View {
             }
 
             try Task.checkCancellation()
-            image = await ArtworkDownsampler.image(
+            let downsampled = await ArtworkDownsampler.image(
                 from: data,
                 targetSize: targetSize,
                 displayScale: displayScale
             )
+            try Task.checkCancellation()
+            if let downsampled {
+                image = downsampled
+                didFail = false
+            } else if image == nil || loadedAssetID != asset.id {
+                image = nil
+                didFail = true
+            }
             loadedAssetID = asset.id
-            didFail = image == nil
         } catch is CancellationError {
             // A recycled grid cell should stop quietly.
         } catch {
