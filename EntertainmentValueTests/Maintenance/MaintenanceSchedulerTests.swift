@@ -78,8 +78,6 @@ struct MaintenanceSchedulerTests {
             await scheduler.withRestoreGate {
                 recorder.record("inner")
             }
-            // The inner gate has released, but the outer one is still active:
-            // a maintenance request must be deferred, not started.
             let accepted = scheduler.scheduleMaintenance { recorder.record("maintenance") }
             #expect(!accepted)
             await Task.yield()
