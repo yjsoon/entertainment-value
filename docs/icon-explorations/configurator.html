@@ -201,7 +201,7 @@ input[type=color]{border:1px solid var(--line);border-radius:6px;background:var(
         <div class="slider-row"><span>Glyph size</span><input type="range" id="s-gsize" min="40" max="140" value="120"><output id="s-gsize-o">120</output></div>
         <div class="slider-row"><span>Glyph position</span><input type="range" id="s-gpos" min="60" max="125" value="100"><output id="s-gpos-o">100</output></div>
         <div class="slider-row"><span>Hand tilt</span><input type="range" id="s-jit" min="0" max="250" value="190"><output id="s-jit-o">190</output></div>
-        <div class="slider-row"><span>Emboss depth</span><input type="range" id="s-emb" min="0" max="220" value="156"><output id="s-emb-o">156</output></div>
+        <div class="slider-row"><span>Emboss depth</span><input type="range" id="s-emb" min="0" max="220" value="85"><output id="s-emb-o">85</output></div>
       </div>
 
       </div>
@@ -754,7 +754,7 @@ function defaults(){
     glowColor:{ light:GEO.rim_glow.light.stroke, dark:GEO.rim_glow.dark.stroke },
     intColor:{ light:GEO.rim_glow.light.interior_fill, dark:GEO.rim_glow.dark.interior_fill },
     glowInt:100, glowW:24, glowB:8,
-    scale:81, rot:4, spread:25, corner:90, gsize:120, gpos:100, jit:190, emb:156,
+    scale:81, rot:4, spread:25, corner:90, gsize:120, gpos:100, jit:190, emb:85,
   };
 }
 let S = defaults();
@@ -977,7 +977,7 @@ document.getElementById("rot-next").onclick=()=>{ for(const md of ["light","dark
 document.getElementById("reset").onclick=()=>{
   S=defaults();
   for(const [id,val] of [["grad-depth",37],["grad-depth-dark",44],["glow-int",100],["glow-w",24],["glow-b",8],["s-scale",81],["s-rot",4],
-    ["s-spread",25],["s-corner",90],["s-gsize",120],["s-gpos",100],["s-jit",190],["s-emb",156],
+    ["s-spread",25],["s-corner",90],["s-gsize",120],["s-gpos",100],["s-jit",190],["s-emb",85],
     ["st-ctilt",0]]){
     document.getElementById(id).value=val; document.getElementById(id+"-o").value=val;
   }
