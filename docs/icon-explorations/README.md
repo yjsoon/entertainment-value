@@ -32,9 +32,9 @@ heart. `gen_b_centers.py` regenerates the set (requires the `shapely` package:
 
 The shipped design, baked from the approved configurator state: petals
 `#DD5A46` `#E27C46` `#C0A02A` `#229682` `#5769C7` `#9F75C7` on a warm-white
-radial ground (`#FFF7F0`, 37% depth), no glow, mark at 81% with 4° rotation,
+radial ground (`#FFF7F0`, 37% depth), no glow, mark at 84% with 4° rotation,
 star opened +25, corner rounding 90, glyphs 120% at 100% radius with 190%
-hand-tilt and 85% emboss, symmetric chips (tilt 0) with alternating lap.
+hand-tilt and 72% emboss, symmetric chips (tilt 0) with alternating lap.
 `build_final.py` regenerates both mode SVGs, the three Icon Composer layers,
 and both bundles' assets from that state; the dark build uses the approved
 lifted hue set on the night-navy ground `#131D44`. This design is the app's

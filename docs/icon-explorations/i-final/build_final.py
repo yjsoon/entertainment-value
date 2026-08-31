@@ -20,8 +20,8 @@ STATE = {
     "petals_light": ["#DD5A46", "#E27C46", "#C0A02A", "#229682", "#5769C7", "#9F75C7"],
     "bg_light": "#FFF7F0", "grad_depth": 0.37,     # radial 37%
     "glow": False,
-    "scale": 0.81, "rot": 4, "spread": 25, "corner": 90,
-    "gsize": 1.20, "gpos": 1.00, "tilt": 1.90, "emboss": 0.85,
+    "scale": 0.84, "rot": 4, "spread": 25, "corner": 90,
+    "gsize": 1.20, "gpos": 1.00, "tilt": 1.90, "emboss": 0.72,
     "chip_tilt": 0, "lap": "alt",
 }
 
