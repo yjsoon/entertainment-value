@@ -4,7 +4,7 @@ import SwiftUI
 struct ArchivedItemsView: View {
     @Query(
         filter: #Predicate<LibraryItem> { $0.trashedAt == nil && $0.archivedAt != nil },
-        sort: [SortDescriptor(\LibraryItem.title)]
+        sort: \LibraryItem.title
     ) private var archivedItems: [LibraryItem]
     @Environment(\.modelContext) private var modelContext
     @State private var errorMessage: String?
