@@ -4,7 +4,7 @@ import SwiftUI
 struct ArchivedItemsView: View {
     @Query(
         filter: #Predicate<LibraryItem> { $0.trashedAt == nil && $0.archivedAt != nil },
-        sort: \LibraryItem.title
+        sort: [SortDescriptor<LibraryItem>(\LibraryItem.title, comparator: .localizedStandard)]
     ) private var archivedItems: [LibraryItem]
     @Environment(\.modelContext) private var modelContext
     @State private var errorMessage: String?
@@ -241,4 +241,3 @@ private enum DeletedRecord {
     case item(LibraryItem)
     case list(UserList)
 }
-
