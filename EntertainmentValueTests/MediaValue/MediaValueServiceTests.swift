@@ -153,6 +153,58 @@ struct MediaValueServiceTests {
         #expect(value.items.map(\.itemID) == [game.id])
     }
 
+    @Test("Session index preserves month boundaries and each subscription's start day")
+    func indexedSubscriptionBoundaries() throws {
+        var localCalendar = Calendar(identifier: .gregorian)
+        localCalendar.timeZone = try #require(TimeZone(identifier: "Asia/Singapore"))
+        let monthStart = try #require(localCalendar.date(from: DateComponents(year: 2026, month: 8, day: 1)))
+        let nextMonth = try #require(localCalendar.date(byAdding: .month, value: 1, to: monthStart))
+        let midMonth = try #require(localCalendar.date(byAdding: .day, value: 14, to: monthStart))
+        let movie = LibraryItem(mediaKind: .movie, title: "Shared title")
+        let cycle = ConsumptionCycle(item: movie, kind: .initial, ordinal: 1)
+        let early = MediaSubscription(
+            name: "Early", expectedMonthlyAmount: 12, currencyCode: "SGD", startedAt: monthStart
+        )
+        let late = MediaSubscription(
+            name: "Late", expectedMonthlyAmount: 9, currencyCode: "SGD",
+            startedAt: midMonth.addingTimeInterval(12 * 3_600)
+        )
+        let future = MediaSubscription(
+            name: "Future", expectedMonthlyAmount: 30, currencyCode: "SGD", startedAt: nextMonth
+        )
+        let deleted = ConsumptionSession(cycle: cycle, occurredAt: midMonth, durationSeconds: 99_999)
+        deleted.deletedAt = midMonth
+        let sessions = [
+            ConsumptionSession(cycle: cycle, occurredAt: monthStart.addingTimeInterval(-1), durationSeconds: 99_999),
+            ConsumptionSession(cycle: cycle, occurredAt: monthStart, durationSeconds: 1_200),
+            ConsumptionSession(cycle: cycle, occurredAt: midMonth.addingTimeInterval(-1), durationSeconds: 600),
+            ConsumptionSession(cycle: cycle, occurredAt: midMonth, durationSeconds: 3_600),
+            ConsumptionSession(cycle: cycle, occurredAt: nextMonth.addingTimeInterval(-1), durationSeconds: 1_800),
+            ConsumptionSession(cycle: cycle, occurredAt: nextMonth, durationSeconds: 99_999),
+            deleted,
+        ]
+        // The calculator accepts raw arrays: the same title may appear under plans
+        // with different starts even though the editing service prevents this.
+        let values = MediaValueCalculator.subscriptionValues(
+            subscriptions: [late, future, early],
+            assignments: [early, late, future].map {
+                MediaAccessAssignment(itemID: movie.id, type: .subscription, subscriptionID: $0.id)
+            },
+            items: [movie], sessions: Array(sessions.reversed()),
+            monthContaining: midMonth, calendar: localCalendar
+        )
+
+        #expect(values.map(\.name) == ["Early", "Late"])
+        let earlyValue = try #require(values.first { $0.subscriptionID == early.id })
+        let lateValue = try #require(values.first { $0.subscriptionID == late.id })
+        #expect(earlyValue.trackedSeconds == 7_200)
+        #expect(earlyValue.costPerHour == 6)
+        #expect(earlyValue.items.first?.estimatedShare == 12)
+        #expect(lateValue.trackedSeconds == 5_400)
+        #expect(lateValue.costPerHour == 6)
+        #expect(lateValue.items.first?.estimatedShare == 9)
+    }
+
     @Test("Service enforces one coherent assignment and clears deleted plans")
     func mutations() throws {
         let container = try makeContainer()
