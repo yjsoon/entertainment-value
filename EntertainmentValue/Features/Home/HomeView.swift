@@ -47,6 +47,7 @@ struct HomeView: View {
     }
 
     var body: some View {
+        let visibleItems = visibleItems
         let rails = HomeRails.partition(visibleItems, now: referenceDate) { item in
             HomeRails.Snapshot(
                 status: item.status,

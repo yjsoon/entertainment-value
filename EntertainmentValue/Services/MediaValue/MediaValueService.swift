@@ -224,6 +224,11 @@ enum MediaValueCalculator {
         let assignmentsBySubscription = Dictionary(grouping: assignments.filter {
             $0.type == .subscription && $0.subscriptionID != nil
         }, by: { $0.subscriptionID! })
+        // Index the month once instead of scanning every session for every title.
+        // Keep occurrences so each subscription can still apply its own start date.
+        let sessionsByItem = Dictionary(grouping: sessions.filter {
+            $0.deletedAt == nil && $0.occurredAt >= interval.start && $0.occurredAt < interval.end
+        }, by: \.rootItemID)
 
         return subscriptions.compactMap { subscription in
             guard subscription.startedAt < interval.end else { return nil }
@@ -232,11 +237,8 @@ enum MediaValueCalculator {
             var secondsByItem = [UUID: Int]()
             for assignment in eligibleAssignments {
                 guard let item = itemByID[assignment.itemID], item.trashedAt == nil else { continue }
-                let seconds = sessions.lazy
-                    .filter {
-                        $0.deletedAt == nil && $0.rootItemID == item.id &&
-                            $0.occurredAt >= start && $0.occurredAt < interval.end
-                    }
+                let seconds = (sessionsByItem[item.id] ?? []).lazy
+                    .filter { $0.occurredAt >= start }
                     .reduce(0) { $0 + trackedSeconds(for: $1, mediaKind: item.mediaKind) }
                 secondsByItem[item.id] = seconds
             }

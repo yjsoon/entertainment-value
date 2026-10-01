@@ -21,6 +21,8 @@ struct LibraryView: View {
     }
 
     var body: some View {
+        let visibleItems = visibleItems
+
         ScrollView {
             LazyVStack(spacing: 20) {
                 if visibleItems.isEmpty {
