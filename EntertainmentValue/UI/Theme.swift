@@ -26,11 +26,13 @@ enum Theme {
         .system(size: size, weight: weight, design: .rounded)
     }
 
-    private static func dynamic(
+    /// Nonisolated on purpose: SwiftUI resolves colours on its render thread
+    /// during animations, and a main-actor closure here traps.
+    nonisolated private static func dynamic(
         light: (CGFloat, CGFloat, CGFloat),
         dark: (CGFloat, CGFloat, CGFloat)
     ) -> Color {
-        Color(uiColor: UIColor { traits in
+        Color(uiColor: UIColor { @Sendable traits in
             let value = traits.userInterfaceStyle == .dark ? dark : light
             return UIColor(red: value.0, green: value.1, blue: value.2, alpha: 1)
         })
