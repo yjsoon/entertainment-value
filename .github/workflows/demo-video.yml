@@ -55,20 +55,33 @@ jobs:
       - name: Record the tour
         run: |
           UDID=${{ steps.sim.outputs.udid }}
-          xcrun simctl io "$UDID" recordVideo --codec h264 --force demo-raw.mp4 &
-          REC=$!
-          sleep 3
           xcodebuild test-without-building \
             -project EntertainmentValue.xcodeproj \
             -scheme EntertainmentValueDemo \
             -destination "id=$UDID" \
             -derivedDataPath DerivedData \
-            > tour.log 2>&1 || echo "Tour reported failures; keeping the video"
+            > tour.log 2>&1 &
+          TEST=$!
+          # Start recording once the app itself is running, so the video
+          # skips the test runner's start-up on the home screen.
+          for i in $(seq 1 600); do
+            if xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -q "com.yjsoon.whatfun"; then break; fi
+            sleep 0.5
+          done
+          xcrun simctl io "$UDID" recordVideo --codec h264 --force demo-raw.mp4 &
+          REC=$!
+          wait $TEST || echo "Tour reported failures; keeping the video"
           sleep 1
           kill -INT $REC
           wait $REC || true
-          grep -E "Missing element|error|\*\* TEST" tour.log || true
           ls -lh demo-raw.mp4
+          {
+            grep -E "Missing element|error:|Test Case|\*\* TEST" tour.log || true
+            for f in $(ls -t ~/Library/Logs/DiagnosticReports/*EntertainmentValue* 2>/dev/null | head -1); do
+              echo "--- crash report $f"; head -c 6000 "$f"
+            done
+          } > tour-summary.txt
+          cat tour-summary.txt
 
       - name: Compress
         run: |
@@ -85,7 +98,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          grep -E "Missing element|error:|Test Case|\*\* TEST" tour.log > tour-summary.txt || true
           VIDEO=$(git hash-object -w demo.mp4)
           SUMMARY=$(git hash-object -w tour-summary.txt)
           TREE=$(printf "100644 blob %s\tdemo.mp4\n100644 blob %s\ttour-summary.txt\n" "$VIDEO" "$SUMMARY" | git mktree)

@@ -35,7 +35,8 @@ final class DemoTour: XCTestCase {
         let note = app.descendants(matching: .any)["noteField"]
         if note.waitForExistence(timeout: 3) {
             note.tap()
-            note.typeText("Loud, joyful, and that juke joint scene.")
+            _ = app.keyboards.firstMatch.waitForExistence(timeout: 3)
+            app.typeText("Loud, joyful, and that juke joint scene.")
         }
         pause(1)
         tap(app.buttons["Save"])

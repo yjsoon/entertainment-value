@@ -22,8 +22,9 @@ struct NowView: View {
     @Query(sort: \Service.name) private var services: [Service]
     @Query private var monthLogs: [Log]
 
-    @State private var flowerFrame: CGRect = .zero
-    @State private var cardFrames: [UUID: CGRect] = [:]
+    /// Card and flower positions for the petal animation. Kept outside
+    /// SwiftUI state so scrolling doesn't redraw the whole screen.
+    @State private var frames = FrameStore()
     @State private var drop: PetalDrop?
     @State private var logCount = 0
     @State private var ratingTarget: Log?
@@ -72,7 +73,7 @@ struct NowView: View {
                             .onGeometryChange(for: CGRect.self) { proxy in
                                 proxy.frame(in: .named(Self.space))
                             } action: { frame in
-                                cardFrames[item.id] = frame
+                                frames.cards[item.id] = frame
                             }
                         }
                     }
@@ -131,7 +132,7 @@ struct NowView: View {
                 .onGeometryChange(for: CGRect.self) { proxy in
                     proxy.frame(in: .named(Self.space))
                 } action: { frame in
-                    flowerFrame = frame
+                    frames.flower = frame
                 }
         }
         .padding(.horizontal, 16)
@@ -213,11 +214,11 @@ struct NowView: View {
     /// of haptic. Never blocks the next tap.
     private func celebrate(kind: MediaKind, itemID: UUID) {
         logCount += 1
-        guard !reduceMotion, flowerFrame != .zero, let from = cardFrames[itemID] else { return }
+        guard !reduceMotion, frames.flower != .zero, let from = frames.cards[itemID] else { return }
         drop = PetalDrop(
             kind: kind,
             from: CGPoint(x: from.minX + 40, y: from.midY),
-            to: CGPoint(x: flowerFrame.midX, y: flowerFrame.midY)
+            to: CGPoint(x: frames.flower.midX, y: frames.flower.midY)
         )
     }
 
@@ -228,6 +229,11 @@ struct NowView: View {
     private var errorBinding: Binding<Bool> {
         Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
     }
+}
+
+final class FrameStore {
+    var flower: CGRect = .zero
+    var cards: [UUID: CGRect] = [:]
 }
 
 struct PetalDrop: Identifiable, Equatable {
