@@ -8,6 +8,9 @@ struct EntertainmentValueApp: App {
 
     init() {
         container = Self.makeContainer()
+        #if DEBUG
+        if DemoData.isRequested { DemoData.seed(into: container.mainContext) }
+        #endif
     }
 
     var body: some Scene {

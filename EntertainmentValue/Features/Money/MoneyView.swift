@@ -148,7 +148,7 @@ struct MoneyView: View {
         if let trial = service.trialEndsAt, trial > .now {
             return "Trial until \(trial.formatted(.dateTime.day().month()))"
         }
-        return service.kind == .shop ? "Shop" : "Not started"
+        return service.kind == .shop ? "Shop" : "No price set"
     }
 }
 

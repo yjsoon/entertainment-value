@@ -15,7 +15,7 @@ struct RatingSheet: View {
         let kind = log.item?.kind ?? .film
         VStack(spacing: 18) {
             VStack(spacing: 4) {
-                Text("Finished.")
+                Text(log.kind == .finished ? "Finished." : "How was it?")
                     .font(Theme.display(26, weight: .black))
                 if let summary = finishSummary {
                     Text(summary)
@@ -24,8 +24,10 @@ struct RatingSheet: View {
                 }
             }
             RatingDial(rating: $rating, color: kind.color)
+                .accessibilityIdentifier("ratingDial")
                 .frame(height: 150)
             TextField("One sentence for future you?", text: $note, axis: .vertical)
+                .accessibilityIdentifier("noteField")
                 .lineLimit(1...3)
                 .textFieldStyle(.plain)
                 .padding(12)
@@ -37,7 +39,8 @@ struct RatingSheet: View {
                 Button("Save") { save() }
                     .buttonStyle(.borderedProminent)
                     .tint(kind.color)
-                    .disabled(rating == nil && note.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(rating == nil && note.trimmingCharacters(in: .whitespaces).isEmpty
+                        && log.rating == nil && log.note == nil)
             }
             .font(Theme.display(16, weight: .bold))
         }

@@ -1,0 +1,87 @@
+name: Demo video
+
+on:
+  push:
+    branches: ["claude/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: demo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  record:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XCODE" ]; then XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1); fi
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Boot an iPhone simulator
+        id: sim
+        run: |
+          DEVICES=$(xcrun simctl list devices available -j)
+          UDID=$(echo "$DEVICES" | jq -r '[.devices | to_entries[] | select(.key | test("iOS-26")) | .value[] | select(.name | test("^iPhone [0-9]+ Pro$"))][0].udid')
+          if [ -z "$UDID" ] || [ "$UDID" = "null" ]; then
+            UDID=$(echo "$DEVICES" | jq -r '[.devices | to_entries[] | select(.key | test("iOS-26")) | .value[] | select(.name | startswith("iPhone"))][0].udid')
+          fi
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+
+      - name: Build the app and tour
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project EntertainmentValue.xcodeproj \
+            -scheme EntertainmentValueDemo \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath DerivedData \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
+            | tee build.log | grep -E "error:|\*\* (BUILD|TEST)" || true
+          grep -q "\*\* TEST BUILD SUCCEEDED \*\*" build.log
+
+      - name: Record the tour
+        run: |
+          UDID=${{ steps.sim.outputs.udid }}
+          xcrun simctl io "$UDID" recordVideo --codec h264 --force demo-raw.mp4 &
+          REC=$!
+          sleep 3
+          xcodebuild test-without-building \
+            -project EntertainmentValue.xcodeproj \
+            -scheme EntertainmentValueDemo \
+            -destination "id=$UDID" \
+            -derivedDataPath DerivedData \
+            > tour.log 2>&1 || echo "Tour reported failures; keeping the video"
+          sleep 1
+          kill -INT $REC
+          wait $REC || true
+          grep -E "Missing element|error|\*\* TEST" tour.log || true
+          ls -lh demo-raw.mp4
+
+      - name: Compress
+        run: |
+          if command -v ffmpeg >/dev/null; then
+            ffmpeg -y -loglevel error -i demo-raw.mp4 -vf "scale=-2:1280" -c:v libx264 -crf 26 -preset slow -pix_fmt yuv420p -movflags +faststart demo.mp4
+          else
+            cp demo-raw.mp4 demo.mp4
+          fi
+          ls -lh demo.mp4
+
+      - name: Upload video
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-video
+          path: |
+            demo.mp4
+            tour.log
+            build.log

@@ -92,7 +92,9 @@ final class Service {
 
     /// Records a new price from a date without changing earlier months.
     func setPrice(_ price: PricePoint) {
-        var all = prices.filter { $0.from != price.from }
+        // A second price on the same day is a correction, not history.
+        let calendar = Calendar.current
+        var all = prices.filter { !calendar.isDate($0.from, inSameDayAs: price.from) }
         all.append(price)
         prices = all.sorted { $0.from < $1.from }
     }

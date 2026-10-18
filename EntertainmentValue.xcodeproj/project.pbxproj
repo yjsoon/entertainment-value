@@ -14,11 +14,19 @@
 			remoteGlobalIDString = A10000000000000000000010;
 			remoteInfo = EntertainmentValue;
 		};
+		A10000000000000000000066 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000000000000000000010;
+			remoteInfo = EntertainmentValue;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		A10000000000000000000004 /* EntertainmentValue.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EntertainmentValue.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000005 /* EntertainmentValueTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EntertainmentValueTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000060 /* EntertainmentValueUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EntertainmentValueUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000006 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Configuration/Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -46,6 +54,11 @@
 			path = EntertainmentValueTests;
 			sourceTree = "<group>";
 		};
+		A10000000000000000000061 /* EntertainmentValueUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = EntertainmentValueUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,6 +76,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000000000000000000062 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -72,6 +92,7 @@
 				A10000000000000000000006 /* Config.xcconfig */,
 				A10000000000000000000007 /* EntertainmentValue */,
 				A10000000000000000000008 /* EntertainmentValueTests */,
+				A10000000000000000000061 /* EntertainmentValueUITests */,
 				A10000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -81,6 +102,7 @@
 			children = (
 				A10000000000000000000004 /* EntertainmentValue.app */,
 				A10000000000000000000005 /* EntertainmentValueTests.xctest */,
+				A10000000000000000000060 /* EntertainmentValueUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -133,6 +155,29 @@
 			productReference = A10000000000000000000005 /* EntertainmentValueTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		A10000000000000000000065 /* EntertainmentValueUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000068 /* Build configuration list for PBXNativeTarget "EntertainmentValueUITests" */;
+			buildPhases = (
+				A10000000000000000000064 /* Sources */,
+				A10000000000000000000062 /* Frameworks */,
+				A10000000000000000000063 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A10000000000000000000067 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A10000000000000000000061 /* EntertainmentValueUITests */,
+			);
+			name = EntertainmentValueUITests;
+			packageProductDependencies = (
+			);
+			productName = EntertainmentValueUITests;
+			productReference = A10000000000000000000060 /* EntertainmentValueUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -147,6 +192,10 @@
 						CreatedOnToolsVersion = 26.0;
 					};
 					A10000000000000000000014 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = A10000000000000000000010;
+					};
+					A10000000000000000000065 = {
 						CreatedOnToolsVersion = 26.0;
 						TestTargetID = A10000000000000000000010;
 					};
@@ -168,6 +217,7 @@
 			targets = (
 				A10000000000000000000010 /* EntertainmentValue */,
 				A10000000000000000000014 /* EntertainmentValueTests */,
+				A10000000000000000000065 /* EntertainmentValueUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -181,6 +231,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A10000000000000000000017 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000063 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -204,6 +261,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000000000000000000064 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -211,6 +275,11 @@
 			isa = PBXTargetDependency;
 			target = A10000000000000000000010 /* EntertainmentValue */;
 			targetProxy = A10000000000000000000021 /* PBXContainerItemProxy */;
+		};
+		A10000000000000000000067 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000000000000000000010 /* EntertainmentValue */;
+			targetProxy = A10000000000000000000066 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -461,6 +530,50 @@
 			};
 			name = Release;
 		};
+		A10000000000000000000069 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yjsoon.entertainmentvalue.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = EntertainmentValue;
+			};
+			name = Debug;
+		};
+		A1000000000000000000006A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yjsoon.entertainmentvalue.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = EntertainmentValue;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -487,6 +600,15 @@
 			buildConfigurations = (
 				A10000000000000000000051 /* Debug */,
 				A10000000000000000000052 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000068 /* Build configuration list for PBXNativeTarget "EntertainmentValueUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000069 /* Debug */,
+				A1000000000000000000006A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

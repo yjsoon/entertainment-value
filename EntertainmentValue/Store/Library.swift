@@ -170,9 +170,10 @@ struct Library {
 
     func delete(_ log: Log) throws {
         let item = log.item
+        let wasFinish = log.kind == .finished
         context.delete(log)
         try context.save()
-        if let item { try refreshStatus(of: item) }
+        if let item { try refreshStatus(of: item, removedFinish: wasFinish) }
     }
 
     func delete(_ item: Item) throws {
@@ -191,8 +192,12 @@ struct Library {
     // MARK: Helpers
 
     private func makeLog(_ item: Item, kind: LogKind, minutes: Double, source: DurationSource) -> Log {
-        let resolution = resolveService(for: item)
-        if item.serviceID == nil, let id = resolution.serviceID { item.serviceID = id }
+        // Something marked free (library, borrowed, gift) is never auto-linked
+        // to a subscription.
+        if item.serviceID == nil, item.freeReason == nil,
+           let id = resolveService(for: item).serviceID {
+            item.serviceID = id
+        }
         let log = Log(
             item: item,
             kind: kind,
@@ -218,8 +223,11 @@ struct Library {
             if let runtime = item.runtimeMinutes { return (Double(runtime), .derived) }
             return (item.kind.fallbackMinutes, .estimated)
         case .book, .comic:
+            guard let pageCount = item.pageCount, pageCount > 0 else {
+                return (item.kind.fallbackMinutes, .estimated)
+            }
             let progress = item.progress
-            let remaining = max(0, (item.pageCount ?? 0) - (progress.currentPage ?? 0))
+            let remaining = max(0, pageCount - (progress.currentPage ?? 0))
             return (ReadingSpeed.default(for: item.kind).minutes(forPages: remaining), .estimated)
         case .tv, .podcast, .game:
             // Finishing a show or game marks the end; the hours are already in
@@ -229,13 +237,12 @@ struct Library {
     }
 
     /// Re-derives status after a log is removed.
-    private func refreshStatus(of item: Item) throws {
+    private func refreshStatus(of item: Item, removedFinish: Bool) throws {
         let logs = item.logs ?? []
-        if logs.contains(where: { $0.kind == .finished }) {
-            item.status = .finished
-        } else if logs.isEmpty {
+        if logs.isEmpty {
             item.status = item.status == .shelved ? .shelved : .planned
-        } else if item.status == .finished {
+        } else if removedFinish, item.status == .finished,
+                  !logs.contains(where: { $0.kind == .finished }) {
             item.status = .active
         }
         try context.save()

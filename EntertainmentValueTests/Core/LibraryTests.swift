@@ -96,6 +96,40 @@ struct LibraryTests {
         #expect(log.usage?.freeReason == .library)
     }
 
+    @Test("A free item is never linked to the last-used subscription")
+    func freeItemNotAutoLinked() throws {
+        let kindle = Service(name: "Kindle Unlimited")
+        container.mainContext.insert(kindle)
+        let paid = insert(Item(kind: .book, title: "Paid", status: .active))
+        try library.setService(kindle.id, freeReason: nil, for: paid)
+        try library.perform(.pages(10), on: paid)
+
+        let borrowed = insert(Item(kind: .book, title: "Borrowed", status: .active))
+        try library.setService(nil, freeReason: .library, for: borrowed)
+        let log = try library.perform(.pages(10), on: borrowed)
+        #expect(log.serviceID == nil)
+        #expect(log.freeReason == .library)
+        #expect(borrowed.serviceID == nil)
+    }
+
+    @Test("Finishing a book with no page count still counts some time")
+    func bookWithoutPages() throws {
+        let book = insert(Item(kind: .book, title: "Unknown length", status: .active))
+        let log = try library.finish(book)
+        #expect(log.minutes == MediaKind.book.fallbackMinutes)
+        #expect(log.durationSource == .estimated)
+    }
+
+    @Test("Deleting a session from a rewatch keeps the item in progress")
+    func deleteSessionOnRewatch() throws {
+        let film = insert(Item(kind: .film, title: "Heat", status: .active))
+        try library.finish(film)
+        try library.start(film)
+        let session = try library.logSession(on: film, minutes: 30)
+        try library.delete(session)
+        #expect(film.status == .active)
+    }
+
     @Test("Ratings snap to half stars")
     func ratings() throws {
         let film = insert(Item(kind: .film, title: "Sinners", status: .active))

@@ -1,42 +1,34 @@
 # Entertainment Value
 
-Entertainment Value is a local-first entertainment tracker for iPhone and iPad. It keeps a durable history of books, comics, movies, TV shows, games, and podcasts: what you plan to consume, each session, and when you finished.
+Entertainment Value (EVal) is an iPhone app for logging what you watch, read, play and listen to, and for seeing what your entertainment subscriptions cost you per hour of use.
 
-The app is built with SwiftUI and SwiftData for iOS 26. It has no third-party dependencies and no backend. Its data model is intentionally ready for a later private CloudKit configuration, while portable CSV archives remain the long-term interoperability format.
+It is built with SwiftUI and SwiftData for iOS 26, with no third-party dependencies and no backend.
 
-## What it tracks
+## The app
 
-- One canonical library item with repeatable reading, watching, playing, or listening cycles.
-- Timestamped sessions, optional progress, lifecycle events, half-star ratings, notes, tags, favorites, and manual or smart lists.
-- TV seasons and episodes, comic volumes and issues, podcast episodes, and notable quotes.
-- Calendar week, month, and year summaries that preserve sessions while collapsing repeated titles for display.
-- Cover metadata from TMDB, Open Library, RAWG, and Apple Podcasts, with offline artwork caching and manual entry when a provider is unavailable.
-- Staged Sofa CSV, Overcast CSV, and podcast OPML imports; portable CSV archives and full-fidelity JSON backups.
+- **Now** shows what you are in the middle of. Each card has one button for the obvious next step: "Finished", "Watched S2 E6", "+25 pages" or "Played". Every log drops a petal into this month's flower, which uses the six colours of the app icon (comics, films, podcasts, games, TV and books). Finishing something opens a half-star rating dial and an optional one-line note.
+- **Money** shows the month's total spend and the cost per hour for each service. Annual plans are spread across twelve months, shared plans count only your share, trials cost nothing, and foreign prices use the exchange rate you entered at the time. Services you didn't use that month are marked "Idle" in grey. Figures based partly on estimated time are marked "roughly".
+- **Library** is everything you've added, as a cover grid, plus a diary of every log grouped by month.
+- **+** searches films, TV, books, games and podcasts at once. Anything missing can be added by hand.
 
-## Status
-
-Entertainment Value is under active development. The first milestones establish the versioned history model, native metadata clients, offline artwork, import/export, and the Liquid Glass interface.
+Each log records how its time was worked out: measured (you picked a length), derived (from runtime or page count) or estimated (a typical length for the medium). Logs are linked to a service automatically, using the item's own service first and then the service you last used for that kind of thing.
 
 ## Requirements
 
 - Xcode 26
-- iOS 26 or iPadOS 26
-- A development team for device builds
+- iOS 26
 
-Clone the repository, open `EntertainmentValue.xcodeproj`, choose the `EntertainmentValue` scheme and an iOS 26 destination, then run. TMDB and RAWG search need developer credentials; everything else, including manual entry, remains usable without them. See [Setup](docs/SETUP.md) for signing, API-key, and test instructions.
+Open `EntertainmentValue.xcodeproj`, choose the `EntertainmentValue` scheme and an iOS 26 simulator, then run.
 
-## Principles
+Film and TV search uses TMDB, and game search uses RAWG. Copy `Configuration/Secrets.xcconfig.local.example` to `Configuration/Secrets.xcconfig.local` and fill in `TMDB_READ_ACCESS_TOKEN` and `RAWG_API_KEY`. Books (Open Library) and podcasts (Apple Podcasts) need no keys, and manual entry always works.
 
-- Sessions and lifecycle events are archival truth; current status is a rebuildable projection.
-- The app remains useful with no network connection and every item can be entered manually.
-- Export formats are documented, versioned, and based on stable UUIDs.
-- Provider credentials and private podcast feed URLs never enter portable exports.
+## Tests
 
-The portable multi-file CSV package is the archive of record for moving data between apps. The versioned JSON format is for exact Entertainment Value restore; private podcast feed URLs can be included only in its separately encrypted block. See [Data portability and privacy](docs/DATA_PORTABILITY.md) for the contract and import limitations.
+The value maths, logging rules and store are covered by unit tests in `EntertainmentValueTests`. Every push runs the build and tests on a macOS runner (`.github/workflows/ios-build.yml`).
 
-## Architecture
+## Data
 
-Entertainment Value currently stores data only on the device. CloudKit is deliberately disabled, not silently active. The schema and service boundaries are shaped to make a future private-database sync migration possible; see [Architecture](docs/ARCHITECTURE.md).
+Everything is stored on the device. CloudKit is switched off for now; the model gives every stored property a default so that private sync can be turned on later.
 
 ## License
 

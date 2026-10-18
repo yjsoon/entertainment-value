@@ -166,7 +166,15 @@ struct ServiceEditor: View {
             if current == nil {
                 service.setPrice(PricePoint(from: startedAt, amount: amount, currencyCode: code, homeRate: effectiveRate))
             } else if changed {
-                service.setPrice(PricePoint(from: priceChangedFrom, amount: amount, currencyCode: code, homeRate: effectiveRate))
+                // A change dated on or before the start date corrects the
+                // original price rather than adding history.
+                let from = Calendar.current.startOfDay(for: priceChangedFrom) <= Calendar.current.startOfDay(for: startedAt)
+                    ? (service.prices.first?.from ?? startedAt)
+                    : priceChangedFrom
+                if from != priceChangedFrom {
+                    service.prices = service.prices.filter { $0.from > from }
+                }
+                service.setPrice(PricePoint(from: from, amount: amount, currencyCode: code, homeRate: effectiveRate))
             }
         }
         try? context.save()
