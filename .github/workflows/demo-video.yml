@@ -1,0 +1,126 @@
+name: Demo video
+
+# Run by hand from the Actions tab. Records a scripted tour of the app on a
+# simulator with sample data. The raw video is uploaded as an artifact and
+# also kept at refs/demo-videos/latest.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: demo-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  record:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XCODE" ]; then XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1); fi
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Boot an iPhone simulator
+        id: sim
+        run: |
+          DEVICES=$(xcrun simctl list devices available -j)
+          UDID=$(echo "$DEVICES" | jq -r '[.devices | to_entries[] | select(.key | test("iOS-26")) | .value[] | select(.name | test("^iPhone [0-9]+ Pro$"))][0].udid')
+          if [ -z "$UDID" ] || [ "$UDID" = "null" ]; then
+            UDID=$(echo "$DEVICES" | jq -r '[.devices | to_entries[] | select(.key | test("iOS-26")) | .value[] | select(.name | startswith("iPhone"))][0].udid')
+          fi
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+
+      - name: Build the app and tour
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project EntertainmentValue.xcodeproj \
+            -scheme EntertainmentValueDemo \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath DerivedData \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
+            | tee build.log | grep -E "error:|\*\* (BUILD|TEST)" || true
+          grep -q "\*\* TEST BUILD SUCCEEDED \*\*" build.log
+
+      - name: Record the tour
+        run: |
+          UDID=${{ steps.sim.outputs.udid }}
+          xcrun simctl io "$UDID" recordVideo --codec h264 --force demo-raw.mp4 &
+          REC=$!
+          REC_START=$(python3 -c 'import time; print(time.time())')
+          xcodebuild test-without-building \
+            -project EntertainmentValue.xcodeproj \
+            -scheme EntertainmentValueDemo \
+            -destination "id=$UDID" \
+            -derivedDataPath DerivedData \
+            > tour.log 2>&1 || echo "Tour reported failures; keeping the video"
+          sleep 1
+          kill -INT $REC
+          wait $REC || true
+          sleep 10
+          DEMO_START=$(grep -o "DEMO_START [0-9.]*" tour.log | head -1 | cut -d' ' -f2)
+          OFFSET=$(python3 -c "print(max(0, ${DEMO_START:-$REC_START} - $REC_START - 1))")
+          # The runner has no ffmpeg; trimming to DEMO_OFFSET happens later.
+          mv demo-raw.mp4 demo.mp4
+          ls -lh demo.mp4
+          {
+            echo "DEMO_OFFSET $OFFSET"
+            grep -E "Missing element|error:|Test Case|\*\* TEST" tour.log || true
+            echo "--- crash reports"
+            find ~/Library/Logs/DiagnosticReports -type f -mmin -30 -name "EntertainmentValue*" 2>/dev/null | while read -r f; do
+              echo "=== $f"
+              python3 - "$f" <<'PY'
+          import json, sys
+          text = open(sys.argv[1]).read()
+          body = json.loads(text[text.index("\n") + 1:])
+          images = body.get("usedImages", [])
+          print("exception:", body.get("exception"), body.get("termination", {}).get("indicator"))
+          for index, thread in enumerate(body.get("threads", [])):
+              if not thread.get("triggered"):
+                  continue
+              print("thread", index, thread.get("queue"), thread.get("name"))
+              for frame in thread.get("frames", [])[:40]:
+                  image = images[frame["imageIndex"]].get("name", "?") if frame.get("imageIndex") is not None else "?"
+                  print(f"  {image:30} {frame.get('symbol', hex(frame.get('imageOffset', 0)))} {frame.get('sourceFile', '')}:{frame.get('sourceLine', '')}")
+          PY
+            done
+            grep -E "DEMO_" tour.log || true
+            echo "--- termination log"
+            xcrun simctl spawn "$UDID" log show --last 15m --style compact \
+              --predicate '(eventMessage CONTAINS[c] "whatfun" OR process == "EntertainmentValue") AND NOT (eventMessage CONTAINS "Automation type mismatch") AND NOT (eventMessage CONTAINS "hapticpattern") AND NOT (eventMessage CONTAINS "CHHapticPattern")' \
+              2>/dev/null | grep -iE "terminat|watchdog|crash|fatal|exit|kill|signal|hang|jetsam|Fault|assert|precondition" | tail -80
+          } > tour-summary.txt
+          cat tour-summary.txt
+
+      - name: Publish the video to a hidden ref
+        # Keeps the video out of every branch's history but fetchable with git:
+        #   git fetch origin refs/demo-videos/latest && git show FETCH_HEAD:demo.mp4 > demo.mp4
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          VIDEO=$(git hash-object -w demo.mp4)
+          SUMMARY=$(git hash-object -w tour-summary.txt)
+          TREE=$(printf "100644 blob %s\tdemo.mp4\n100644 blob %s\ttour-summary.txt\n" "$VIDEO" "$SUMMARY" | git mktree)
+          COMMIT=$(git commit-tree "$TREE" -m "Demo video for $GITHUB_SHA")
+          git push --force origin "$COMMIT:refs/demo-videos/latest"
+
+      - name: Upload video
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-video
+          path: |
+            demo.mp4
+            tour.log
+            build.log

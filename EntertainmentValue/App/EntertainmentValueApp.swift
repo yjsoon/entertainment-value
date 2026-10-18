@@ -1,48 +1,42 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 @main
 struct EntertainmentValueApp: App {
-    private let runtime: Result<AppRuntime, Error>
+    @State private var services = AppServices.live()
+    private let container: ModelContainer
 
     init() {
-        runtime = Result {
-            AppRuntime(
-                modelContainer: try AppModelContainer.make(),
-                services: try AppServices.live()
-            )
-        }
+        container = Self.makeContainer()
+        #if DEBUG
+        if DemoData.isRequested { DemoData.seed(into: container.mainContext) }
+        #endif
     }
 
     var body: some Scene {
         WindowGroup {
-            switch runtime {
-            case let .success(runtime):
-                RootView()
-                    .modelContainer(runtime.modelContainer)
-                    .environment(runtime.services)
-            case let .failure(error):
-                StartupFailureView(error: error)
-            }
+            RootView()
+                .environment(services)
+                .tint(Theme.ink)
         }
+        .modelContainer(container)
     }
-}
 
-private struct AppRuntime {
-    let modelContainer: ModelContainer
-    let services: AppServices
-}
+    static let schema = Schema([Item.self, Log.self, Service.self, Purchase.self])
 
-private struct StartupFailureView: View {
-    let error: Error
-
-    var body: some View {
-        ContentUnavailableView {
-            Label("Entertainment Value couldn’t open", systemImage: "exclamationmark.triangle")
-        } description: {
-            Text("Your archive was left untouched. Quit and reopen the app; if the problem continues, preserve your Entertainment Value data before reinstalling.\n\n\(error.localizedDescription)")
+    private static func makeContainer() -> ModelContainer {
+        let inMemory = ProcessInfo.processInfo.arguments.contains("-inMemoryStore")
+            || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        let configuration = ModelConfiguration(
+            "EntertainmentValue",
+            schema: schema,
+            isStoredInMemoryOnly: inMemory,
+            cloudKitDatabase: .none
+        )
+        do {
+            return try ModelContainer(for: schema, configurations: configuration)
+        } catch {
+            fatalError("Could not open the library: \(error)")
         }
-        .padding()
-        .archiveBackground()
     }
 }
