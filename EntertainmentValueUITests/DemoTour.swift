@@ -12,6 +12,8 @@ final class DemoTour: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = ["-inMemoryStore", "-demoData"]
         app.launch()
+        // The workflow trims the video to start here.
+        print("DEMO_START \(Date().timeIntervalSince1970)")
         pause(3)
 
         // One-tap logging on the Now tab.

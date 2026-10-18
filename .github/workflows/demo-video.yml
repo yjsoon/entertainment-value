@@ -55,42 +55,37 @@ jobs:
       - name: Record the tour
         run: |
           UDID=${{ steps.sim.outputs.udid }}
+          xcrun simctl io "$UDID" recordVideo --codec h264 --force demo-raw.mp4 &
+          REC=$!
+          REC_START=$(python3 -c 'import time; print(time.time())')
           xcodebuild test-without-building \
             -project EntertainmentValue.xcodeproj \
             -scheme EntertainmentValueDemo \
             -destination "id=$UDID" \
             -derivedDataPath DerivedData \
-            > tour.log 2>&1 &
-          TEST=$!
-          # Start recording once the app itself is running, so the video
-          # skips the test runner's start-up on the home screen.
-          for i in $(seq 1 600); do
-            if xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -q "com.yjsoon.whatfun"; then break; fi
-            sleep 0.5
-          done
-          xcrun simctl io "$UDID" recordVideo --codec h264 --force demo-raw.mp4 &
-          REC=$!
-          wait $TEST || echo "Tour reported failures; keeping the video"
+            > tour.log 2>&1 || echo "Tour reported failures; keeping the video"
           sleep 1
           kill -INT $REC
           wait $REC || true
-          ls -lh demo-raw.mp4
+          sleep 10
+          DEMO_START=$(grep -o "DEMO_START [0-9.]*" tour.log | head -1 | cut -d' ' -f2)
+          OFFSET=$(python3 -c "print(max(0, ${DEMO_START:-$REC_START} - $REC_START - 1))")
+          # The runner has no ffmpeg; trimming to DEMO_OFFSET happens later.
+          mv demo-raw.mp4 demo.mp4
+          ls -lh demo.mp4
           {
+            echo "DEMO_OFFSET $OFFSET"
             grep -E "Missing element|error:|Test Case|\*\* TEST" tour.log || true
-            for f in $(ls -t ~/Library/Logs/DiagnosticReports/*EntertainmentValue* 2>/dev/null | head -1); do
-              echo "--- crash report $f"; head -c 6000 "$f"
+            echo "--- crash reports"
+            find ~/Library/Logs/DiagnosticReports -type f -mmin -30 2>/dev/null | while read -r f; do
+              echo "=== $f"; head -c 8000 "$f"; echo
             done
+            echo "--- app log"
+            xcrun simctl spawn "$UDID" log show --last 10m --style compact \
+              --predicate 'process == "EntertainmentValue" AND (messageType == fault OR messageType == error OR eventMessage CONTAINS[c] "fatal")' \
+              2>/dev/null | tail -60
           } > tour-summary.txt
           cat tour-summary.txt
-
-      - name: Compress
-        run: |
-          if command -v ffmpeg >/dev/null; then
-            ffmpeg -y -loglevel error -i demo-raw.mp4 -vf "scale=-2:1280,fps=30" -c:v libx264 -crf 28 -preset slow -pix_fmt yuv420p -movflags +faststart demo.mp4
-          else
-            cp demo-raw.mp4 demo.mp4
-          fi
-          ls -lh demo.mp4
 
       - name: Publish the video to a hidden ref
         # Keeps the video out of every branch's history but fetchable with git:
