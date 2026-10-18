@@ -1,0 +1,128 @@
+import Foundation
+import SwiftData
+import Testing
+@testable import EntertainmentValue
+
+@Suite("Library actions")
+@MainActor
+struct LibraryTests {
+    let container: ModelContainer
+    let library: Library
+
+    init() throws {
+        let schema = Schema([Item.self, Log.self, Service.self, Purchase.self])
+        container = try ModelContainer(for: schema, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        library = Library(context: container.mainContext)
+    }
+
+    private func insert(_ item: Item) -> Item {
+        container.mainContext.insert(item)
+        return item
+    }
+
+    @Test("Watching an episode advances the card")
+    func episodes() throws {
+        let show = insert(Item(kind: .tv, title: "Severance", runtimeMinutes: 50, status: .active))
+        var action = LogPlanner.primaryAction(for: show.progress)
+        #expect(action == .episode(EpisodeRef(season: 1, episode: 1)))
+
+        let log = try library.perform(action, on: show)
+        #expect(log.minutes == 50)
+        #expect(log.durationSource == .derived)
+
+        action = LogPlanner.primaryAction(for: show.progress)
+        #expect(action == .episode(EpisodeRef(season: 1, episode: 2)))
+    }
+
+    @Test("Reaching the last page finishes the book")
+    func pages() throws {
+        let book = insert(Item(kind: .book, title: "Piranesi", pageCount: 272, status: .active))
+        let first = try library.perform(.pages(25), on: book)
+        #expect(first.kind == .progress)
+        #expect(first.page == 25)
+        #expect(first.minutes == 37.5)
+        #expect(first.durationSource == .estimated)
+
+        let last = try library.setPage(400, on: book)
+        #expect(last.kind == .finished)
+        #expect(last.page == 272)
+        #expect(book.status == .finished)
+    }
+
+    @Test("A one-tap game session is estimated, a picked one is measured")
+    func sessions() throws {
+        let game = insert(Item(kind: .game, title: "Elden Ring", status: .active))
+        let quick = try library.perform(.played, on: game)
+        #expect(quick.minutes == 60)
+        #expect(quick.durationSource == .estimated)
+        let picked = try library.logSession(on: game, minutes: 120)
+        #expect(picked.durationSource == .measured)
+        #expect(game.totalMinutes == 180)
+    }
+
+    @Test("Finishing a film uses its runtime")
+    func film() throws {
+        let film = insert(Item(kind: .film, title: "Sinners", runtimeMinutes: 137, status: .active))
+        let log = try library.perform(.finish, on: film)
+        #expect(log.minutes == 137)
+        #expect(log.durationSource == .derived)
+        #expect(film.status == .finished)
+    }
+
+    @Test("A new item takes the service last used for its medium")
+    func lastUsedService() throws {
+        let netflix = Service(name: "Netflix")
+        container.mainContext.insert(netflix)
+        let first = insert(Item(kind: .film, title: "One", status: .active))
+        try library.setService(netflix.id, freeReason: nil, for: first)
+        try library.perform(.finish, on: first)
+
+        let second = insert(Item(kind: .film, title: "Two", status: .active))
+        let log = try library.perform(.finish, on: second)
+        #expect(log.serviceID == netflix.id)
+        #expect(second.serviceID == netflix.id)
+
+        let book = insert(Item(kind: .book, title: "Three", status: .active))
+        let bookLog = try library.perform(.pages(10), on: book)
+        #expect(bookLog.serviceID == nil)
+    }
+
+    @Test("Free items keep their reason on each log")
+    func freeReason() throws {
+        let book = insert(Item(kind: .book, title: "Tomorrow", status: .active))
+        try library.setService(nil, freeReason: .library, for: book)
+        let log = try library.perform(.pages(30), on: book)
+        #expect(log.freeReason == .library)
+        #expect(log.usage?.freeReason == .library)
+    }
+
+    @Test("Ratings snap to half stars")
+    func ratings() throws {
+        let film = insert(Item(kind: .film, title: "Sinners", status: .active))
+        let log = try library.finish(film)
+        try library.rate(log, rating: 4.3, note: "  ")
+        #expect(log.rating == 4.5)
+        #expect(log.note == nil)
+        try library.rate(log, rating: 0.1, note: "\u{201C}Stack the deck.\u{201D}")
+        #expect(log.rating == 0.5)
+        #expect(log.isQuote)
+    }
+
+    @Test("Deleting the only finish puts the item back in progress")
+    func deleteFinish() throws {
+        let film = insert(Item(kind: .film, title: "Sinners", status: .active))
+        try library.logSession(on: film, minutes: 40)
+        let finish = try library.finish(film)
+        #expect(film.status == .finished)
+        try library.delete(finish)
+        #expect(film.status == .active)
+    }
+
+    @Test("Service prices keep their history")
+    func priceHistory() {
+        let service = Service(name: "Netflix", price: PricePoint(from: .distantPast, amount: 18, currencyCode: "SGD", homeRate: 1))
+        service.setPrice(PricePoint(from: Date(timeIntervalSince1970: 1_700_000_000), amount: 20, currencyCode: "SGD", homeRate: 1))
+        #expect(service.prices.map(\.amount) == [18, 20])
+        #expect(service.currentPrice?.amount == 20)
+    }
+}

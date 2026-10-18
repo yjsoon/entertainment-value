@@ -41,8 +41,8 @@ jobs:
             -project EntertainmentValue.xcodeproj \
             -scheme EntertainmentValue \
             -destination "id=${{ steps.sim.outputs.udid }}" \
-            CODE_SIGNING_ALLOWED=NO \
-            | tee build.log | grep -E "error:|warning: .*(Sendable|isolat)|Test (Suite|Case).*(passed|failed)|✘|✔|\*\* (BUILD|TEST)" || true
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
+            | tee build.log | grep -E "error:|warning: |✘|Failing tests|\*\* (BUILD|TEST)" || true
           grep -q "\*\* TEST SUCCEEDED \*\*" build.log
 
       - name: Upload log
