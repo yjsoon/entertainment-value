@@ -9,6 +9,9 @@ concurrency:
   group: demo-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   record:
     runs-on: macos-26
@@ -70,11 +73,24 @@ jobs:
       - name: Compress
         run: |
           if command -v ffmpeg >/dev/null; then
-            ffmpeg -y -loglevel error -i demo-raw.mp4 -vf "scale=-2:1280" -c:v libx264 -crf 26 -preset slow -pix_fmt yuv420p -movflags +faststart demo.mp4
+            ffmpeg -y -loglevel error -i demo-raw.mp4 -vf "scale=-2:1280,fps=30" -c:v libx264 -crf 28 -preset slow -pix_fmt yuv420p -movflags +faststart demo.mp4
           else
             cp demo-raw.mp4 demo.mp4
           fi
           ls -lh demo.mp4
+
+      - name: Publish the video to a hidden ref
+        # Keeps the video out of every branch's history but fetchable with git:
+        #   git fetch origin refs/demo-videos/latest && git show FETCH_HEAD:demo.mp4 > demo.mp4
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          grep -E "Missing element|error:|Test Case|\*\* TEST" tour.log > tour-summary.txt || true
+          VIDEO=$(git hash-object -w demo.mp4)
+          SUMMARY=$(git hash-object -w tour-summary.txt)
+          TREE=$(printf "100644 blob %s\tdemo.mp4\n100644 blob %s\ttour-summary.txt\n" "$VIDEO" "$SUMMARY" | git mktree)
+          COMMIT=$(git commit-tree "$TREE" -m "Demo video for $GITHUB_SHA")
+          git push --force origin "$COMMIT:refs/demo-videos/latest"
 
       - name: Upload video
         if: always()
