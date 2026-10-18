@@ -43,6 +43,11 @@ final class DemoTour: XCTestCase {
         pause(1)
         tap(app.buttons["Save"])
         pause(3)
+        if app.state != .runningForeground {
+            print("DEMO_APP_DIED_AFTER_SAVE state=\(app.state.rawValue)")
+            app.launch()
+            pause(2)
+        }
 
         // Money: what each service cost per hour this month.
         tap(tab("Money"))

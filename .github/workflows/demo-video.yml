@@ -80,10 +80,11 @@ jobs:
             find ~/Library/Logs/DiagnosticReports -type f -mmin -30 2>/dev/null | while read -r f; do
               echo "=== $f"; head -c 8000 "$f"; echo
             done
-            echo "--- app log"
-            xcrun simctl spawn "$UDID" log show --last 10m --style compact \
-              --predicate 'process == "EntertainmentValue" AND (messageType == fault OR messageType == error OR eventMessage CONTAINS[c] "fatal")' \
-              2>/dev/null | tail -60
+            grep -E "DEMO_" tour.log || true
+            echo "--- termination log"
+            xcrun simctl spawn "$UDID" log show --last 15m --style compact \
+              --predicate '(eventMessage CONTAINS[c] "whatfun" OR process == "EntertainmentValue") AND NOT (eventMessage CONTAINS "Automation type mismatch") AND NOT (eventMessage CONTAINS "hapticpattern") AND NOT (eventMessage CONTAINS "CHHapticPattern")' \
+              2>/dev/null | grep -iE "terminat|watchdog|crash|fatal|exit|kill|signal|hang|jetsam|Fault|assert|precondition" | tail -80
           } > tour-summary.txt
           cat tour-summary.txt
 
