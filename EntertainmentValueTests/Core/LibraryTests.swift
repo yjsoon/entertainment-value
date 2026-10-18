@@ -112,6 +112,59 @@ struct LibraryTests {
         #expect(borrowed.serviceID == nil)
     }
 
+    @Test("A deleted service is unlinked and a cancelled one is not reused")
+    func staleService() throws {
+        let netflix = Service(name: "Netflix")
+        container.mainContext.insert(netflix)
+        let film = insert(Item(kind: .film, title: "Heat", status: .active))
+        try library.setService(netflix.id, freeReason: nil, for: film)
+        try library.logSession(on: film, minutes: 30)
+        try library.delete(netflix)
+        #expect(film.serviceID == nil)
+        #expect(film.logs?.allSatisfy { $0.serviceID == nil } == true)
+
+        let disney = Service(name: "Disney+")
+        disney.cancelledAt = .distantPast
+        container.mainContext.insert(disney)
+        let show = insert(Item(kind: .tv, title: "Andor", status: .active))
+        try library.setService(disney.id, freeReason: nil, for: show)
+        let log = try library.perform(.episode(EpisodeRef(season: 1, episode: 1)), on: show)
+        #expect(log.serviceID == nil)
+    }
+
+    @Test("Something bought outright is not linked to a subscription")
+    func purchasedNotLinked() throws {
+        let pass = Service(name: "Game Pass")
+        container.mainContext.insert(pass)
+        let first = insert(Item(kind: .game, title: "Halo", status: .active))
+        try library.setService(pass.id, freeReason: nil, for: first)
+        try library.logSession(on: first, minutes: 60)
+
+        let bought = insert(Item(kind: .game, title: "Hades II", status: .active))
+        container.mainContext.insert(Purchase(itemID: bought.id, serviceID: nil, amount: 42, currencyCode: "SGD", homeRate: 1))
+        let log = try library.logSession(on: bought, minutes: 60)
+        #expect(log.serviceID == nil)
+    }
+
+    @Test("Part-watches count towards a film's runtime, not on top of it")
+    func partWatch() throws {
+        let film = insert(Item(kind: .film, title: "Sinners", runtimeMinutes: 137, status: .active))
+        let part = try library.logSession(on: film, minutes: 45)
+        #expect(part.durationSource == .estimated)
+        let finish = try library.finish(film)
+        #expect(finish.minutes == 92)
+        #expect(film.totalMinutes == 137)
+    }
+
+    @Test("Adding something already finished adds no hours")
+    func pastFinish() throws {
+        let book = insert(Item(kind: .book, title: "Dune", pageCount: 600, status: .active))
+        let log = try library.recordPastFinish(book)
+        #expect(log.minutes == 0)
+        #expect(log.serviceID == nil)
+        #expect(book.status == .finished)
+    }
+
     @Test("Finishing a book with no page count still counts some time")
     func bookWithoutPages() throws {
         let book = insert(Item(kind: .book, title: "Unknown length", status: .active))

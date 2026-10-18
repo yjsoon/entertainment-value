@@ -92,7 +92,9 @@ struct NowView: View {
         .coordinateSpace(.named(Self.space))
         .overlay {
             if let drop {
-                FlyingPetal(drop: drop) { self.drop = nil }
+                FlyingPetal(drop: drop) {
+                    if self.drop?.id == drop.id { self.drop = nil }
+                }
                     .id(drop.id)
             }
         }

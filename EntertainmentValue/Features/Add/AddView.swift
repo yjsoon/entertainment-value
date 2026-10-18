@@ -152,7 +152,7 @@ struct AddView: View {
     private func addFinished(_ result: MetadataSearchResult) {
         let library = Library(context: context)
         guard let item = try? library.add(result, status: .active) else { return }
-        _ = try? library.finish(item)
+        _ = try? library.recordPastFinish(item)
         fetchDetails(for: result, into: item)
         finish()
     }

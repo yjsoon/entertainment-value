@@ -17,7 +17,10 @@ struct MoneyView: View {
             .compactMap(\.usage)
         return ValueMath.summarise(
             month: month,
-            services: Dictionary(services.map { ($0.id, $0.terms) }, uniquingKeysWith: { first, _ in first }),
+            services: Dictionary(
+                services.filter { $0.kind == .subscription }.map { ($0.id, $0.terms) },
+                uniquingKeysWith: { first, _ in first }
+            ),
             usage: usage,
             purchases: purchases.map(\.record)
         )

@@ -151,7 +151,7 @@ struct PurchaseEditor: View {
 
     @State private var amount: Decimal?
     @State private var currency = "SGD"
-    @State private var rate: Decimal? = 1
+    @State private var rate: Decimal?
     @State private var date = Date.now
     @State private var shopID: UUID?
 

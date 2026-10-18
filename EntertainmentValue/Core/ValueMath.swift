@@ -60,7 +60,11 @@ nonisolated struct ServiceTerms: Hashable, Sendable {
         let interval = month.interval(calendar: calendar)
         guard startedAt < interval.end else { return false }
         if let cancelledAt, cancelledAt <= interval.start { return false }
-        if let trialEndsAt, trialEndsAt >= interval.end { return false }
+        if let trialEndsAt {
+            // Cancelled before the trial ran out: never paid at all.
+            if let cancelledAt, cancelledAt <= trialEndsAt { return false }
+            if trialEndsAt >= interval.end { return false }
+        }
         return true
     }
 

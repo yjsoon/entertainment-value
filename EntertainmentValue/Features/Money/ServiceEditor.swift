@@ -26,7 +26,7 @@ struct ServiceEditor: View {
     @State private var primaryKind: MediaKind?
     @State private var amount: Decimal?
     @State private var currency = "SGD"
-    @State private var rate: Decimal? = 1
+    @State private var rate: Decimal?
     @State private var cycle = BillingCycle.monthly
     @State private var sharedWith = 1
     @State private var startedAt = Date.now
@@ -183,8 +183,7 @@ struct ServiceEditor: View {
 
     private func delete() {
         guard let service = existing else { return }
-        context.delete(service)
-        try? context.save()
+        try? Library(context: context).delete(service)
         dismiss()
     }
 }

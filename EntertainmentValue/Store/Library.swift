@@ -144,7 +144,8 @@ struct Library {
             item,
             kind: .session,
             minutes: minutes ?? item.kind.fallbackMinutes,
-            source: minutes == nil ? .estimated : .measured
+            // A film's "part of it" is a guess, not a timed session.
+            source: minutes == nil || item.kind == .film ? .estimated : .measured
         )
         item.status = .active
         try touch(item)
@@ -177,6 +178,10 @@ struct Library {
     }
 
     func delete(_ item: Item) throws {
+        let id = item.id
+        for purchase in (try? context.fetch(FetchDescriptor<Purchase>())) ?? [] where purchase.itemID == id {
+            context.delete(purchase)
+        }
         context.delete(item)
         try context.save()
     }
@@ -192,9 +197,13 @@ struct Library {
     // MARK: Helpers
 
     private func makeLog(_ item: Item, kind: LogKind, minutes: Double, source: DurationSource) -> Log {
-        // Something marked free (library, borrowed, gift) is never auto-linked
-        // to a subscription.
-        if item.serviceID == nil, item.freeReason == nil,
+        // A link to a deleted or cancelled service is dropped and worked out again.
+        if let id = item.serviceID, !activeServiceIDs().contains(id) {
+            item.serviceID = nil
+        }
+        // Something marked free (library, borrowed, gift) or bought outright is
+        // never auto-linked to a subscription.
+        if item.serviceID == nil, item.freeReason == nil, !hasPurchase(item),
            let id = resolveService(for: item).serviceID {
             item.serviceID = id
         }
@@ -220,8 +229,12 @@ struct Library {
     private func finishMinutes(for item: Item) -> (Double, DurationSource) {
         switch item.kind {
         case .film:
-            if let runtime = item.runtimeMinutes { return (Double(runtime), .derived) }
-            return (item.kind.fallbackMinutes, .estimated)
+            // Part-watches since the last finish already count towards this one.
+            let logs = item.sortedLogs
+            let lastFinish = logs.filter { $0.kind == .finished }.map(\.date).max() ?? .distantPast
+            let watched = logs.filter { $0.kind == .session && $0.date > lastFinish }.reduce(0) { $0 + $1.minutes }
+            if let runtime = item.runtimeMinutes { return (max(0, Double(runtime) - watched), .derived) }
+            return (max(0, item.kind.fallbackMinutes - watched), .estimated)
         case .book, .comic:
             guard let pageCount = item.pageCount, pageCount > 0 else {
                 return (item.kind.fallbackMinutes, .estimated)
@@ -249,14 +262,51 @@ struct Library {
     }
 
     func resolveService(for item: Item) -> ServiceResolution {
-        let services = (try? context.fetch(FetchDescriptor<Service>())) ?? []
-        let active = Set(services.filter(\.isActive).map(\.id))
-        return ServiceLinker.resolve(
+        ServiceLinker.resolve(
             existing: item.serviceID,
             providerMatches: [],
             lastUsedForKind: lastUsedService(for: item.kind, excluding: item.id),
-            activeServiceIDs: active
+            activeServiceIDs: activeServiceIDs()
         )
+    }
+
+    /// Subscriptions that are still running. Shops are never auto-linked.
+    private func activeServiceIDs() -> Set<UUID> {
+        let services = (try? context.fetch(FetchDescriptor<Service>())) ?? []
+        return Set(services.filter { $0.isActive && $0.kind == .subscription }.map(\.id))
+    }
+
+    private func hasPurchase(_ item: Item) -> Bool {
+        let purchases = (try? context.fetch(FetchDescriptor<Purchase>())) ?? []
+        return purchases.contains { $0.itemID == item.id }
+    }
+
+    /// Removes a service and the links pointing at it. Logs keep their hours.
+    func delete(_ service: Service) throws {
+        let id = service.id
+        for item in (try? context.fetch(FetchDescriptor<Item>())) ?? [] where item.serviceID == id {
+            item.serviceID = nil
+        }
+        for log in (try? context.fetch(FetchDescriptor<Log>())) ?? [] where log.serviceID == id {
+            log.serviceID = nil
+        }
+        for purchase in (try? context.fetch(FetchDescriptor<Purchase>())) ?? [] where purchase.serviceID == id {
+            purchase.serviceID = nil
+        }
+        context.delete(service)
+        try context.save()
+    }
+
+    /// Adds something you finished before you started logging. It goes in the
+    /// diary but adds no hours to this month or to any service.
+    @discardableResult
+    func recordPastFinish(_ item: Item) throws -> Log {
+        let log = Log(item: item, kind: .finished, date: now(), minutes: 0, durationSource: .estimated)
+        if item.kind.isPaged { log.page = item.pageCount }
+        context.insert(log)
+        item.status = .finished
+        try touch(item)
+        return log
     }
 
     private func lastUsedService(for kind: MediaKind, excluding itemID: UUID) -> UUID? {

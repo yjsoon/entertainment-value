@@ -56,6 +56,16 @@ struct ValueMathTests {
         #expect(terms.monthlyCharge(in: MonthKey(year: 2026, month: 9), calendar: Self.calendar) == 0)
     }
 
+    @Test("Cancelling during a trial never costs anything")
+    func cancelledInTrial() {
+        let terms = ServiceTerms(
+            prices: [Self.sgd(10)], cycle: .monthly, share: 1,
+            startedAt: Self.date(2026, 10, 2), cancelledAt: Self.date(2026, 10, 8),
+            trialEndsAt: Self.date(2026, 10, 9)
+        )
+        #expect(terms.monthlyCharge(in: Self.october, calendar: Self.calendar) == 0)
+    }
+
     @Test("A price rise does not change earlier months")
     func priceHistory() {
         let terms = ServiceTerms(
