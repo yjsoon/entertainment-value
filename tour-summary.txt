@@ -1,0 +1,87 @@
+DEMO_OFFSET 176.92547583580017
+Test Case '-[EntertainmentValueUITests.DemoTour testTour]' started.
+Test Case '-[EntertainmentValueUITests.DemoTour testTour]' passed (202.581 seconds).
+** TEST EXECUTE SUCCEEDED **
+--- crash reports
+DEMO_START 1792333377.1718779
+--- termination log
+2026-10-18 14:25:31.736 Df EntertainmentValue[10653:902c] [com.apple.dt.xctest:Default] Got attributes, transferring to dictionary for return.
+2026-10-18 14:25:31.736 Df EntertainmentValue[10653:c887] [com.apple.dt.xctest:Default] Replying with attribute values: {
+2026-10-18 14:25:31.746 Df EntertainmentValue[10653:c5f6] [com.apple.dt.xctest:Default] Received attributes request for element: AX element pid: 10653, elementOrHash.elementID: 4344501248.28. Attributes: (
+2026-10-18 14:25:31.746 Df EntertainmentValue[10653:c5f6] [com.apple.dt.xctest:Default] XCTPerformOnMainRunLoop[not MT]: about to CFRunLoopPerform
+2026-10-18 14:25:31.759 Df EntertainmentValue[10653:902c] [com.apple.dt.xctest:Default] XCTPerformOnMainRunLoop[MT]: inside CFRunLoopPerform
+2026-10-18 14:25:31.759 Df EntertainmentValue[10653:c5f6] [com.apple.dt.xctest:Default] XCTPerformOnMainRunLoop[not MT]: waiting with 30.00s responsiveness timeout
+2026-10-18 14:25:31.759 Df EntertainmentValue[10653:902c] [com.apple.dt.xctest:Default] XCTPerformOnMainRunLoop[MT]: MT responded in time (won the race to the busy flag)
+2026-10-18 14:25:31.759 Df EntertainmentValue[10653:c5f6] [com.apple.dt.xctest:Default] XCTPerformOnMainRunLoop[not MT]: waiting 60.00s for work to complete
+2026-10-18 14:25:31.759 Df EntertainmentValue[10653:902c] [com.apple.dt.xctest:Default] Fetching AX attributes XC_kAXXCAttributeSystemAutomationProperties for AX element pid: 10653, elementOrHash.elementID: 4344501248.28
+2026-10-18 14:25:31.759 Df EntertainmentValue[10653:902c] [com.apple.dt.xctest:Default] Got attributes, transferring to dictionary for return.
+2026-10-18 14:25:31.759 Df EntertainmentValue[10653:c5f6] [com.apple.dt.xctest:Default] Replying with attribute values: {
+2026-10-18 14:25:31.785 Df EntertainmentValue[10653:902c] [com.apple.KeyboardArbiter:Client] TX focusApplication (peekAppEvent) stealKB:Y scene:com.yjsoon.whatfun-default
+2026-10-18 14:25:31.785 Df EntertainmentValue[10653:902c] [com.apple.UIKit:EventDispatch] Evaluating dispatch of UIEvent: 0x102d9f400; type: 0; subtype: 0; backing type: 11; shouldSend: 1; ignoreInteractionEvents: 0, systemGestureStateChange: 0
+    context:<contextID:1935856418 sceneID:com.yjsoon.whatfun-default>
+2026-10-18 14:25:31.795 Df EntertainmentValue[10653:902c] [com.apple.UIKit:EventDispatch] Evaluating dispatch of UIEvent: 0x102d9f400; type: 0; subtype: 0; backing type: 11; shouldSend: 0; ignoreInteractionEvents: 0, systemGestureStateChange: 0
+2026-10-18 14:25:31.807 Df EntertainmentValue[10653:902c] [com.apple.UIKit:EventDispatch] Evaluating dispatch of UIEvent: 0x102d9f400; type: 0; subtype: 0; backing type: 11; shouldSend: 0; ignoreInteractionEvents: 0, systemGestureStateChange: 0
+2026-10-18 14:25:31.823 Df EntertainmentValue[10653:902c] [com.apple.UIKit:EventDispatch] Evaluating dispatch of UIEvent: 0x102d9f400; type: 0; subtype: 0; backing type: 11; shouldSend: 0; ignoreInteractionEvents: 0, systemGestureStateChange: 0
+2026-10-18 14:25:31.840 Df EntertainmentValue[10653:902c] [com.apple.UIKit:EventDispatch] Evaluating dispatch of UIEvent: 0x102d9f400; type: 0; subtype: 0; backing type: 11; shouldSend: 0; ignoreInteractionEvents: 0, systemGestureStateChange: 0
+2026-10-18 14:25:31.857 Df EntertainmentValue[10653:902c] [com.apple.UIKit:EventDispatch] Evaluating dispatch of UIEvent: 0x102d9f400; type: 0; subtype: 0; backing type: 11; shouldSend: 0; ignoreInteractionEvents: 0, systemGestureStateChange: 0
+2026-10-18 14:25:31.861 Df SpringBoard[1339:c52a] [com.apple.KeyboardArbiter:Handle] RX com.yjsoon.whatfun(10653) signalEventSourceChanged:UNK
+2026-10-18 14:25:31.862 Df EntertainmentValue[10653:902c] [com.apple.UIKit:EventDispatch] Evaluating dispatch of UIEvent: 0x102d9f400; type: 0; subtype: 0; backing type: 11; shouldSend: 1; ignoreInteractionEvents: 0, systemGestureStateChange: 0
+2026-10-18 14:25:31.873 Df EntertainmentValue[10653:902c] [com.apple.UIKit:EventDispatch] Evaluating dispatch of UIEvent: 0x102d9f400; type: 0; subtype: 0; backing type: 11; shouldSend: 0; ignoreInteractionEvents: 0, systemGestureStateChange: 1
+2026-10-18 14:25:32.058 Df EntertainmentValue[10653:c5f7] [com.apple.dt.xctest:Default] Received request to notify when the main run loop is idle
+2026-10-18 14:25:32.058 Df EntertainmentValue[10653:c5f7] [com.apple.dt.xctest:Default] Idle notifier finished setting up run loop observer
+2026-10-18 14:25:32.058 Df EntertainmentValue[10653:902c] [com.apple.dt.xctest:Default] Idle notifier run loop observer fired
+2026-10-18 14:25:32.059 Df EntertainmentValue[10653:902c] [com.apple.dt.xctest:Default] Sending main run loop idle reply
+2026-10-18 14:25:32.059 Df EntertainmentValue[10653:c5f7] [com.apple.dt.xctest:Default] Received request to notify when animations are idle
+2026-10-18 14:25:32.059 Df EntertainmentValue[10653:c5f7] [com.apple.dt.xctest:Default] Sending animations idle reply with error: (null)
+2026-10-18 14:25:36.178 Df backboardd[1362:c907] [com.apple.iohid:default] Connection removed: IOHIDEventSystemConnection uuid:AC8BEB59-7D93-41B3-9C2E-7BB743BE6C50 pid:10653 process:EntertainmentValue type:Passive entitlements:0x0 caller:BackBoardServices: ___getHIDEventSystemClient_block_invoke + 296 attributes:{
+2026-10-18 14:25:36.178 Df SpringBoard[1339:b4da] [com.apple.FrontBoard:Process] [app<com.yjsoon.whatfun>:10653] Now flagged as pending exit for reason: workspace client connection invalidated
+    <token: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.yjsoon.whatfun-default; pid: 10653>
+    <token: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.yjsoon.whatfun-default; pid: 10653>
+2026-10-18 14:25:36.200 Df SpringBoard[1339:1df7] [com.apple.SpringBoard:KeyboardFocus] [coordinator] using MRU target <com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.yjsoon.whatfun-default pid:10653>
+2026-10-18 14:25:36.206 Df SpringBoard[1339:1df7] [com.apple.SpringBoard:KeyboardFocus] [coordinator] informing scene controller 'com.apple.springboard' of focusTarget: <com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.yjsoon.whatfun-default pid:10653>
+2026-10-18 14:25:36.248 Df SpringBoard[1339:1df7] [com.apple.SpringBoard:KeyboardFocus] [coordinator] keyboard arbiter suggested <nothing> and we replied <com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.yjsoon.whatfun-default pid:10653>
+2026-10-18 14:25:36.248 E  SpringBoard[1339:ab19] [com.apple.UIKit:KeyboardArbiter] Advisor: No handle found for currently focused PID: 10653; sceneIdentity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.yjsoon.whatfun-default
+2026-10-18 14:25:36.255 Df runningboardd[1342:c532] [com.apple.runningboard:ttl] [app<com.yjsoon.whatfun((null))>:10653] termination reported by launchd (2, 15, 15)
+2026-10-18 14:25:36.257 Df runningboardd[1342:c532] [com.apple.runningboard:process] Removing assertions for terminated process: [app<com.yjsoon.whatfun((null))>:10653]
+2026-10-18 14:25:36.257 Df runningboardd[1342:c532] [com.apple.runningboard:assertion] Removed last relative-start-date-defining assertion for process app<com.yjsoon.whatfun((null))>
+2026-10-18 14:25:36.260 Df runningboardd[1342:c9fd] [com.apple.runningboard:process] Notifying connection [osservice<com.apple.SpringBoard>:1339] that process [app<com.yjsoon.whatfun((null))>:10653] exited with context <RBSProcessExitContext| specific, status:<RBSProcessExitStatus| domain:signal(2) code:SIGTERM(15)>>
+2026-10-18 14:25:36.261 Df runningboardd[1342:cd41] [com.apple.runningboard:connection] Inheritance changeset: <RBSInheritanceChangeSet| gained:(null) lost:{(
+    <RBSInheritance| environment:UIScene:com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.yjsoon.whatfun-default name:com.apple.frontboard.visibility origID:1342-1339-1226 payload 3986484173192374203>,
+2026-10-18 14:25:36.263 Df SpringBoard[1339:55dc] [com.apple.FrontBoard:ProcessWorkspace] [app<com.yjsoon.whatfun>:10653] Workspace assertion invalidated: <NSError: 0x11f5faa00; domain: RBSAssertionErrorDomain; code: 1; "Assertions were invalidated, count = 3.
+2026-10-18 14:25:36.271 Df SpringBoard[1339:55dc] [com.apple.FrontBoard:Process] [app<com.yjsoon.whatfun>:10653] Process exited: <RBSProcessExitContext| specific, status:<RBSProcessExitStatus| domain:signal(2) code:SIGTERM(15)>>.
+2026-10-18 14:25:36.271 Df SpringBoard[1339:ab19] [com.apple.FrontBoard:ProcessScene] [0x1150ea340:(FBSceneManager):sceneID:com.yjsoon.whatfun-default] Invalidated for connection: 0x10ab9c3f0.
+2026-10-18 14:25:36.274 Df SpringBoard[1339:1df7] [com.apple.SpringBoard:Workspace] Process exited: <FBApplicationProcess: 0x11942e400; app<com.yjsoon.whatfun>:10653(v553E)> -> <RBSProcessExitContext| specific, status:<RBSProcessExitStatus| domain:signal(2) code:SIGTERM(15)>>
+2026-10-18 14:25:36.292 Df SpringBoard[1339:1df7] [com.apple.SpringBoard:Common] Application process state changed for com.yjsoon.whatfun: (null)
+2026-10-18 14:25:36.294 Df locationd[1365:c881] [com.apple.locationd.Core:Core] {"msg":"RBS #dic AppMonitor received Termination", "pid":10653, "bundleId":com.yjsoon.whatfun, "isUserKill":0}
+2026-10-18 14:25:36.296 Df testmanagerd[7497:c449] [com.apple.dt.xctest:Default] Process monitor update handler invoked for com.yjsoon.whatfun
+2026-10-18 14:25:36.296 Df testmanagerd[7497:c449] [com.apple.dt.xctest:Default] Computed display ID com.yjsoon.whatfun from embeddedApplicationIdentifier: com.yjsoon.whatfun, xpcServiceIdentifier: (null), bundleID: com.yjsoon.whatfun
+2026-10-18 14:25:36.296 Df testmanagerd[7497:c449] [com.apple.dt.xctest:Default] <XCTDProcessMonitor: 0x1020c4dc0> passing update com.yjsoon.whatfun@/Users/runner/Library/Developer/CoreSimulator/Devices/0183276C-C5F7-4A53-B0AF-C3D9117595F6/data/Containers/Bundle/Application/081C0C91-980F-496B-B490-A738A58C3D54/EntertainmentValue.app processName: EntertainmentVa pid: 10653 state: not running to <XCTDProcessManagementServicesProvider: 0x1020947e0>
+2026-10-18 14:25:36.298 Df locationd[1365:c881] [com.apple.locationd.Core:Core] {"msg":"RBS #AppMonitor Post Application State Change Notification", "notification":Terminated, "pid":10653, "bundleId":com.yjsoon.whatfun}
+2026-10-18 14:25:36.299 Df testmanagerd[7497:c90c] [com.apple.dt.xctest:Default] <XCTestSession: 0x10224c000> pid 8621 com.yjsoon.whatfun@/Users/runner/Library/Developer/CoreSimulator/Devices/0183276C-C5F7-4A53-B0AF-C3D9117595F6/data/Containers/Bundle/Application/081C0C91-980F-496B-B490-A738A58C3D54/EntertainmentValue.app processName: EntertainmentVa pid: 10653 state: not running
+2026-10-18 14:25:36.304 Df locationd[1365:b4de] [com.apple.locationd.Core:Core] {"msg":"#CLIUA Marking change", "clientKey":icom.yjsoon.whatfun:, "reason":Process state from RunningBoard, "AssertionLevel":5, "coming":0}
+2026-10-18 14:25:36.304 Df locationd[1365:b4de] [com.apple.locationd.Core:Core] {"msg":"#CLIUA updating AssertionRecord", "ClientKey":icom.yjsoon.whatfun:, "AssertionLevel":5}
+2026-10-18 14:25:36.304 Df locationd[1365:b4de] [com.apple.locationd.Core:Core] {"msg":"#CLIUA AssertionRecord updated", "ClientKey":icom.yjsoon.whatfun:, "AssertionLevel":0}
+2026-10-18 14:25:36.304 Df locationd[1365:b4de] [com.apple.locationd.Core:Core] {"msg":"#CLIUA in-use level changed for client", "ClientKey":icom.yjsoon.whatfun:}
+2026-10-18 14:25:36.366 Df SpringBoard[1339:b4da] [com.apple.UserNotifications:RemoteNotifications] [com.yjsoon.whatfun] com.yjsoon.whatfun application state changed to <RBSProcessState| task:none debug:none>
+2026-10-18 14:25:36.538 Df SpringBoard[1339:1df7] [com.apple.SpringBoard:KeyboardFocus] [com.apple.springboard] removing scene: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.yjsoon.whatfun-default pid: 10653 for reason: didRemoveExternalForegroundApplicationSceneHandle
+2026-10-18 14:25:36.555 Df SpringBoard[1339:1df7] [com.apple.SpringBoard:KeyboardFocus] [coordinator] _removeSceneFromRecents didRemoveExternalForegroundApplicationSceneHandle pid:10653 scene:com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.yjsoon.whatfun-default now:<empty>
+2026-10-18 14:25:36.947 Df SpringBoard[1339:1df7] [com.apple.FrontBoard:Scene] [(FBSceneManager):sceneID:com.yjsoon.whatfun-default] Removing parent scene.
+2026-10-18 14:25:36.950 Df SpringBoard[1339:1df7] [com.apple.UIKit:SceneDeactivation] No longer tracking: <FBScene: 0x115217500; FBSceneManager:sceneID:com.yjsoon.whatfun-default>
+2026-10-18 14:25:36.961 Df SpringBoard[1339:1df7] [com.apple.SpringBoard:SceneSnapshots] <SBSceneSnapshotRequestor: 0x10946f5a0; debugName: LCD> [sceneID:com.yjsoon.whatfun-default] Requesting 2 snapshot(s) because the scene actually moved to the background
+2026-10-18 14:25:36.961 Df SpringBoard[1339:1df7] [com.apple.FrontBoard:Common] Created: <FBSceneSnapshotAction: 0x11a2e0a80; sceneID:com.yjsoon.whatfun-default>
+2026-10-18 14:25:36.962 Df runningboardd[1342:cd41] [com.apple.runningboard:ttl] Acquiring assertion targeting 10653 from originator [osservice<com.apple.SpringBoard>:1339] with description <RBSAssertionDescriptor| "FBSceneSnapshotAction:sceneID:com.yjsoon.whatfun-default" ID:1342-1339-1445 target:10653 attributes:[
+2026-10-18 14:25:36.963 Df SpringBoard[1339:1df7] [com.apple.FrontBoard:Scene] [(FBSceneManager):sceneID:com.yjsoon.whatfun-default] Sending action(s) in update: <FBSceneSnapshotAction: 0x053b0010>
+2026-10-18 14:25:36.963 Df SpringBoard[1339:1df7] [com.apple.FrontBoard:Scene] [(FBSceneManager):sceneID:com.yjsoon.whatfun-default] scene content state changed: notReady
+2026-10-18 14:25:36.967 Df SpringBoard[1339:1df7] [com.apple.SpringBoard:AppProtection] <BSCompoundAssertion:0x11c265c80> (SBApplicationAppProtectionAssistant: 0x11c265d00 - com.yjsoon.whatfun) invalidate acq:0x117589bc0 count:1
+2026-10-18 14:25:37.130 Df backboardd[1362:c206] [com.apple.BackBoard:TouchEvents] new scene host settings: contextID:7362D322 <sceneID:com.yjsoon.whatfun-default> foreground -> inactive
+2026-10-18 14:25:37.131 Df backboardd[1362:c206] [com.apple.BackBoard:TouchEvents] new scene host settings: contextID:80533352 <sceneID:com.yjsoon.whatfun-default> foreground -> inactive
+2026-10-18 14:25:37.180 Df SpringBoard[1339:1df7] [com.apple.SpringBoard:AppSwitcher] <SBFullScreenSwitcherLiveContentOverlayCoordinator: 0x119640580> Removing SwitcherScene overlay for: <SBAppLayout: 0x11c3ffd00; primary: com.yjsoon.whatfun:default; environment: main>, animated: NO
+2026-10-18 14:25:37.247 Df SpringBoard[1339:1df7] [com.apple.FrontBoard:Scene] Invalidating scene: (FBSceneManager):sceneID:com.yjsoon.whatfun-default
+2026-10-18 14:25:37.248 Df SpringBoard[1339:1df7] [com.apple.FrontBoard:Common] Invalidating: <FBSceneSnapshotAction: 0x11a2e0a80; sceneID:com.yjsoon.whatfun-default>
+2026-10-18 14:25:37.249 Df SpringBoard[1339:cd86] [com.apple.FrontBoard:Common] Got response for <FBSceneSnapshotAction: 0x11a2e0a80; sceneID:com.yjsoon.whatfun-default>: <NSError: 0x11f5f8ae0; domain: BSActionErrorDomain; code: 6 ("anulled")>
+2026-10-18 14:25:37.249 Df SpringBoard[1339:1df7] [com.apple.FrontBoard:Scene] [(FBSceneManager):sceneID:com.yjsoon.whatfun-default][1] Scene invalidated.
+2026-10-18 14:25:37.250 E  SpringBoard[1339:1df7] [com.apple.FrontBoard:Scene] Ignoring update for invalidated scene: (FBSceneManager):sceneID:com.yjsoon.whatfun-default
+2026-10-18 14:25:37.256 Df SpringBoard[1339:1df7] [com.apple.UIKit:KBProxyForwarding] <StateMachine:0x11c2f40c0> Presentation environment invalidated: <_UISceneKeyboardProxyLayerForwardingPresentationScene: 0x11f5729d0> Tracking scene: <FBScene: 0x115217500; (null):sceneID:com.yjsoon.whatfun-default>
+2026-10-18 14:25:37.264 Df SpringBoard[1339:1df7] [com.apple.SpringBoard:KeyboardFocus] rules: (scene setting) REMOVED keyboardFocus environment from scene: sceneID:com.yjsoon.whatfun-default
+2026-10-18 14:25:37.264 E  SpringBoard[1339:1df7] [com.apple.FrontBoard:Scene] Ignoring update for invalidated scene: (FBSceneManager):sceneID:com.yjsoon.whatfun-default
+2026-10-18 14:25:37.346 E  SpringBoard[1339:1df7] [com.apple.FrontBoard:Scene] [(FBSceneManager):sceneID:com.yjsoon.whatfun-default] Update failed: <NSError: 0x11f5faeb0; domain: FBSceneErrorDomain; code: 1 ("operation-failed"); "Scene update failed."> {
