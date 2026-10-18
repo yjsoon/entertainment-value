@@ -1,8 +1,9 @@
 name: Demo video
 
+# Run by hand from the Actions tab. Records a scripted tour of the app on a
+# simulator with sample data. The raw video is uploaded as an artifact and
+# also kept at refs/demo-videos/latest.
 on:
-  push:
-    branches: ["claude/**"]
   workflow_dispatch:
 
 concurrency:
