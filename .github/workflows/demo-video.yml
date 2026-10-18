@@ -77,8 +77,22 @@ jobs:
             echo "DEMO_OFFSET $OFFSET"
             grep -E "Missing element|error:|Test Case|\*\* TEST" tour.log || true
             echo "--- crash reports"
-            find ~/Library/Logs/DiagnosticReports -type f -mmin -30 2>/dev/null | while read -r f; do
-              echo "=== $f"; head -c 8000 "$f"; echo
+            find ~/Library/Logs/DiagnosticReports -type f -mmin -30 -name "EntertainmentValue*" 2>/dev/null | while read -r f; do
+              echo "=== $f"
+              python3 - "$f" <<'PY'
+          import json, sys
+          text = open(sys.argv[1]).read()
+          body = json.loads(text[text.index("\n") + 1:])
+          images = body.get("usedImages", [])
+          print("exception:", body.get("exception"), body.get("termination", {}).get("indicator"))
+          for index, thread in enumerate(body.get("threads", [])):
+              if not thread.get("triggered"):
+                  continue
+              print("thread", index, thread.get("queue"), thread.get("name"))
+              for frame in thread.get("frames", [])[:40]:
+                  image = images[frame["imageIndex"]].get("name", "?") if frame.get("imageIndex") is not None else "?"
+                  print(f"  {image:30} {frame.get('symbol', hex(frame.get('imageOffset', 0)))} {frame.get('sourceFile', '')}:{frame.get('sourceLine', '')}")
+          PY
             done
             grep -E "DEMO_" tour.log || true
             echo "--- termination log"
