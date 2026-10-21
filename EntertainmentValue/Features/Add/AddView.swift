@@ -151,8 +151,16 @@ struct AddView: View {
 
     private func addFinished(_ result: MetadataSearchResult) {
         let library = Library(context: context)
-        guard let item = try? library.add(result, status: .active) else { return }
-        _ = try? library.recordPastFinish(item)
+        guard let item = try? library.add(result, status: .planned) else { return }
+        // Something already in the library is finished today, counting the
+        // rest of it; only something never logged gets a backdated finish.
+        if item.status != .finished {
+            if item.dayLogs.isEmpty {
+                _ = try? library.recordPastFinish(item)
+            } else {
+                try? library.setStatus(.finished, for: item)
+            }
+        }
         fetchDetails(for: result, into: item)
         finish()
     }

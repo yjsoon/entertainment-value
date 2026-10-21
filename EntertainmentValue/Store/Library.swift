@@ -347,6 +347,9 @@ struct Library {
     /// progress.
     func undoFinish(_ log: Log, restoring state: DayState? = nil) throws {
         guard let item = log.item, log.kind == .finished else { return }
+        // A day that was already finished before the tap has nothing to go
+        // back to, so it's treated as if there were no saved state.
+        let state = state.flatMap { $0.logID == log.id && $0.kind == .finished ? nil : $0 }
         if let state {
             if state.logID == log.id {
                 log.kind = state.kind
@@ -367,6 +370,8 @@ struct Library {
                 log.kind = .progress
                 log.percent = nil
                 log.page = nil
+                log.minutes = ReadingMath.plainReadMinutes
+                log.durationSource = .estimated
             case .tv, .podcast:
                 if log.count > 0 { log.kind = .episode } else { detach(log) }
             case .game:
@@ -387,10 +392,10 @@ struct Library {
         try context.save()
     }
 
-    /// Changes where an item is from. Days in the current watch or
-    /// read-through move with it (including one just finished), so a
-    /// guessed link that was wrong is fixed everywhere it counted. Earlier
-    /// read-throughs keep theirs.
+    /// Changes where an item is from. This month's days in the current watch
+    /// or read-through move with it (including one just finished), so a
+    /// guessed link that was wrong is fixed where it counts now. Earlier
+    /// months and earlier read-throughs keep theirs.
     func setService(_ serviceID: UUID?, freeReason: FreeReason?, for item: Item) throws {
         let reason = serviceID == nil ? freeReason : nil
         let changed = item.serviceID != serviceID || item.freeReason != reason
@@ -406,11 +411,14 @@ struct Library {
         try context.save()
     }
 
-    /// The logs since the finish before the latest log.
+    /// The logs since the finish before the latest log, within the latest
+    /// log's month.
     private func currentRun(of item: Item) -> [Log] {
         let logs = item.dayLogs
         guard let latest = logs.last else { return [] }
-        let boundary = logs.dropLast().last(where: { $0.kind == .finished })?.date ?? .distantPast
+        let lastFinish = logs.dropLast().last(where: { $0.kind == .finished })?.date ?? .distantPast
+        let monthStart = calendar.dateInterval(of: .month, for: latest.date)?.start ?? .distantPast
+        let boundary = max(lastFinish, monthStart.addingTimeInterval(-1))
         return logs.filter { $0.date > boundary && $0.date <= latest.date }
     }
 

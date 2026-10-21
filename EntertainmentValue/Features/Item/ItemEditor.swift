@@ -15,6 +15,8 @@ struct ItemEditor: View {
     @State private var title = ""
     @State private var mode = ProgressMode.percent
     @State private var source = SourceChoice.none
+    /// Where it was from when the screen opened; only a change is saved.
+    @State private var loadedSource = SourceChoice.none
     @State private var status = ItemStatus.active
     @State private var lengthText = ""
     @State private var pageCountText = ""
@@ -405,15 +407,18 @@ struct ItemEditor: View {
         status = item.status
         lengthText = item.runtimeMinutes.map(String.init) ?? ""
         pageCountText = item.pageCount.map(String.init) ?? ""
-        if !purchases.isEmpty {
-            source = .bought
-        } else if let id = item.serviceID {
+        // A service or free reason kept alongside a price wins, so saving
+        // again doesn't quietly drop it.
+        if let id = item.serviceID {
             source = .service(id)
         } else if let reason = item.freeReason {
             source = .free(reason)
+        } else if !purchases.isEmpty {
+            source = .bought
         } else {
             source = .none
         }
+        loadedSource = source
     }
 
     private func remove(_ log: Log) {
@@ -427,7 +432,7 @@ struct ItemEditor: View {
 
     /// Asks before dropping a price when the item stops being "bought".
     private func requestSave() {
-        if source != .bought, !purchases.isEmpty {
+        if loadedSource == .bought, source != .bought, !purchases.isEmpty {
             confirmingPurchaseRemoval = true
         } else {
             save(removingPurchases: false)
@@ -439,21 +444,24 @@ struct ItemEditor: View {
             let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty, trimmed != item.title { item.title = trimmed }
             if item.kind.isPaged {
-                if mode != item.progressMode { try library.setProgressMode(mode, for: item) }
+                // Lengths first, while days are still read in the old units.
                 let pages = Int(pageCountText.trimmingCharacters(in: .whitespaces)).flatMap { $0 > 0 ? $0 : nil }
                 try library.setLengths(runtime: item.runtimeMinutes, pageCount: pages, for: item)
+                if mode != item.progressMode { try library.setProgressMode(mode, for: item) }
             }
             if item.kind == .film || item.kind.isEpisodic {
                 let runtime = Int(lengthText.trimmingCharacters(in: .whitespaces)).flatMap { $0 > 0 ? $0 : nil }
                 try library.setLengths(runtime: runtime, pageCount: item.pageCount, for: item)
             }
-            switch source {
-            case .none, .bought:
-                try library.setService(nil, freeReason: nil, for: item)
-            case let .service(id):
-                try library.setService(id, freeReason: nil, for: item)
-            case let .free(reason):
-                try library.setService(nil, freeReason: reason, for: item)
+            if source != loadedSource {
+                switch source {
+                case .none, .bought:
+                    try library.setService(nil, freeReason: nil, for: item)
+                case let .service(id):
+                    try library.setService(id, freeReason: nil, for: item)
+                case let .free(reason):
+                    try library.setService(nil, freeReason: reason, for: item)
+                }
             }
             if source == .bought, let pendingPurchase {
                 pendingPurchase.apply(to: purchases.last, itemID: item.id, in: context)

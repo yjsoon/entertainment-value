@@ -352,6 +352,36 @@ struct LibraryTests {
         #expect(film.logs?.count == 1)
     }
 
+    @Test("Undoing a book's finish later leaves one plain sitting")
+    func undoBookLater() throws {
+        let book = insert(Item(kind: .book, title: "Piranesi", pageCount: 300, status: .active))
+        try library.setPercent(40, on: book)
+        clock.nextDay()
+        let done = try library.finish(book)
+        // Done again on a day that's already finished: nothing to go back to.
+        let state = library.dayState(of: book)
+        let again = try library.finish(book)
+        try library.undoFinish(again, restoring: state)
+        #expect(done.kind == .progress)
+        #expect(done.minutes == ReadingMath.plainReadMinutes)
+        #expect(book.status == .active)
+    }
+
+    @Test("A new service moves this month's days, not earlier months")
+    func serviceKeepsEarlierMonths() throws {
+        let spotify = Service(name: "Spotify")
+        let apple = Service(name: "Apple Podcasts")
+        container.mainContext.insert(spotify)
+        container.mainContext.insert(apple)
+        let show = insert(Item(kind: .podcast, title: "Search Engine", status: .active))
+        try library.setService(spotify.id, freeReason: nil, for: show)
+        let september = try #require(try library.addEpisodes(1, to: show, on: clock.date.addingTimeInterval(-30 * 86_400)))
+        let october = try #require(try library.addEpisodes(1, to: show))
+        try library.setService(apple.id, freeReason: nil, for: show)
+        #expect(october.serviceID == apple.id)
+        #expect(september.serviceID == spotify.id)
+    }
+
     @Test("Changing the running time or page count works guessed days out again")
     func lengthsRederive() throws {
         let show = insert(Item(kind: .tv, title: "Andor", status: .active))
