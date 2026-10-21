@@ -125,6 +125,12 @@ struct ValueMathTests {
         #expect(disneyValue.costPerHour == nil)
         #expect(summary.services[2].costPerHour?.roundedToCents == Decimal(string: "0.21"))
         #expect(summary.isMostlyEstimated == false)
+
+        // The Value card's rate leaves out free, bought and unlinked hours.
+        #expect(summary.subscriptionSpend == Decimal(string: "38.46"))
+        #expect(summary.subscriptionMinutes == 45.5 * 60)
+        #expect(summary.subscriptionCostPerHour?.roundedToCents == Decimal(string: "0.85"))
+        #expect(summary.subscriptionsMostlyEstimated == false)
     }
 
     @Test("Ratings weight enjoyed hours from 0.5 to 1.5")

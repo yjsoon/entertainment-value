@@ -13,10 +13,12 @@ enum DemoData {
         let monthStart = MonthKey(now, calendar: calendar).start(calendar: calendar)
         let longAgo = calendar.date(byAdding: .month, value: -8, to: monthStart) ?? monthStart
 
-        /// A time this month, `daysAgo` days back, never before the 1st.
-        func day(_ daysAgo: Double, hour: Double = 21) -> Date {
-            let base = calendar.startOfDay(for: now).addingTimeInterval(-daysAgo * 86_400 + hour * 3_600)
-            return min(max(base, monthStart.addingTimeInterval(3_600)), now.addingTimeInterval(-600))
+        /// A time `daysAgo` days back. Nothing is logged today, so the tour
+        /// starts with an empty check-in.
+        func day(_ daysAgo: Int, hour: Int = 21) -> Date {
+            let start = calendar.startOfDay(for: now)
+            let base = calendar.date(byAdding: .day, value: -daysAgo, to: start) ?? start
+            return calendar.date(byAdding: .hour, value: hour, to: base) ?? base
         }
 
         func price(_ amount: Decimal) -> PricePoint {
@@ -51,11 +53,11 @@ enum DemoData {
         @discardableResult
         func log(
             _ item: Item, _ kind: LogKind, _ date: Date, minutes: Double, _ source: DurationSource,
-            page: Int? = nil, episode: EpisodeRef? = nil, rating: Double? = nil, note: String? = nil
+            count: Int = 1, percent: Double? = nil, page: Int? = nil, rating: Double? = nil, note: String? = nil
         ) -> Log {
             let log = Log(
                 item: item, kind: kind, date: date, minutes: minutes, durationSource: source,
-                page: page, episode: episode, serviceID: item.serviceID,
+                page: page, percent: percent, count: count, serviceID: item.serviceID,
                 freeReason: item.serviceID == nil ? item.freeReason : nil
             )
             log.rating = rating
@@ -68,43 +70,43 @@ enum DemoData {
 
         // In the middle of
         let andor = item(.tv, "Andor", creator: "Tony Gilroy", year: 2025, runtime: 50, status: .active, service: disney)
-        for (index, daysAgo) in [15.0, 12, 9, 6, 2].enumerated() {
-            log(andor, .episode, day(daysAgo), minutes: 50, .derived, episode: EpisodeRef(season: 2, episode: index + 1))
+        for (daysAgo, count) in [(15, 2), (12, 1), (9, 3), (6, 1), (3, 2), (1, 1)] {
+            log(andor, .episode, day(daysAgo), minutes: Double(count * 50), .derived, count: count)
         }
 
         let piranesi = item(
             .book, "Piranesi", creator: "Susanna Clarke", year: 2020, pages: 272, status: .active,
             service: kindle, cover: "https://covers.openlibrary.org/b/isbn/9781635575637-L.jpg"
         )
-        for (page, daysAgo) in [(40, 10.0), (85, 7), (120, 3)] {
-            log(piranesi, .progress, day(daysAgo, hour: 23), minutes: 67.5, .estimated, page: page)
+        for (percent, daysAgo, minutes) in [(12.0, 10, 49.0), (24, 7, 49), (31, 5, 29), (38, 2, 29)] {
+            log(piranesi, .progress, day(daysAgo, hour: 23), minutes: minutes, .estimated, percent: percent)
         }
 
         let hades = item(.game, "Hades II", creator: "Supergiant Games", year: 2025, status: .active, service: steam)
-        for (minutes, daysAgo) in [(90.0, 14.0), (60, 8), (120, 4), (45, 1)] {
-            log(hades, .session, day(daysAgo, hour: 22), minutes: minutes, .measured)
+        for (minutes, daysAgo, source) in [(90.0, 14, DurationSource.measured), (60, 8, .estimated), (120, 4, .measured), (60, 1, .estimated)] {
+            log(hades, .session, day(daysAgo, hour: 22), minutes: minutes, source)
         }
         context.insert(Purchase(itemID: hades.id, serviceID: steam.id, amount: 42, currencyCode: "SGD", homeRate: 1, date: longAgo))
 
-        let history = item(.podcast, "The Rest Is History", creator: "Goalhanger", status: .active, service: spotify)
-        for (number, daysAgo) in [(10, 11.0), (11, 5)] {
-            log(history, .episode, day(daysAgo, hour: 8), minutes: 60, .derived, episode: EpisodeRef(season: 1, episode: number))
+        let history = item(.podcast, "The Rest Is History", creator: "Goalhanger", runtime: 60, status: .active, service: spotify)
+        for (daysAgo, count) in [(11, 1), (5, 2)] {
+            log(history, .episode, day(daysAgo, hour: 8), minutes: Double(count * 60), .derived, count: count)
         }
 
         let saga = item(.comic, "Saga, Vol. 1", creator: "Brian K. Vaughan", pages: 160, status: .active, free: .library)
-        log(saga, .progress, day(5, hour: 20), minutes: 30, .estimated, page: 60)
+        log(saga, .progress, day(6, hour: 20), minutes: 30, .estimated, percent: 38)
 
         let sinners = item(.film, "Sinners", creator: "Ryan Coogler", year: 2025, runtime: 137, status: .active, service: netflix)
-        sinners.lastActivityAt = day(0.5, hour: 18)
+        sinners.lastActivityAt = day(2, hour: 18)
 
         // Finished this month
         let glassOnion = item(.film, "Glass Onion", creator: "Rian Johnson", year: 2022, runtime: 139, status: .finished, service: netflix)
         log(glassOnion, .finished, day(13), minutes: 139, .derived, rating: 4,
-            note: "“It's a dangerous thing to mistake speaking without thought for speaking your truth.”")
+            note: "\u{201C}It's a dangerous thing to mistake speaking without thought for speaking your truth.\u{201D}")
 
         let hailMary = item(.book, "Project Hail Mary", creator: "Andy Weir", year: 2021, pages: 476, status: .finished, service: kindle)
-        log(hailMary, .progress, day(16, hour: 23), minutes: 300, .estimated, page: 400)
-        log(hailMary, .finished, day(14, hour: 23), minutes: 114, .estimated, page: 476, rating: 4.5,
+        log(hailMary, .progress, day(17, hour: 23), minutes: 300, .estimated, percent: 84)
+        log(hailMary, .finished, day(16, hour: 23), minutes: 114, .estimated, percent: 100, rating: 4.5,
             note: "Rocky is the best friend in fiction.")
 
         // Up next

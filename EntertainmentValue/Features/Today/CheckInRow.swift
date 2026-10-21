@@ -54,6 +54,7 @@ struct CheckInRow: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("Opens the edit screen")
+                .accessibilityIdentifier("checkin.open.\(item.title)")
                 trailing
             }
             if usesPosition {

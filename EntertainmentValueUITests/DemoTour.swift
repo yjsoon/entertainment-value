@@ -16,16 +16,18 @@ final class DemoTour: XCTestCase {
         print("DEMO_START \(Date().timeIntervalSince1970)")
         pause(3)
 
-        // One-tap logging on the Now tab.
-        tap(app.buttons["Watched S2 E6"])
-        pause(2)
-        tap(app.buttons["+25 pages"].firstMatch)
-        pause(2)
-        tap(app.buttons["Played Ep 12"])
+        // The daily check-in: two episodes, a bit of reading, a game session.
+        tap(element("checkin.plus.Andor"))
+        pause(1)
+        tap(element("checkin.plus.Andor"))
+        pause(1.5)
+        tap(element("checkin.step.Piranesi"))
+        pause(1.5)
+        tap(element("checkin.toggle.Hades II"))
         pause(2)
 
-        // Finish a film, rate it on the dial and leave a note.
-        tap(app.buttons["Finished"].firstMatch)
+        // Watch a film, rate it on the dial and leave a note.
+        tap(element("checkin.toggle.Sinners"))
         pause(1.5)
         let dial = app.descendants(matching: .any)["ratingDial"]
         if dial.waitForExistence(timeout: 4) {
@@ -42,28 +44,44 @@ final class DemoTour: XCTestCase {
         }
         pause(1)
         tap(app.buttons["Save"])
-        pause(3)
-        if app.state != .runningForeground {
-            print("DEMO_APP_DIED_AFTER_SAVE state=\(app.state.rawValue)")
-            app.launch()
-            pause(2)
-        }
+        pause(2.5)
+        relaunchIfNeeded()
 
-        // Money: what each service cost per hour this month.
-        tap(tab("Money"))
+        // The edit screen for a book.
+        tap(element("checkin.open.Piranesi"))
+        pause(2.5)
+        app.swipeUp()
+        pause(2)
+        app.swipeDown()
+        pause(1)
+        tap(app.buttons["Cancel"])
+        pause(1.5)
+
+        // The log, a day at a time.
+        tap(element("openLog"))
+        pause(3)
+        app.swipeUp()
+        pause(2.5)
+        app.swipeDown()
+        pause(1)
+        app.navigationBars.buttons.firstMatch.tap()
+        pause(1.5)
+
+        // Value: what each service cost per hour this month.
+        tap(tab("Value"))
         pause(4)
         app.swipeUp()
-        pause(3)
+        pause(2.5)
         app.swipeDown()
         pause(1)
 
-        // Library: covers, then the diary.
+        // Library: the shelf, then the log inside it.
         tap(tab("Library"))
-        pause(3)
-        tap(app.buttons["Diary"])
         pause(3)
         app.swipeUp()
         pause(2)
+        app.swipeDown()
+        pause(1)
 
         // Add anything.
         tap(app.buttons["Add something"].firstMatch)
@@ -73,17 +91,29 @@ final class DemoTour: XCTestCase {
             search.tap()
             search.typeText("Klara and the Sun")
         }
-        pause(6)
+        pause(5)
         tap(app.buttons["Close"])
         pause(1)
 
-        tap(tab("Now"))
+        tap(tab("Today"))
         pause(3)
+    }
+
+    private func element(_ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any)[identifier].firstMatch
     }
 
     private func tab(_ name: String) -> XCUIElement {
         let bar = app.tabBars.buttons[name]
         return bar.exists ? bar : app.buttons[name].firstMatch
+    }
+
+    private func relaunchIfNeeded() {
+        if app.state != .runningForeground {
+            print("DEMO_APP_DIED state=\(app.state.rawValue)")
+            app.launch()
+            pause(2)
+        }
     }
 
     private func tap(_ element: XCUIElement) {

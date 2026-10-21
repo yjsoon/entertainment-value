@@ -62,7 +62,7 @@ struct AddView: View {
                     Section {
                         ForEach(problems, id: \.self) { Text($0) }
                     }
-                    .font(.footnote)
+                    .font(Theme.footnote)
                     .foregroundStyle(Theme.muted)
                     .listRowBackground(Color.clear)
                 }
@@ -203,7 +203,7 @@ private struct ResultRow: View {
                             .font(Theme.display(16, weight: .bold))
                             .lineLimit(2)
                         Text(detailLine)
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.muted)
                             .lineLimit(1)
                     }
@@ -220,7 +220,7 @@ private struct ResultRow: View {
                 Button("Already finished", systemImage: "checkmark.circle", action: onFinished)
             } label: {
                 Image(systemName: "ellipsis.circle")
-                    .font(.title3)
+                    .font(Theme.text(20, weight: .semibold))
                     .foregroundStyle(kind.color)
             }
             .accessibilityLabel("More ways to add \(result.title)")

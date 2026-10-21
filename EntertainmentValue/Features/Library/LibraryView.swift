@@ -1,229 +1,248 @@
 import SwiftData
 import SwiftUI
 
-/// Everything you've added, and the diary of everything you've logged.
+/// Everything you've added, as a shelf of covers, and the log of every day.
 struct LibraryView: View {
     enum Mode: String, CaseIterable, Identifiable {
-        case everything = "Everything"
-        case diary = "Diary"
+        case shelf = "Shelf"
+        case log = "Log"
         var id: String { rawValue }
     }
 
-    @State private var mode = Mode.everything
-    @State private var filter: MediaKind?
+    enum Filter: String, CaseIterable, Identifiable {
+        case all = "All"
+        case active = "In progress"
+        case finished = "Finished"
+        case planned = "Planned"
+        case shelved = "Shelved"
+        var id: String { rawValue }
+
+        func includes(_ item: Item) -> Bool {
+            switch self {
+            case .all: true
+            case .active: item.status == .active
+            case .finished: item.status == .finished
+            case .planned: item.status == .planned
+            case .shelved: item.status == .shelved
+            }
+        }
+    }
+
+    var onAdd: () -> Void = {}
+
+    @State private var mode = Mode.shelf
+    @State private var filter = Filter.all
     @State private var searchText = ""
+    @State private var searching = false
+    @State private var editing: Item?
+    @FocusState private var searchFocused: Bool
 
     @Query(sort: \Item.lastActivityAt, order: .reverse) private var items: [Item]
-    @Query(sort: \Log.date, order: .reverse) private var logs: [Log]
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Picker("Show", selection: $mode) {
-                    ForEach(Mode.allCases) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
-
-                KindFilter(selection: $filter)
-
+            VStack(alignment: .leading, spacing: 14) {
+                header
                 switch mode {
-                case .everything: grid
-                case .diary: diary
+                case .shelf:
+                    if searching { searchField }
+                    filterChips
+                    grid
+                case .log:
+                    LogView(style: .embedded)
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 96)
+            .padding(.bottom, 32)
         }
+        .scrollDismissesKeyboard(.interactively)
         .paperBackground()
-        .navigationTitle("Library")
-        .searchable(text: $searchText, prompt: "Search your library")
+        .toolbar(.hidden, for: .navigationBar)
+        .sheet(item: $editing) { item in
+            ItemEditor(item: item)
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Spacer()
+                if mode == .shelf {
+                    Button {
+                        withAnimation(.snappy) {
+                            searching.toggle()
+                            if !searching { searchText = "" }
+                        }
+                        searchFocused = searching
+                    } label: {
+                        Image(systemName: searching ? "xmark" : "magnifyingglass")
+                            .font(.system(size: 17, weight: .semibold))
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel(searching ? "Stop searching" : "Search your library")
+                }
+                Button(action: onAdd) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(Theme.paper)
+                        .frame(width: 40, height: 40)
+                        .background(Theme.ink, in: Circle())
+                }
+                .accessibilityLabel("Add something")
+            }
+            .foregroundStyle(Theme.ink)
+            HStack(alignment: .lastTextBaseline) {
+                Text("Library")
+                    .font(Theme.display(40, weight: .heavy))
+                Spacer()
+                Segmented(options: Mode.allCases.map { ($0, $0.rawValue) }, selection: $mode)
+                    .frame(width: 150)
+                    .padding(.bottom, 6)
+                    .accessibilityIdentifier("libraryMode")
+            }
+        }
+        .padding(.top, 8)
+        .padding(.horizontal, 4)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass").foregroundStyle(Theme.muted)
+            TextField("Search your library", text: $searchText)
+                .font(Theme.body)
+                .focused($searchFocused)
+                .submitLabel(.search)
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 44)
+        .background(Theme.raised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    private var filterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(availableFilters) { option in
+                    let selected = filter == option
+                    Button {
+                        filter = option
+                    } label: {
+                        Text(option.rawValue)
+                            .font(Theme.text(13, weight: selected ? .semibold : .regular))
+                            .foregroundStyle(selected ? Theme.paper : Theme.ink)
+                            .padding(.horizontal, 12)
+                            .frame(height: 34)
+                            .background {
+                                if selected {
+                                    Capsule().fill(Theme.ink)
+                                } else {
+                                    Capsule().strokeBorder(Theme.line, lineWidth: 1.5)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+        }
+        .scrollClipDisabled()
+    }
+
+    /// Shelved only shows up once something is shelved.
+    private var availableFilters: [Filter] {
+        let hasShelved = items.contains { $0.status == .shelved }
+        return Filter.allCases.filter { $0 != .shelved || hasShelved || filter == .shelved }
     }
 
     private var filteredItems: [Item] {
         items.filter { item in
-            (filter == nil || item.kind == filter)
-                && (searchText.isEmpty || item.title.localizedStandardContains(searchText))
+            filter.includes(item)
+                && (searchText.isEmpty
+                    || item.title.localizedStandardContains(searchText)
+                    || (item.creator?.localizedStandardContains(searchText) ?? false))
         }
     }
 
     @ViewBuilder
     private var grid: some View {
-        if filteredItems.isEmpty {
-            Text(items.isEmpty ? "Your library is empty. Tap + to add something." : "Nothing matches.")
+        let shown = filteredItems
+        if shown.isEmpty {
+            Text(items.isEmpty ? "Your library is empty. Tap + to add something." : "Nothing here.")
+                .font(Theme.body)
                 .foregroundStyle(Theme.muted)
                 .padding(.top, 32)
                 .frame(maxWidth: .infinity)
         } else {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 12)], spacing: 16) {
-                ForEach(filteredItems) { item in
-                    NavigationLink(value: item) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            ArtworkView(url: item.artworkURL, kind: item.kind)
-                                .aspectRatio(2 / 3, contentMode: .fit)
-                                .overlay(alignment: .topTrailing) { StatusBadge(status: item.status) }
-                            Text(item.title)
-                                .font(Theme.display(13, weight: .bold))
-                                .lineLimit(2)
-                                .multilineTextAlignment(.leading)
-                        }
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: 3),
+                alignment: .leading,
+                spacing: 16
+            ) {
+                ForEach(shown) { item in
+                    Button {
+                        editing = item
+                    } label: {
+                        ShelfTile(item: item)
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
     }
-
-    private struct DiaryMonth: Identifiable {
-        let id: MonthKey
-        let logs: [Log]
-    }
-
-    private var diaryGroups: [DiaryMonth] {
-        let filtered = logs.filter { log in
-            guard let item = log.item else { return false }
-            return (filter == nil || item.kind == filter)
-                && (searchText.isEmpty || item.title.localizedStandardContains(searchText))
-        }
-        let grouped = Dictionary(grouping: filtered) { MonthKey($0.date) }
-        return grouped.keys.sorted(by: >).map { DiaryMonth(id: $0, logs: grouped[$0] ?? []) }
-    }
-
-    @ViewBuilder
-    private var diary: some View {
-        let groups = diaryGroups
-        if groups.isEmpty {
-            Text("Nothing logged yet.")
-                .foregroundStyle(Theme.muted)
-                .padding(.top, 32)
-                .frame(maxWidth: .infinity)
-        } else {
-            LazyVStack(alignment: .leading, spacing: 10, pinnedViews: [.sectionHeaders]) {
-                ForEach(groups) { group in
-                    Section {
-                        ForEach(group.logs) { log in
-                            if let item = log.item {
-                                NavigationLink(value: item) {
-                                    DiaryRow(log: log, item: item)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    } header: {
-                        SectionLabel(text: group.id.title())
-                            .padding(.vertical, 6)
-                            .background(Theme.paper)
-                    }
-                }
-            }
-        }
-    }
 }
 
-struct KindFilter: View {
-    @Binding var selection: MediaKind?
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                chip(title: "All", color: Theme.ink, selected: selection == nil) { selection = nil }
-                ForEach(MediaKind.allCases) { kind in
-                    chip(title: kind.pluralName, color: kind.color, selected: selection == kind) {
-                        selection = selection == kind ? nil : kind
-                    }
-                }
-            }
-        }
-    }
-
-    private func chip(title: String, color: Color, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(Theme.display(13, weight: .bold))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .foregroundStyle(selected ? Theme.paper : color)
-                .background(selected ? color : Color.clear, in: Capsule())
-                .overlay(Capsule().stroke(color.opacity(selected ? 0 : 0.6)))
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-}
-
-private struct StatusBadge: View {
-    let status: ItemStatus
-
-    var body: some View {
-        switch status {
-        case .finished:
-            Image(systemName: "checkmark.circle.fill")
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, Theme.ink)
-                .padding(5)
-        case .active:
-            Image(systemName: "play.circle.fill")
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, Theme.ink)
-                .padding(5)
-        case .planned, .shelved:
-            EmptyView()
-        }
-    }
-}
-
-/// A Letterboxd-style diary line: the day, a small cover, what happened.
-struct DiaryRow: View {
-    let log: Log
+/// A cover with its title in a fixed two-line slot, so one-line and
+/// two-line titles line up across the row.
+private struct ShelfTile: View {
     let item: Item
 
     var body: some View {
-        HStack(spacing: 12) {
-            Text(log.date.formatted(.dateTime.day()))
-                .font(Theme.display(20, weight: .heavy))
-                .monospacedDigit()
-                .frame(width: 34)
-                .foregroundStyle(Theme.muted)
-            ArtworkView(url: item.artworkURL, kind: item.kind, cornerRadius: 5)
-                .frame(width: 30, height: 44)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(Theme.display(15, weight: .bold))
-                    .lineLimit(1)
-                HStack(spacing: 6) {
-                    Text(detail)
-                    if let rating = log.rating {
-                        Text(Stars.text(rating))
-                            .foregroundStyle(item.kind.color)
+        VStack(alignment: .leading, spacing: 6) {
+            ArtworkView(url: item.artworkURL, kind: item.kind)
+                .aspectRatio(2 / 3, contentMode: .fit)
+                .opacity(item.status == .planned ? 0.55 : 1)
+                .overlay(alignment: .bottomTrailing) {
+                    if let rating = latestRating {
+                        Text(rating.formatted(.number.precision(.fractionLength(0...1))))
+                            .font(Theme.text(12, weight: .bold))
+                            .foregroundStyle(Theme.ink)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Theme.raised, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .padding(6)
                     }
                 }
-                .font(.caption)
-                .foregroundStyle(Theme.muted)
-                if let note = log.note {
-                    Text(note)
-                        .font(log.isQuote ? .caption.italic() : .caption)
-                        .lineLimit(2)
-                }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.title)
+                    .font(Theme.text(14, weight: .semibold))
+                    .lineLimit(2, reservesSpace: true)
+                    .multilineTextAlignment(.leading)
+                Text(caption)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.muted)
+                    .lineLimit(1)
             }
-            Spacer(minLength: 0)
         }
-        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
     }
 
-    private var detail: String {
-        switch log.kind {
-        case .finished: "Finished"
-        case .episode: log.episodeRef.map { $0.label(for: item.kind) } ?? "Episode"
-        case .progress: log.page.map { "Page \($0)" } ?? "Read"
-        case .session: "Played \(log.minutes.hoursLabel)"
-        }
+    private var latestRating: Double? {
+        item.sortedLogs.lazy.compactMap(\.rating).first
     }
-}
 
-enum Stars {
-    /// "★★★★½"
-    static func text(_ rating: Double) -> String {
-        let whole = Int(rating.rounded(.down))
-        let half = rating - Double(whole) >= 0.5
-        return String(repeating: "★", count: whole) + (half ? "½" : "")
+    private var caption: String {
+        if item.status == .planned { return "Planned" }
+        if item.status == .shelved { return "Shelved" }
+        var parts: [String] = []
+        if item.status == .active, item.kind.isPaged, item.progressMode == .percent,
+           let percent = item.currentPercent {
+            parts.append(LogDetail.percent(percent))
+        }
+        if let creator = item.creator, !creator.isEmpty {
+            parts.append(creator)
+        } else {
+            parts.append(item.kind.displayName)
+        }
+        return parts.joined(separator: " \u{00B7} ")
     }
 }

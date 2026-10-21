@@ -10,6 +10,7 @@ enum Theme {
     static let muted = dynamic(light: (0.420, 0.353, 0.388), dark: (0.682, 0.702, 0.800))
     static let line = dynamic(light: (0.890, 0.839, 0.749), dark: (0.173, 0.227, 0.431))
     static let idle = dynamic(light: (0.706, 0.663, 0.627), dark: (0.369, 0.404, 0.533))
+    static let danger = dynamic(light: (0.698, 0.227, 0.165), dark: (0.941, 0.478, 0.420))
     /// Text on the ink-coloured hero card, which flips with the theme.
     static let onInk = dynamic(light: (1.0, 0.980, 0.941), dark: (0.180, 0.122, 0.180))
     static let onInkMuted = dynamic(light: (0.851, 0.800, 0.827), dark: (0.420, 0.353, 0.388))
