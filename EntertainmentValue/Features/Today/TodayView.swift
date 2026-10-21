@@ -10,7 +10,7 @@ struct TodayView: View {
     @State private var day = Calendar.current.startOfDay(for: .now)
 
     var body: some View {
-        DayCheckIn(day: day, style: .today, onAdd: onAdd)
+        DayCheckIn(day: day, style: .tab, onAdd: onAdd)
             .id(day)
             .paperBackground()
             .toolbar(.hidden, for: .navigationBar)
@@ -32,8 +32,10 @@ struct TodayView: View {
 /// day so you can fill in a day you missed.
 struct DayCheckIn: View {
     enum Style {
-        case today
-        case past
+        /// The Today tab, with the Log and add buttons.
+        case tab
+        /// Opened from the Log for any day, with a Done button.
+        case sheet
     }
 
     let day: Date
@@ -43,8 +45,7 @@ struct DayCheckIn: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
-    @Query(filter: #Predicate<Item> { $0.statusRaw == "active" }, sort: \Item.addedAt)
-    private var active: [Item]
+    @Query(sort: \Item.addedAt) private var allItems: [Item]
     @Query private var dayLogs: [Log]
     @Query private var yesterdayLogs: [Log]
 
@@ -55,6 +56,7 @@ struct DayCheckIn: View {
     @State private var editing: Item?
     @State private var entryTarget: Item?
     @State private var entryText = ""
+    @State private var clearTarget: Log?
     @State private var errorMessage: String?
     @State private var tapCount = 0
 
@@ -71,14 +73,28 @@ struct DayCheckIn: View {
     }
 
     private var library: Library { Library(context: context) }
-    private var isToday: Bool { style == .today }
+    private var isToday: Bool { Calendar.current.isDateInToday(day) }
 
-    /// Active items plus anything logged that day (a film finished today
-    /// stays put until tomorrow).
+    /// What the day lists. Today: everything in progress, plus anything logged
+    /// today (a film finished today stays put until tomorrow). An earlier day:
+    /// anything already added by then that is in progress now or was logged
+    /// on or after that day, so a show finished since can still be filled in.
+    private var candidates: [Item] {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: day)
+        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start
+        let loggedToday = Set(dayLogs.compactMap { $0.item?.id })
+        return allItems.filter { item in
+            if loggedToday.contains(item.id) { return true }
+            if isToday { return item.status == .active }
+            guard item.addedAt < end else { return false }
+            return item.status == .active || (item.logs ?? []).contains { $0.date >= start }
+        }
+    }
+
     private var items: [Item] {
         var byID: [UUID: Item] = [:]
-        for item in active { byID[item.id] = item }
-        for log in dayLogs { if let item = log.item { byID[item.id] = item } }
+        for item in candidates { byID[item.id] = item }
         let known = order.compactMap { byID[$0] }
         let newcomers = byID.values
             .filter { !order.contains($0.id) }
@@ -118,7 +134,7 @@ struct DayCheckIn: View {
                             act: { perform($0, on: item) }
                         )
                     }
-                    if isToday { footer }
+                    if style == .tab { footer }
                 }
             }
             .padding(.horizontal, 16)
@@ -146,6 +162,17 @@ struct DayCheckIn: View {
                 Text("Where are you up to in \(item.title)?")
             }
         }
+        .confirmationDialog(
+            clearTitle,
+            isPresented: clearBinding,
+            titleVisibility: .visible,
+            presenting: clearTarget
+        ) { log in
+            Button("Remove", role: .destructive) { undo(log) }
+            Button("Keep", role: .cancel) {}
+        } message: { log in
+            Text(clearMessage(log))
+        }
         .alert("Something went wrong", isPresented: errorBinding) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -163,7 +190,7 @@ struct DayCheckIn: View {
                     .font(Theme.text(14, weight: .medium))
                     .foregroundStyle(Theme.muted)
                 Spacer()
-                if isToday {
+                if style == .tab {
                     NavigationLink(value: AppRoute.log) {
                         Image(systemName: "calendar")
                             .font(.system(size: 17, weight: .semibold))
@@ -216,7 +243,7 @@ struct DayCheckIn: View {
                 .font(Theme.body)
                 .foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)
-            if isToday {
+            if style == .tab {
                 Button(action: onAdd) {
                     Text("Add something")
                         .font(Theme.text(16, weight: .semibold))
@@ -265,6 +292,15 @@ struct DayCheckIn: View {
             case let .episodes(delta):
                 try library.addEpisodes(delta, to: item, on: day)
             case .toggle:
+                if let log = item.log(on: day), !Library.isPlainTap(log) {
+                    // A day holding more than a tap is never wiped by one.
+                    if log.kind == .finished {
+                        ratingTarget = RatingTarget(log: log, allowsUndo: true)
+                    } else {
+                        clearTarget = log
+                    }
+                    return
+                }
                 try library.toggleDay(item, on: day)
             case .step:
                 if item.progressMode == .pages {
@@ -327,10 +363,16 @@ struct DayCheckIn: View {
         let text = entryText.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "%", with: "")
         do {
             if item.progressMode == .pages {
-                guard let page = Int(text), page >= 0 else { return }
+                guard let page = Int(text), page >= 0 else {
+                    errorMessage = "Type a page number, like 120."
+                    return
+                }
                 finishIfNeeded(try library.setPage(page, on: item, day: day))
             } else {
-                guard let value = Double(text.replacingOccurrences(of: ",", with: ".")), value >= 0 else { return }
+                guard let value = Double(text.replacingOccurrences(of: ",", with: ".")), (0...100).contains(value) else {
+                    errorMessage = "Type a percentage from 0 to 100."
+                    return
+                }
                 finishIfNeeded(try library.setPercent(value, on: item, day: day))
             }
             tapCount += 1
@@ -339,14 +381,30 @@ struct DayCheckIn: View {
         }
     }
 
+    private var clearTitle: String {
+        guard let item = clearTarget?.item else { return "Remove this day?" }
+        return isToday ? "Remove \(item.title) from today?" : "Remove \(item.title) from this day?"
+    }
+
+    private func clearMessage(_ log: Log) -> String {
+        guard let item = log.item else { return "" }
+        let detail = LogDetail.text(
+            kind: item.kind, logKind: log.kind, count: log.count, percent: log.percent,
+            previousPercent: item.percent(before: log.date), page: log.page,
+            previousPage: item.page(before: log.date), minutes: log.minutes,
+            measured: log.durationSource == .measured
+        )
+        var parts: [String] = []
+        if let detail { parts.append(detail) }
+        if log.rating != nil || log.note != nil { parts.append("its rating and note") }
+        return parts.isEmpty ? "This day's entry will be removed." : "This removes " + parts.joined(separator: " and ") + "."
+    }
+
     private func snapshotOrder() {
         // Logged-today rows first, in the order they were logged, then the rest
         // by when they last moved.
         let logs = logsByItem
-        var byID: [UUID: Item] = [:]
-        for item in active { byID[item.id] = item }
-        for log in dayLogs { if let item = log.item { byID[item.id] = item } }
-        order = byID.values.sorted { lhs, rhs in
+        order = candidates.sorted { lhs, rhs in
             switch (logs[lhs.id], logs[rhs.id]) {
             case let (l?, r?): return l.date < r.date
             case (.some, nil): return true
@@ -362,6 +420,10 @@ struct DayCheckIn: View {
 
     private var errorBinding: Binding<Bool> {
         Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
+    }
+
+    private var clearBinding: Binding<Bool> {
+        Binding(get: { clearTarget != nil }, set: { if !$0 { clearTarget = nil } })
     }
 }
 

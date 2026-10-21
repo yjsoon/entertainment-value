@@ -124,7 +124,7 @@ struct CheckInRow: View {
             Button { act(.episodes(1)) } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 19, weight: .bold))
-                    .foregroundStyle(count > 0 ? .white : Theme.ink)
+                    .foregroundStyle(count > 0 ? item.kind.onColor : Theme.ink)
                     .frame(width: 44, height: 44)
                     .background {
                         let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -154,7 +154,7 @@ struct CheckInRow: View {
                 Text(title)
                     .font(Theme.text(15, weight: .semibold))
             }
-            .foregroundStyle(on ? .white : Theme.ink)
+            .foregroundStyle(on ? item.kind.onColor : Theme.ink)
             .padding(.horizontal, 14)
             .frame(height: 44)
             .background {
@@ -183,7 +183,7 @@ struct CheckInRow: View {
                     }
                     Text("Read")
                 }
-                .readingChip(filled: false, colour: colour)
+                .readingChip(filled: false, colour: colour, onColour: item.kind.onColor)
             }
             .accessibilityAddTraits(logged ? .isSelected : [])
             .accessibilityHint(logged ? "Tap again to remove today" : "Logs that you read, without a position")
@@ -191,7 +191,7 @@ struct CheckInRow: View {
 
             Button { act(.step) } label: {
                 Text(item.progressMode == .pages ? "+\(ReadingMath.pageStep) pages" : "+\(Int(ReadingMath.percentStep))%")
-                    .readingChip(filled: true, colour: colour)
+                    .readingChip(filled: true, colour: colour, onColour: item.kind.onColor)
             }
             .accessibilityIdentifier("checkin.step.\(item.title)")
 
@@ -324,12 +324,12 @@ private extension String {
 }
 
 private extension View {
-    func readingChip(filled: Bool, colour: Color) -> some View {
+    func readingChip(filled: Bool, colour: Color, onColour: Color) -> some View {
         self
             .font(Theme.text(15, weight: .semibold))
-            .foregroundStyle(filled ? .white : Theme.ink)
+            .foregroundStyle(filled ? onColour : Theme.ink)
             .padding(.horizontal, 14)
-            .frame(height: 40)
+            .frame(height: 44)
             .background {
                 let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
                 if filled {

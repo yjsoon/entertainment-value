@@ -97,6 +97,10 @@ struct Library {
     func toggleDay(_ item: Item, on day: Date? = nil) throws -> Log? {
         let day = day ?? now()
         if let existing = item.log(on: day, calendar: calendar) {
+            // Only a plain "read" or "played" is undone by a second tap. A day
+            // with a position, a finish, a rating, a note or a timed length is
+            // left alone; the screen asks before removing it.
+            guard Self.isPlainTap(existing) else { return existing }
             try delete(existing)
             return nil
         }
@@ -105,6 +109,12 @@ struct Library {
         let log = makeLog(item, kind: kind, on: day, minutes: minutes, source: .estimated)
         try touch(item, logged: day)
         return log
+    }
+
+    /// True when a day's log holds nothing but a one-tap "read" or "played".
+    static func isPlainTap(_ log: Log) -> Bool {
+        log.kind != .finished && log.percent == nil && log.page == nil
+            && log.rating == nil && log.note == nil && log.durationSource != .measured
     }
 
     /// A sitting of a chosen length. Replaces a one-tap guess on the same day.
@@ -142,6 +152,7 @@ struct Library {
             )
         )
         log.durationSource = .estimated
+        recalculateReading(of: item, after: log.date)
         try touch(item, logged: day)
         return log
     }
@@ -174,6 +185,7 @@ struct Library {
             ReadingMath.minutes(fromPage: item.page(before: day, calendar: calendar), toPage: target, kind: item.kind)
         )
         log.durationSource = .estimated
+        recalculateReading(of: item, after: log.date)
         try touch(item, logged: day)
         return log
     }
@@ -272,12 +284,23 @@ struct Library {
         try context.save()
     }
 
-    /// Removes a day's log and works out the status again.
+    /// Removes a day's log. Removing a finish works the status out again;
+    /// removing anything else leaves it as it was, so undoing a stray tap on
+    /// something you restarted keeps it on Today.
     func delete(_ log: Log) throws {
         let item = log.item
+        let wasFinish = log.kind == .finished
+        let date = log.date
+        item?.logs?.removeAll { $0.id == log.id }
         context.delete(log)
+        if let item {
+            recalculateReading(of: item, after: date)
+            if wasFinish {
+                try refreshStatus(of: item)
+                return
+            }
+        }
         try context.save()
-        if let item { try refreshStatus(of: item) }
     }
 
     func delete(_ item: Item) throws {
@@ -338,6 +361,33 @@ struct Library {
             item.logs = (item.logs ?? []) + [log]
         }
         return log
+    }
+
+    /// A position written on an earlier day changes where the next reading
+    /// day started from, so that day's minutes are worked out again.
+    private func recalculateReading(of item: Item, after date: Date) {
+        guard item.kind.isPaged else { return }
+        let end = calendar.startOfDay(for: date).addingTimeInterval(1)
+        guard let next = (item.logs ?? [])
+            .filter({ $0.date > end && !calendar.isDate($0.date, inSameDayAs: date) })
+            .sorted(by: { $0.date < $1.date })
+            .first(where: { $0.percent != nil || $0.page != nil || $0.kind == .finished })
+        else { return }
+        if next.kind == .finished {
+            next.minutes = ReadingMath.minutes(
+                fromPercent: item.percent(before: next.date, calendar: calendar),
+                toPercent: 100, pageCount: item.pageCount, kind: item.kind
+            )
+        } else if let percent = next.percent {
+            next.minutes = max(ReadingMath.minimumMinutes, ReadingMath.minutes(
+                fromPercent: item.percent(before: next.date, calendar: calendar),
+                toPercent: percent, pageCount: item.pageCount, kind: item.kind
+            ))
+        } else if let page = next.page {
+            next.minutes = max(ReadingMath.minimumMinutes, ReadingMath.minutes(
+                fromPage: item.page(before: next.date, calendar: calendar), toPage: page, kind: item.kind
+            ))
+        }
     }
 
     /// Saves after a log changed, moving the item's status to match.
@@ -405,6 +455,18 @@ struct Library {
     /// log but adds no hours to this month or to any service.
     @discardableResult
     func recordPastFinish(_ item: Item) throws -> Log {
+        // Today already has a log: that day becomes the finish, keeping its hours.
+        if let today = item.log(on: now(), calendar: calendar) {
+            today.kind = .finished
+            if item.kind.isPaged {
+                today.percent = 100
+                today.page = item.pageCount ?? today.page
+            }
+            item.status = .finished
+            item.updatedAt = now()
+            try context.save()
+            return today
+        }
         let log = Log(item: item, kind: .finished, date: now(), minutes: 0, durationSource: .estimated)
         if item.kind.isPaged {
             log.page = item.pageCount

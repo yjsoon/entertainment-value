@@ -133,6 +133,22 @@ struct ValueMathTests {
         #expect(summary.subscriptionsMostlyEstimated == false)
     }
 
+    @Test("Hours on unpriced or trial services stay out of the subscription rate")
+    func unpricedHours() {
+        let paid = UUID(), unpriced = UUID()
+        let services: [UUID: ServiceTerms] = [
+            paid: ServiceTerms(prices: [Self.sgd(20)], cycle: .monthly, share: 1, startedAt: Self.date(2025, 1, 1)),
+            unpriced: ServiceTerms(prices: [], cycle: .monthly, share: 1, startedAt: Self.date(2025, 1, 1)),
+        ]
+        let day = Self.date(2026, 10, 10)
+        let usage = [paid, unpriced].map {
+            UsageEntry(date: day, minutes: 600, source: .derived, serviceID: $0, purchaseItemID: nil, freeReason: nil, rating: nil, kind: .tv, finishedSomething: false)
+        }
+        let summary = ValueMath.summarise(month: Self.october, services: services, usage: usage, purchases: [], calendar: Self.calendar)
+        #expect(summary.subscriptionMinutes == 600)
+        #expect(summary.subscriptionCostPerHour == 2)
+    }
+
     @Test("Ratings weight enjoyed hours from 0.5 to 1.5")
     func enjoyment() {
         #expect(ValueMath.enjoymentFactor(rating: nil) == 1)

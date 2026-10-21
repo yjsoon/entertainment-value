@@ -12,6 +12,7 @@ struct RatingSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var rating: Double?
     @State private var note = ""
+    @State private var undoRequested = false
 
     var body: some View {
         let kind = log.item?.kind ?? .film
@@ -38,8 +39,10 @@ struct RatingSheet: View {
             HStack {
                 if let onUndo {
                     Button("Undo finish", role: .destructive) {
+                        // The log is deleted once the sheet has gone, so
+                        // nothing on screen reads it after it is removed.
+                        undoRequested = true
                         dismiss()
-                        onUndo()
                     }
                     .buttonStyle(.borderless)
                     .accessibilityIdentifier("undoFinish")
@@ -61,6 +64,9 @@ struct RatingSheet: View {
         .onAppear {
             rating = log.rating
             note = log.note ?? ""
+        }
+        .onDisappear {
+            if undoRequested { onUndo?() }
         }
     }
 

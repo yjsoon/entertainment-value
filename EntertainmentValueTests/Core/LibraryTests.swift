@@ -193,7 +193,7 @@ struct LibraryTests {
         #expect(film.status == .active)
     }
 
-    @Test("Logging again after a finish is a rewatch")
+    @Test("Logging again after a finish is a rewatch, and undoing a tap keeps it going")
     func rewatch() throws {
         let film = insert(Item(kind: .film, title: "Heat", status: .active))
         try library.finish(film)
@@ -201,7 +201,68 @@ struct LibraryTests {
         let session = try library.logSession(on: film, minutes: 30)
         #expect(film.status == .active)
         try library.delete(session)
-        #expect(film.status == .finished)
+        #expect(film.status == .active)
+    }
+
+    @Test("A second tap never wipes a day that holds more than a tap")
+    func toggleKeepsDetail() throws {
+        let book = insert(Item(kind: .book, title: "Piranesi", pageCount: 300, status: .active))
+        let day = try library.setPercent(40, on: book)
+        let tapped = try library.toggleDay(book)
+        #expect(tapped?.id == day.id)
+        #expect(book.logs?.count == 1)
+
+        let game = insert(Item(kind: .game, title: "Hades II", status: .active))
+        let finish = try library.finish(game)
+        try library.rate(finish, rating: 4, note: nil)
+        #expect(try library.toggleDay(game) != nil)
+        #expect(game.logs?.count == 1)
+    }
+
+    @Test("Marking finished from the edit screen reuses today's log")
+    func statusFinishedReusesToday() throws {
+        let show = insert(Item(kind: .tv, title: "Andor", runtimeMinutes: 50, status: .active))
+        try library.addEpisodes(2, to: show)
+        try library.setStatus(.finished, for: show)
+        #expect(show.logs?.count == 1)
+        #expect(show.logs?.first?.kind == .finished)
+        #expect(show.totalMinutes == 100)
+        #expect(show.status == .finished)
+    }
+
+    @Test("A reread starts from nothing")
+    func reread() throws {
+        let book = insert(Item(kind: .book, title: "Piranesi", pageCount: 300, status: .active))
+        try library.setPercent(100, on: book)
+        #expect(book.status == .finished)
+        clock.nextDay()
+        try library.start(book)
+        let step = try library.addPercent(to: book)
+        #expect(step.percent == 5)
+        #expect(step.kind == .progress)
+        #expect(step.minutes == 22.5)
+        #expect(book.status == .active)
+    }
+
+    @Test("Filling in an earlier day moves the next day's minutes")
+    func backfill() throws {
+        let book = insert(Item(kind: .book, title: "Piranesi", pageCount: 300, status: .active))
+        let first = clock.date
+        try library.setPercent(20, on: book)
+        clock.nextDay()
+        let middle = clock.date
+        clock.nextDay()
+        let last = try library.setPercent(40, on: book)
+        #expect(last.minutes == 90)
+
+        try library.setPercent(30, on: book, day: middle)
+        #expect(last.minutes == 45)
+        #expect(book.totalMinutes == ReadingMath.minutes(fromPercent: nil, toPercent: 40, pageCount: 300, kind: .book))
+
+        // Removing the middle day puts the minutes back.
+        if let log = book.log(on: middle) { try library.delete(log) }
+        #expect(last.minutes == 90)
+        _ = first
     }
 
     // MARK: Status

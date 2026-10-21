@@ -73,6 +73,8 @@ struct MonthPicker: View {
             .frame(height: 36)
             .background(Theme.raised, in: Capsule())
             .overlay(Capsule().stroke(Theme.line, lineWidth: 1.5))
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
         .accessibilityLabel("Month")
         .accessibilityValue(month.title())
@@ -127,8 +129,8 @@ struct LogMonth: View {
                         checkInDay = CheckInDay(date: day)
                     }
                 case let .gap(first, last):
-                    EmptyRun(first: first, last: last) {
-                        checkInDay = CheckInDay(date: last)
+                    EmptyRun(first: first, last: last) { day in
+                        checkInDay = CheckInDay(date: day)
                     }
                 }
             }
@@ -138,7 +140,7 @@ struct LogMonth: View {
         }
         .sheet(item: $checkInDay) { target in
             NavigationStack {
-                DayCheckIn(day: target.date, style: calendar.isDateInToday(target.date) ? .today : .past)
+                DayCheckIn(day: target.date, style: .sheet)
                     .paperBackground()
                     .toolbar(.hidden, for: .navigationBar)
             }
@@ -275,7 +277,7 @@ private struct DaySection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
                 Text(title)
                     .font(Theme.display(21, weight: .bold))
                 Text(subtitle)
@@ -286,7 +288,7 @@ private struct DaySection: View {
                     Image(systemName: "pencil")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Theme.muted)
-                        .frame(width: 44, height: 32)
+                        .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Change \(title)")
@@ -379,11 +381,12 @@ struct LogChip: View {
     }
 }
 
-/// "Wed 15: nothing logged [Add]", or a run of quiet days.
+/// "Wed 15: nothing logged [Add]", or a run of quiet days whose Add button
+/// asks which day.
 private struct EmptyRun: View {
     let first: Date
     let last: Date
-    let onAdd: () -> Void
+    let onAdd: (Date) -> Void
 
     var body: some View {
         HStack(spacing: 8) {
@@ -392,17 +395,44 @@ private struct EmptyRun: View {
                 .font(Theme.text(14))
                 .foregroundStyle(Theme.muted)
                 .layoutPriority(1)
-            Button("Add", action: onAdd)
-                .font(Theme.text(13, weight: .semibold))
-                .foregroundStyle(Theme.ink)
-                .padding(.horizontal, 10)
-                .frame(height: 32)
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Theme.line, lineWidth: 1.5))
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add to \(last.formatted(.dateTime.weekday(.wide).day().month()))")
+            if Calendar.current.isDate(first, inSameDayAs: last) {
+                Button { onAdd(last) } label: { addLabel }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add to \(last.formatted(.dateTime.weekday(.wide).day().month()))")
+            } else {
+                Menu {
+                    ForEach(days, id: \.self) { day in
+                        Button(day.formatted(.dateTime.weekday(.wide).day().month())) { onAdd(day) }
+                    }
+                } label: { addLabel }
+                .accessibilityLabel("Add to one of these days")
+            }
             Rectangle().fill(Theme.line).frame(height: 1)
         }
-        .padding(.vertical, 2)
+    }
+
+    private var addLabel: some View {
+        Text("Add")
+            .font(Theme.text(13, weight: .semibold))
+            .foregroundStyle(Theme.ink)
+            .padding(.horizontal, 12)
+            .frame(height: 32)
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Theme.line, lineWidth: 1.5))
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+    }
+
+    /// Newest first.
+    private var days: [Date] {
+        let calendar = Calendar.current
+        var result: [Date] = []
+        var day = calendar.startOfDay(for: last)
+        while day >= calendar.startOfDay(for: first) {
+            result.append(day)
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
+            day = previous
+        }
+        return result
     }
 
     private var label: String {

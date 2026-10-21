@@ -80,7 +80,7 @@ struct ValueView: View {
                 HStack(spacing: 2) {
                     Button { month = month.previous } label: {
                         Image(systemName: "chevron.left")
-                            .frame(width: 28, height: 28)
+                            .frame(width: 44, height: 44)
                     }
                     .accessibilityLabel("Previous month")
                     Text(month.title(includeYear: month.year != MonthKey(.now).year))
@@ -88,7 +88,7 @@ struct ValueView: View {
                         .contentTransition(.numericText())
                     Button { month = month.next } label: {
                         Image(systemName: "chevron.right")
-                            .frame(width: 28, height: 28)
+                            .frame(width: 44, height: 44)
                     }
                     .disabled(month >= MonthKey(.now))
                     .opacity(month >= MonthKey(.now) ? 0 : 1)
@@ -96,7 +96,8 @@ struct ValueView: View {
                 }
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(Theme.muted)
-                .padding(.leading, -8)
+                .padding(.leading, -16)
+                .padding(.vertical, -8)
                 Text("Value")
                     .font(Theme.display(40, weight: .heavy))
             }
@@ -260,7 +261,7 @@ private struct HeroCard: View {
             }
             .font(Theme.text(14))
             .foregroundStyle(Theme.onInkMuted)
-            if let enjoyed = summary.costPerEnjoyedHour {
+            if let enjoyed = summary.subscriptionCostPerEnjoyedHour {
                 Text("\(enjoyed.money()) per enjoyed hour, weighting by your ratings")
                     .font(Theme.footnote)
                     .foregroundStyle(Theme.onInkMuted)
@@ -348,7 +349,7 @@ struct ServiceCard: View {
                     .padding(.vertical, 6)
                     .background(Theme.idle.opacity(0.25), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             } else if value.charge <= 0 {
-                Text("No charge")
+                Text(noChargeLabel)
                     .font(Theme.text(13, weight: .bold))
                     .foregroundStyle(Theme.muted)
             } else if let perHour = value.costPerHour {
@@ -375,6 +376,13 @@ struct ServiceCard: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityHint("Edit this service")
+    }
+
+    /// Why a used service cost nothing this month.
+    private var noChargeLabel: String {
+        if service.prices.isEmpty { return "No price set" }
+        if let trial = service.trialEndsAt, trial > MonthKey(.now).start() { return "Trial" }
+        return "No charge"
     }
 
     private var detail: String {

@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Everything about one item on one screen: its name, how progress counts,
 /// where it's from, its status and its history. Changes apply on Save;
-/// removing a day from the history applies straight away.
+/// removing a day from the history asks first and applies straight away.
 struct ItemEditor: View {
     let item: Item
 
@@ -22,6 +22,9 @@ struct ItemEditor: View {
     @State private var confirmingDelete = false
     @State private var ratingTarget: Log?
     @State private var loaded = false
+    @State private var removalRequested = false
+    @State private var confirmingPurchaseRemoval = false
+    @State private var logToRemove: Log?
     @State private var errorMessage: String?
 
     init(item: Item) {
@@ -63,9 +66,34 @@ struct ItemEditor: View {
         }
         .confirmationDialog("Remove \(item.title) and its history?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
+                // Deleted once the sheet has gone, so nothing reads it after.
+                removalRequested = true
                 dismiss()
-                try? library.delete(item)
             }
+        }
+        .confirmationDialog(
+            "Remove the price you paid?",
+            isPresented: $confirmingPurchaseRemoval,
+            titleVisibility: .visible
+        ) {
+            Button("Remove price", role: .destructive) { save(removingPurchases: true) }
+            Button("Keep it") { save(removingPurchases: false) }
+        } message: {
+            Text("\(item.title) is no longer marked as bought. Its price can stay on record or go.")
+        }
+        .confirmationDialog(
+            "Remove this day?",
+            isPresented: logRemovalBinding,
+            titleVisibility: .visible,
+            presenting: logToRemove
+        ) { log in
+            Button("Remove", role: .destructive) { remove(log) }
+            Button("Keep", role: .cancel) {}
+        } message: { log in
+            Text([dayLabel(log.date), detail(log)].filter { !$0.isEmpty }.joined(separator: ": ") + ". This can't be undone.")
+        }
+        .onDisappear {
+            if removalRequested { try? library.delete(item) }
         }
         .alert("Something went wrong", isPresented: errorBinding) {
             Button("OK", role: .cancel) {}
@@ -86,7 +114,7 @@ struct ItemEditor: View {
             Text("Edit")
                 .font(Theme.text(16, weight: .bold))
             Spacer()
-            Button(action: save) {
+            Button(action: requestSave) {
                 Text("Save")
                     .font(Theme.text(16, weight: .semibold))
                     .foregroundStyle(Theme.paper)
@@ -130,7 +158,7 @@ struct ItemEditor: View {
                 options: ProgressMode.allCases.map { ($0, $0.displayName) },
                 selection: $mode,
                 tint: item.kind.color,
-                onTint: .white
+                onTint: item.kind.onColor
             )
             switch mode {
             case .percent:
@@ -207,10 +235,12 @@ struct ItemEditor: View {
                         Spacer()
                         Button("Change") { editingPurchase = true }
                             .font(Theme.text(14, weight: .semibold))
+                            .frame(minWidth: 44, minHeight: 44)
                     }
                 } else {
                     Button("Add the price") { editingPurchase = true }
                         .font(Theme.text(14, weight: .semibold))
+                        .frame(minHeight: 44)
                 }
             }
         }
@@ -259,12 +289,12 @@ struct ItemEditor: View {
                         .buttonStyle(.plain)
                         .accessibilityHint("Rate or add a note")
                         Button {
-                            remove(log)
+                            logToRemove = log
                         } label: {
                             Image(systemName: "xmark")
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundStyle(Theme.muted)
-                                .frame(width: 36, height: 44)
+                                .frame(width: 44, height: 44)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Remove \(dayLabel(log.date))")
@@ -369,12 +399,12 @@ struct ItemEditor: View {
         status = item.status
         lengthText = item.runtimeMinutes.map(String.init) ?? ""
         pageCountText = item.pageCount.map(String.init) ?? ""
-        if let id = item.serviceID {
+        if !purchases.isEmpty {
+            source = .bought
+        } else if let id = item.serviceID {
             source = .service(id)
         } else if let reason = item.freeReason {
             source = .free(reason)
-        } else if !purchases.isEmpty {
-            source = .bought
         } else {
             source = .none
         }
@@ -389,7 +419,16 @@ struct ItemEditor: View {
         }
     }
 
-    private func save() {
+    /// Asks before dropping a price when the item stops being "bought".
+    private func requestSave() {
+        if source != .bought, !purchases.isEmpty {
+            confirmingPurchaseRemoval = true
+        } else {
+            save(removingPurchases: false)
+        }
+    }
+
+    private func save(removingPurchases: Bool) {
         do {
             let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty, trimmed != item.title { item.title = trimmed }
@@ -408,7 +447,7 @@ struct ItemEditor: View {
             case let .free(reason):
                 try library.setService(nil, freeReason: reason, for: item)
             }
-            if source != .bought {
+            if removingPurchases {
                 for purchase in purchases { context.delete(purchase) }
             }
             try library.setStatus(status, for: item)
@@ -418,6 +457,10 @@ struct ItemEditor: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private var logRemovalBinding: Binding<Bool> {
+        Binding(get: { logToRemove != nil }, set: { if !$0 { logToRemove = nil } })
     }
 
     private var errorBinding: Binding<Bool> {

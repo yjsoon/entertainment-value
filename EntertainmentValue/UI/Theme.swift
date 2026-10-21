@@ -29,6 +29,18 @@ enum Theme {
     /// Bricolage Grotesque, bundled as static cuts: a "Text" optical size for
     /// small type and a tighter "Display" cut for 24 pt and up. Sizes scale
     /// with Dynamic Type relative to the nearest text style.
+    /// White only where it reads clearly: on TV blue and book purple in light
+    /// mode. Everything else, and every colour in dark mode, takes a fixed
+    /// dark ink.
+    static func onColor(for kind: MediaKind) -> Color {
+        let darkInk: (CGFloat, CGFloat, CGFloat) = (0.180, 0.122, 0.180)
+        let white: (CGFloat, CGFloat, CGFloat) = (1, 1, 1)
+        switch kind {
+        case .tv, .book: return dynamic(light: white, dark: darkInk)
+        case .comic, .film, .podcast, .game: return dynamic(light: darkInk, dark: darkInk)
+        }
+    }
+
     static func display(_ size: CGFloat, weight: Font.Weight = .heavy) -> Font {
         .custom(BricolageCut.name(size: size, weight: weight), size: size, relativeTo: textStyle(for: size))
     }
@@ -72,6 +84,8 @@ enum Theme {
 
 extension MediaKind {
     var color: Color { Theme.color(for: self) }
+    /// Text and icons on a solid fill of this medium's colour.
+    var onColor: Color { Theme.onColor(for: self) }
 }
 
 struct PaperBackground: ViewModifier {

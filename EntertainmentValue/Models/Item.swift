@@ -107,26 +107,25 @@ final class Item {
         return nil
     }
 
-    /// The furthest position logged before a day began.
+    /// The position logged most recently before a day began. A finish ends a
+    /// read-through, so a reread starts again from nothing.
     func percent(before day: Date, calendar: Calendar = .current) -> Double? {
         let start = calendar.startOfDay(for: day)
-        return (logs ?? [])
-            .filter { $0.date < start }
-            .sorted { $0.date > $1.date }
-            .lazy
-            .compactMap { self.percent(of: $0) }
-            .first
+        for log in (logs ?? []).filter({ $0.date < start }).sorted(by: { $0.date > $1.date }) {
+            if log.kind == .finished { return nil }
+            if let percent = percent(of: log) { return percent }
+        }
+        return nil
     }
 
-    /// The page reached before a day began.
+    /// The page reached before a day began, within the current read-through.
     func page(before day: Date, calendar: Calendar = .current) -> Int? {
         let start = calendar.startOfDay(for: day)
-        return (logs ?? [])
-            .filter { $0.date < start }
-            .sorted { $0.date > $1.date }
-            .lazy
-            .compactMap(\.page)
-            .first
+        for log in (logs ?? []).filter({ $0.date < start }).sorted(by: { $0.date > $1.date }) {
+            if log.kind == .finished { return nil }
+            if let page = log.page { return page }
+        }
+        return nil
     }
 
     /// The latest position logged, 0 to 100.

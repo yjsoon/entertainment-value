@@ -139,6 +139,8 @@ struct LibraryView: View {
                                     Capsule().strokeBorder(Theme.line, lineWidth: 1.5)
                                 }
                             }
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(selected ? .isSelected : [])
