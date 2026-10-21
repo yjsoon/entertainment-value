@@ -2,24 +2,28 @@ import SwiftData
 import SwiftUI
 
 /// Shown after finishing something. Both the rating and the note are
-/// optional; swiping the sheet away saves nothing and loses nothing.
+/// optional; swiping the sheet away saves nothing and loses nothing. When it
+/// is opened from a finished day on Today, it also offers to undo the finish.
 struct RatingSheet: View {
     let log: Log
+    var onUndo: (() -> Void)?
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @State private var rating: Double?
     @State private var note = ""
+    @State private var undoRequested = false
 
     var body: some View {
         let kind = log.item?.kind ?? .film
+        ScrollView {
         VStack(spacing: 18) {
             VStack(spacing: 4) {
                 Text(log.kind == .finished ? "Finished." : "How was it?")
-                    .font(Theme.display(26, weight: .black))
+                    .font(Theme.display(28, weight: .heavy))
                 if let summary = finishSummary {
                     Text(summary)
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.muted)
                 }
             }
@@ -27,36 +31,54 @@ struct RatingSheet: View {
                 .accessibilityIdentifier("ratingDial")
                 .frame(height: 150)
             TextField("One sentence for future you?", text: $note, axis: .vertical)
+                .font(Theme.body)
                 .accessibilityIdentifier("noteField")
                 .lineLimit(1...3)
                 .textFieldStyle(.plain)
                 .padding(12)
                 .background(Theme.raised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             HStack {
+                if onUndo != nil {
+                    Button("Undo finish", role: .destructive) {
+                        // Undone once the sheet has gone, so nothing on
+                        // screen reads a log that may be removed.
+                        undoRequested = true
+                        dismiss()
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityIdentifier("undoFinish")
+                }
+                Spacer()
                 Button("Skip") { dismiss() }
                     .buttonStyle(.bordered)
-                Spacer()
-                Button("Save") { save() }
+                Button { save() } label: {
+                    Text("Save").foregroundStyle(kind.onColor)
+                }
                     .buttonStyle(.borderedProminent)
                     .tint(kind.color)
                     .disabled(rating == nil && note.trimmingCharacters(in: .whitespaces).isEmpty
                         && log.rating == nil && log.note == nil)
             }
-            .font(Theme.display(16, weight: .bold))
+            .font(Theme.text(16, weight: .semibold))
         }
         .padding(20)
-        .presentationDetents([.height(420)])
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .presentationDetents([.height(440), .large])
         .presentationBackground(Theme.paper)
         .onAppear {
             rating = log.rating
             note = log.note ?? ""
+        }
+        .onDisappear {
+            if undoRequested { onUndo?() }
         }
     }
 
     /// "47 hours across 3 months" for long things; nothing for a single sitting.
     private var finishSummary: String? {
         guard let item = log.item else { return nil }
-        let logs = item.logs ?? []
+        let logs = item.dayLogs
         guard logs.count > 2 else { return item.title }
         let minutes = item.totalMinutes
         let first = logs.map(\.date).min() ?? log.date
@@ -92,10 +114,10 @@ struct RatingDial: View {
                     .animation(.spring(duration: 0.25, bounce: 0.4), value: fraction)
                 VStack(spacing: 0) {
                     Text(rating.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "Rate")
-                        .font(Theme.display(34, weight: .black))
+                        .font(Theme.display(34, weight: .heavy))
                         .contentTransition(.numericText())
                     Text(rating == nil ? "drag along the arc" : "out of 5")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.muted)
                 }
                 .position(x: geometry.centre.x, y: geometry.centre.y - geometry.radius * 0.35)
@@ -155,7 +177,7 @@ nonisolated struct DialGeometry: Hashable, Sendable {
 }
 
 /// The dial's arc, drawn from sampled points so the direction is never in doubt.
-private struct DialArc: Shape {
+nonisolated private struct DialArc: Shape {
     var fraction: Double
     let geometry: DialGeometry
 

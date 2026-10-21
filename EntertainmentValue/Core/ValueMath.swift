@@ -105,6 +105,8 @@ nonisolated struct ServiceValue: Hashable, Sendable, Identifiable {
     let minutes: Double
     let estimatedMinutes: Double
     let finishes: Int
+    /// Minutes weighted by rating.
+    var enjoyedMinutes: Double = 0
 
     var hours: Double { minutes / 60 }
 
@@ -149,6 +151,33 @@ nonisolated struct MonthSummary: Hashable, Sendable {
         return totalSpend / Decimal(enjoyedMinutes / 60)
     }
 
+    /// Subscriptions that cost something this month.
+    private var paidServices: [ServiceValue] { services.filter { $0.charge > 0 } }
+
+    /// Hours logged on subscriptions you paid for this month, so library,
+    /// bought, trial and unpriced hours don't flatter the subscription rate.
+    var subscriptionMinutes: Double {
+        paidServices.reduce(0) { $0 + $1.minutes }
+    }
+
+    var subscriptionCostPerHour: Decimal? {
+        guard subscriptionMinutes > 0, subscriptionSpend > 0 else { return nil }
+        return subscriptionSpend / Decimal(subscriptionMinutes / 60)
+    }
+
+    var subscriptionsMostlyEstimated: Bool {
+        let estimated = paidServices.reduce(0) { $0 + $1.estimatedMinutes }
+        return subscriptionMinutes > 0 && estimated * 2 > subscriptionMinutes
+    }
+
+    /// The subscription rate again, with each hour weighted by its rating.
+    /// Shown once at least three logs in the month carry a rating.
+    var subscriptionCostPerEnjoyedHour: Decimal? {
+        let enjoyed = paidServices.reduce(0) { $0 + $1.enjoyedMinutes }
+        guard ratedLogs >= 3, enjoyed > 0, subscriptionSpend > 0 else { return nil }
+        return subscriptionSpend / Decimal(enjoyed / 60)
+    }
+
     var costPerFinish: Decimal? {
         guard finishes > 0 else { return nil }
         return totalSpend / Decimal(finishes)
@@ -175,7 +204,7 @@ nonisolated enum ValueMath {
     ) -> MonthSummary {
         let inMonth = usage.filter { month.contains($0.date, calendar: calendar) }
 
-        var minutesByService: [UUID: (minutes: Double, estimated: Double, finishes: Int)] = [:]
+        var minutesByService: [UUID: (minutes: Double, estimated: Double, finishes: Int, enjoyed: Double)] = [:]
         var minutesByKind: [MediaKind: Double] = [:]
         var total = 0.0
         var estimated = 0.0
@@ -194,8 +223,9 @@ nonisolated enum ValueMath {
             if entry.rating != nil { rated += 1 }
             enjoyed += minutes * enjoymentFactor(rating: entry.rating)
             if let serviceID = entry.serviceID {
-                var bucket = minutesByService[serviceID] ?? (0, 0, 0)
+                var bucket = minutesByService[serviceID] ?? (0, 0, 0, 0)
                 bucket.minutes += minutes
+                bucket.enjoyed += minutes * enjoymentFactor(rating: entry.rating)
                 if entry.source == .estimated { bucket.estimated += minutes }
                 if entry.finishedSomething { bucket.finishes += 1 }
                 minutesByService[serviceID] = bucket
@@ -206,7 +236,7 @@ nonisolated enum ValueMath {
         var subscriptionSpend: Decimal = 0
         for (id, terms) in services {
             let charge = terms.monthlyCharge(in: month, calendar: calendar)
-            let bucket = minutesByService[id] ?? (0, 0, 0)
+            let bucket = minutesByService[id] ?? (0, 0, 0, 0)
             guard charge > 0 || bucket.minutes > 0 else { continue }
             subscriptionSpend += charge
             values.append(ServiceValue(
@@ -214,7 +244,8 @@ nonisolated enum ValueMath {
                 charge: charge,
                 minutes: bucket.minutes,
                 estimatedMinutes: bucket.estimated,
-                finishes: bucket.finishes
+                finishes: bucket.finishes,
+                enjoyedMinutes: bucket.enjoyed
             ))
         }
         values.sort {

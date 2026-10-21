@@ -1,8 +1,9 @@
 import Foundation
 import SwiftData
 
-/// One thing you did: finished a film, watched an episode, read some pages or
-/// played for a while. Logs are the record everything else is worked out from.
+/// One item on one day: "Andor ×2", "Piranesi 38 → 43%", "Hades II".
+/// There is at most one log per item per day; logging again updates it.
+/// Logs are the record everything else is worked out from.
 @Model
 final class Log {
     var id: UUID = UUID()
@@ -10,8 +11,12 @@ final class Log {
     var kindRaw: String = LogKind.session.rawValue
     var minutes: Double = 0
     var durationSourceRaw: String = DurationSource.estimated.rawValue
-    /// Page reached, for books and comics.
+    /// Page reached, for books and comics counted in pages.
     var page: Int?
+    /// Position reached, 0 to 100, for books and comics counted in percent.
+    var percent: Double?
+    /// Episodes that day, for TV and podcasts. 1 for everything else.
+    var count: Int = 1
     var season: Int?
     var episode: Int?
     /// Half-star steps from 0.5 to 5.
@@ -19,6 +24,9 @@ final class Log {
     var note: String?
     var serviceID: UUID?
     var freeReasonRaw: String?
+    /// A finish recorded for something done before you started logging. It
+    /// carries no hours and stays out of the day-by-day views.
+    var backdated: Bool = false
     var item: Item?
 
     init(
@@ -28,6 +36,8 @@ final class Log {
         minutes: Double,
         durationSource: DurationSource,
         page: Int? = nil,
+        percent: Double? = nil,
+        count: Int = 1,
         episode: EpisodeRef? = nil,
         serviceID: UUID? = nil,
         freeReason: FreeReason? = nil
@@ -39,6 +49,8 @@ final class Log {
         self.minutes = max(0, minutes)
         self.durationSourceRaw = durationSource.rawValue
         self.page = page
+        self.percent = percent
+        self.count = count
         self.season = episode?.season
         self.episode = episode?.episode
         self.serviceID = serviceID
@@ -72,7 +84,7 @@ final class Log {
     }
 
     var usage: UsageEntry? {
-        guard let item else { return nil }
+        guard let item, !backdated else { return nil }
         return UsageEntry(
             date: date,
             minutes: minutes,

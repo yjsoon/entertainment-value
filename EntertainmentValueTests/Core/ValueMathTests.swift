@@ -125,6 +125,28 @@ struct ValueMathTests {
         #expect(disneyValue.costPerHour == nil)
         #expect(summary.services[2].costPerHour?.roundedToCents == Decimal(string: "0.21"))
         #expect(summary.isMostlyEstimated == false)
+
+        // The Value card's rate leaves out free, bought and unlinked hours.
+        #expect(summary.subscriptionSpend == Decimal(string: "38.46"))
+        #expect(summary.subscriptionMinutes == 45.5 * 60)
+        #expect(summary.subscriptionCostPerHour?.roundedToCents == Decimal(string: "0.85"))
+        #expect(summary.subscriptionsMostlyEstimated == false)
+    }
+
+    @Test("Hours on unpriced or trial services stay out of the subscription rate")
+    func unpricedHours() {
+        let paid = UUID(), unpriced = UUID()
+        let services: [UUID: ServiceTerms] = [
+            paid: ServiceTerms(prices: [Self.sgd(20)], cycle: .monthly, share: 1, startedAt: Self.date(2025, 1, 1)),
+            unpriced: ServiceTerms(prices: [], cycle: .monthly, share: 1, startedAt: Self.date(2025, 1, 1)),
+        ]
+        let day = Self.date(2026, 10, 10)
+        let usage = [paid, unpriced].map {
+            UsageEntry(date: day, minutes: 600, source: .derived, serviceID: $0, purchaseItemID: nil, freeReason: nil, rating: nil, kind: .tv, finishedSomething: false)
+        }
+        let summary = ValueMath.summarise(month: Self.october, services: services, usage: usage, purchases: [], calendar: Self.calendar)
+        #expect(summary.subscriptionMinutes == 600)
+        #expect(summary.subscriptionCostPerHour == 2)
     }
 
     @Test("Ratings weight enjoyed hours from 0.5 to 1.5")
