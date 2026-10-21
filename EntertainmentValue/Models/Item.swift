@@ -26,6 +26,8 @@ final class Item {
     /// The service this item is usually watched or read on.
     var serviceID: UUID?
     var freeReasonRaw: String?
+    /// How a book or comic counts progress. Nil means the medium's default.
+    var progressModeRaw: String?
 
     @Relationship(deleteRule: .cascade, inverse: \Log.item)
     var logs: [Log]? = []
@@ -80,26 +82,64 @@ final class Item {
         artworkURLString.flatMap { RemoteHTTPURL.parsePublic($0) }
     }
 
+    var progressMode: ProgressMode {
+        get { progressModeRaw.flatMap(ProgressMode.init(rawValue:)) ?? .default(for: kind) }
+        set { progressModeRaw = newValue.rawValue }
+    }
+
     var sortedLogs: [Log] {
         (logs ?? []).sorted { $0.date > $1.date }
     }
 
-    /// Everything the card needs, reduced from the logs.
-    var progress: ItemProgress {
-        let all = logs ?? []
-        let lastEpisode = all.compactMap(\.episodeRef).max()
-        let lastPage = all
-            .filter { $0.kind == .progress || $0.kind == .finished }
+    /// This item's log for a day, if there is one.
+    func log(on day: Date, calendar: Calendar = .current) -> Log? {
+        (logs ?? []).filter { calendar.isDate($0.date, inSameDayAs: day) }.max { $0.date < $1.date }
+    }
+
+    /// Where a log left a book or comic, as 0 to 100. Pages convert when the
+    /// page count is known.
+    func percent(of log: Log) -> Double? {
+        if let percent = log.percent { return percent.clamped(to: 0...100) }
+        if let page = log.page, let pageCount, pageCount > 0 {
+            return (Double(page) / Double(pageCount) * 100).clamped(to: 0...100)
+        }
+        if log.kind == .finished, kind.isPaged { return 100 }
+        return nil
+    }
+
+    /// The furthest position logged before a day began.
+    func percent(before day: Date, calendar: Calendar = .current) -> Double? {
+        let start = calendar.startOfDay(for: day)
+        return (logs ?? [])
+            .filter { $0.date < start }
             .sorted { $0.date > $1.date }
+            .lazy
+            .compactMap { self.percent(of: $0) }
+            .first
+    }
+
+    /// The page reached before a day began.
+    func page(before day: Date, calendar: Calendar = .current) -> Int? {
+        let start = calendar.startOfDay(for: day)
+        return (logs ?? [])
+            .filter { $0.date < start }
+            .sorted { $0.date > $1.date }
+            .lazy
             .compactMap(\.page)
             .first
-        return ItemProgress(
-            kind: kind,
-            lastEpisode: lastEpisode,
-            currentPage: lastPage,
-            pageCount: pageCount,
-            lastLoggedAt: all.map(\.date).max()
-        )
+    }
+
+    /// The latest position logged, 0 to 100.
+    var currentPercent: Double? {
+        sortedLogs.lazy.compactMap { self.percent(of: $0) }.first
+    }
+
+    var currentPage: Int? {
+        sortedLogs.lazy.compactMap(\.page).first
+    }
+
+    var lastLoggedAt: Date? {
+        (logs ?? []).map(\.date).max()
     }
 
     var totalMinutes: Double {

@@ -149,6 +149,22 @@ nonisolated struct MonthSummary: Hashable, Sendable {
         return totalSpend / Decimal(enjoyedMinutes / 60)
     }
 
+    /// Hours logged on paid subscriptions, so library and bought hours don't
+    /// flatter the subscription rate.
+    var subscriptionMinutes: Double {
+        services.reduce(0) { $0 + $1.minutes }
+    }
+
+    var subscriptionCostPerHour: Decimal? {
+        guard subscriptionMinutes > 0, subscriptionSpend > 0 else { return nil }
+        return subscriptionSpend / Decimal(subscriptionMinutes / 60)
+    }
+
+    var subscriptionsMostlyEstimated: Bool {
+        let estimated = services.reduce(0) { $0 + $1.estimatedMinutes }
+        return subscriptionMinutes > 0 && estimated * 2 > subscriptionMinutes
+    }
+
     var costPerFinish: Decimal? {
         guard finishes > 0 else { return nil }
         return totalSpend / Decimal(finishes)

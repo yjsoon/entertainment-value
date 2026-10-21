@@ -1,8 +1,8 @@
 import Foundation
 import SwiftData
 
-/// All writes go through here so every log follows the same rules: the date
-/// is now, the service is worked out, and nothing is required.
+/// All writes go through here so every log follows the same rules: one log
+/// per item per day, the service is worked out, and nothing is required.
 @MainActor
 struct Library {
     let context: ModelContext
@@ -70,85 +70,156 @@ struct Library {
         return try context.fetch(descriptor).first
     }
 
-    // MARK: Logging
+    // MARK: Logging a day
 
-    /// Runs the card's one button.
+    /// Adds or takes away episodes on a day. Going to zero removes the day.
     @discardableResult
-    func perform(_ action: PrimaryAction, on item: Item) throws -> Log {
-        switch action {
-        case .finish:
-            return try finish(item)
-        case let .episode(ref):
-            return try logEpisode(ref, on: item)
-        case let .pages(count):
-            let target = LogPlanner.page(after: item.progress, adding: count)
-            return try setPage(target, on: item)
-        case .played:
-            return try logSession(on: item, minutes: nil)
+    func addEpisodes(_ delta: Int, to item: Item, on day: Date? = nil) throws -> Log? {
+        let day = day ?? now()
+        let existing = item.log(on: day, calendar: calendar)
+        guard existing != nil || delta > 0 else { return nil }
+        let log = existing ?? makeLog(item, kind: .episode, on: day, minutes: 0, source: .estimated, count: 0)
+        log.count = max(0, log.count + delta)
+        if log.count == 0, log.kind != .finished {
+            try delete(log)
+            return nil
         }
-    }
-
-    @discardableResult
-    func finish(_ item: Item) throws -> Log {
-        let (minutes, source) = finishMinutes(for: item)
-        let log = makeLog(item, kind: .finished, minutes: minutes, source: source)
-        if item.kind.isPaged { log.page = item.pageCount ?? item.progress.currentPage }
-        item.status = .finished
-        try touch(item)
+        let runtime = item.runtimeMinutes.map(Double.init)
+        log.minutes = Double(log.count) * (runtime ?? item.kind.fallbackMinutes)
+        log.durationSource = runtime == nil ? .estimated : .derived
+        try touch(item, logged: day)
         return log
     }
 
+    /// "Played" and "read" with no position: one tap logs the day, a second
+    /// tap removes it.
     @discardableResult
-    func logEpisode(_ ref: EpisodeRef, on item: Item) throws -> Log {
-        let minutes = item.runtimeMinutes.map(Double.init)
-        let log = makeLog(
-            item,
-            kind: .episode,
-            minutes: minutes ?? item.kind.fallbackMinutes,
-            source: minutes == nil ? .estimated : .derived
-        )
-        log.season = ref.season
-        log.episode = ref.episode
-        item.status = .active
-        try touch(item)
-        return log
-    }
-
-    /// Moves a book or comic to a page. Reaching the last page finishes it.
-    @discardableResult
-    func setPage(_ page: Int, on item: Item) throws -> Log {
-        let progress = item.progress
-        let previous = progress.currentPage ?? 0
-        let capped = item.pageCount.map { $0 > 0 ? min(page, $0) : page } ?? page
-        let delta = max(0, capped - previous)
-        let speed = ReadingSpeed.default(for: item.kind)
-        if let pageCount = item.pageCount, pageCount > 0, page >= pageCount {
-            let log = makeLog(item, kind: .finished, minutes: speed.minutes(forPages: delta), source: .estimated)
-            log.page = pageCount
-            item.status = .finished
-            try touch(item)
-            return log
+    func toggleDay(_ item: Item, on day: Date? = nil) throws -> Log? {
+        let day = day ?? now()
+        if let existing = item.log(on: day, calendar: calendar) {
+            try delete(existing)
+            return nil
         }
-        let log = makeLog(item, kind: .progress, minutes: speed.minutes(forPages: delta), source: .estimated)
-        log.page = max(0, page)
-        item.status = .active
-        try touch(item)
+        let minutes = item.kind.isPaged ? ReadingMath.plainReadMinutes : item.kind.fallbackMinutes
+        let kind: LogKind = item.kind.isPaged ? .progress : .session
+        let log = makeLog(item, kind: kind, on: day, minutes: minutes, source: .estimated)
+        try touch(item, logged: day)
         return log
     }
 
-    /// A sitting with no natural unit. Without a length, it counts as the
-    /// usual length for the medium and is marked as estimated.
+    /// A sitting of a chosen length. Replaces a one-tap guess on the same day.
     @discardableResult
-    func logSession(on item: Item, minutes: Double?) throws -> Log {
-        let log = makeLog(
-            item,
-            kind: .session,
-            minutes: minutes ?? item.kind.fallbackMinutes,
-            // A film's "part of it" is a guess, not a timed session.
-            source: minutes == nil || item.kind == .film ? .estimated : .measured
+    func logSession(on item: Item, minutes: Double, on day: Date? = nil) throws -> Log {
+        let day = day ?? now()
+        let log = item.log(on: day, calendar: calendar)
+            ?? makeLog(item, kind: .session, on: day, minutes: 0, source: .measured)
+        log.minutes = max(0, minutes)
+        // A film's "part of it" is a guess, not a timed session.
+        log.durationSource = item.kind == .film ? .estimated : .measured
+        try touch(item, logged: day)
+        return log
+    }
+
+    /// Sets how far through a book or comic you got on a day. Reaching 100%
+    /// finishes it.
+    @discardableResult
+    func setPercent(_ percent: Double, on item: Item, day: Date? = nil) throws -> Log {
+        let day = day ?? now()
+        let target = percent.clamped(to: 0...100)
+        if target >= 100 { return try finish(item, on: day) }
+        let log = item.log(on: day, calendar: calendar)
+            ?? makeLog(item, kind: .progress, on: day, minutes: 0, source: .estimated)
+        if log.kind == .finished { log.kind = .progress }
+        log.percent = target
+        log.page = item.pageCount.flatMap { $0 > 0 ? Int((target / 100 * Double($0)).rounded()) : nil }
+        log.minutes = max(
+            ReadingMath.minimumMinutes,
+            ReadingMath.minutes(
+                fromPercent: item.percent(before: day, calendar: calendar),
+                toPercent: target,
+                pageCount: item.pageCount,
+                kind: item.kind
+            )
         )
-        item.status = .active
-        try touch(item)
+        log.durationSource = .estimated
+        try touch(item, logged: day)
+        return log
+    }
+
+    /// The "+5%" button: from today's position, or where you were before.
+    @discardableResult
+    func addPercent(_ step: Double = ReadingMath.percentStep, to item: Item, on day: Date? = nil) throws -> Log {
+        let day = day ?? now()
+        let current = item.log(on: day, calendar: calendar).flatMap { item.percent(of: $0) }
+            ?? item.percent(before: day, calendar: calendar)
+            ?? 0
+        return try setPercent(current + step, on: item, day: day)
+    }
+
+    /// Sets the page reached on a day. The last page finishes it.
+    @discardableResult
+    func setPage(_ page: Int, on item: Item, day: Date? = nil) throws -> Log {
+        let day = day ?? now()
+        let target = max(0, page)
+        if let pageCount = item.pageCount, pageCount > 0, target >= pageCount {
+            return try finish(item, on: day)
+        }
+        let log = item.log(on: day, calendar: calendar)
+            ?? makeLog(item, kind: .progress, on: day, minutes: 0, source: .estimated)
+        if log.kind == .finished { log.kind = .progress }
+        log.page = target
+        log.percent = item.pageCount.flatMap { $0 > 0 ? Double(target) / Double($0) * 100 : nil }
+        log.minutes = max(
+            ReadingMath.minimumMinutes,
+            ReadingMath.minutes(fromPage: item.page(before: day, calendar: calendar), toPage: target, kind: item.kind)
+        )
+        log.durationSource = .estimated
+        try touch(item, logged: day)
+        return log
+    }
+
+    /// Marks something finished on a day: a film watched, a book done, a
+    /// show or game over.
+    @discardableResult
+    func finish(_ item: Item, on day: Date? = nil) throws -> Log {
+        let day = day ?? now()
+        let existing = item.log(on: day, calendar: calendar)
+        let log = existing ?? makeLog(
+            item, kind: .finished, on: day, minutes: 0, source: .estimated,
+            count: item.kind.isEpisodic ? 0 : 1
+        )
+        log.kind = .finished
+        switch item.kind {
+        case .film:
+            // Part-watches on earlier days already count towards this one.
+            let lastFinish = (item.logs ?? [])
+                .filter { $0.kind == .finished && $0.id != log.id && $0.date < log.date }
+                .map(\.date).max() ?? .distantPast
+            let earlier = (item.logs ?? [])
+                .filter { $0.id != log.id && $0.kind == .session && $0.date > lastFinish && $0.date < log.date }
+                .reduce(0) { $0 + $1.minutes }
+            let runtime = item.runtimeMinutes.map(Double.init)
+            log.minutes = max(0, (runtime ?? item.kind.fallbackMinutes) - earlier)
+            log.durationSource = runtime == nil ? .estimated : .derived
+        case .book, .comic:
+            let before = item.percent(before: day, calendar: calendar)
+            let hadEarlierDays = (item.logs ?? []).contains { $0.id != log.id && $0.date < calendar.startOfDay(for: day) }
+            if before == nil && hadEarlierDays {
+                // Days marked "read" already hold their time; count one more sitting.
+                log.minutes = ReadingMath.plainReadMinutes
+            } else {
+                log.minutes = ReadingMath.minutes(
+                    fromPercent: before, toPercent: 100, pageCount: item.pageCount, kind: item.kind
+                )
+            }
+            log.percent = 100
+            log.page = item.pageCount
+            log.durationSource = .estimated
+        case .tv, .podcast, .game:
+            // The hours are already in the episode and session days.
+            break
+        }
+        try touch(item, logged: day)
         return log
     }
 
@@ -161,20 +232,52 @@ struct Library {
 
     func start(_ item: Item) throws {
         item.status = .active
-        try touch(item)
+        item.updatedAt = now()
+        item.lastActivityAt = now()
+        try context.save()
     }
 
     func shelve(_ item: Item) throws {
         item.status = .shelved
-        try touch(item)
+        item.updatedAt = now()
+        try context.save()
     }
 
+    /// Sets the status from the edit screen. Marking something finished that
+    /// was never logged records a finish with no hours, like adding something
+    /// you finished before you started logging.
+    func setStatus(_ status: ItemStatus, for item: Item) throws {
+        guard status != item.status else { return }
+        switch status {
+        case .finished:
+            if (item.logs ?? []).contains(where: { $0.kind == .finished }) {
+                item.status = .finished
+                item.updatedAt = now()
+                try context.save()
+            } else {
+                try recordPastFinish(item)
+            }
+        case .active:
+            try start(item)
+        case .planned, .shelved:
+            item.status = status
+            item.updatedAt = now()
+            try context.save()
+        }
+    }
+
+    func setProgressMode(_ mode: ProgressMode, for item: Item) throws {
+        item.progressMode = mode
+        item.updatedAt = now()
+        try context.save()
+    }
+
+    /// Removes a day's log and works out the status again.
     func delete(_ log: Log) throws {
         let item = log.item
-        let wasFinish = log.kind == .finished
         context.delete(log)
         try context.save()
-        if let item { try refreshStatus(of: item, removedFinish: wasFinish) }
+        if let item { try refreshStatus(of: item) }
     }
 
     func delete(_ item: Item) throws {
@@ -196,7 +299,20 @@ struct Library {
 
     // MARK: Helpers
 
-    private func makeLog(_ item: Item, kind: LogKind, minutes: Double, source: DurationSource) -> Log {
+    /// When a log on a day is dated: now for today, otherwise midday.
+    private func timestamp(for day: Date) -> Date {
+        if calendar.isDate(day, inSameDayAs: now()) { return now() }
+        return calendar.date(byAdding: .hour, value: 12, to: calendar.startOfDay(for: day)) ?? day
+    }
+
+    private func makeLog(
+        _ item: Item,
+        kind: LogKind,
+        on day: Date,
+        minutes: Double,
+        source: DurationSource,
+        count: Int = 1
+    ) -> Log {
         // A link to a deleted or cancelled service is dropped and worked out again.
         if let id = item.serviceID, !activeServiceIDs().contains(id) {
             item.serviceID = nil
@@ -210,53 +326,41 @@ struct Library {
         let log = Log(
             item: item,
             kind: kind,
-            date: now(),
+            date: timestamp(for: day),
             minutes: minutes,
             durationSource: source,
+            count: count,
             serviceID: item.serviceID,
             freeReason: item.serviceID == nil ? item.freeReason : nil
         )
         context.insert(log)
+        if item.logs?.contains(where: { $0.id == log.id }) != true {
+            item.logs = (item.logs ?? []) + [log]
+        }
         return log
     }
 
-    private func touch(_ item: Item) throws {
+    /// Saves after a log changed, moving the item's status to match.
+    private func touch(_ item: Item, logged day: Date) throws {
         item.updatedAt = now()
-        item.lastActivityAt = now()
-        try context.save()
-    }
-
-    private func finishMinutes(for item: Item) -> (Double, DurationSource) {
-        switch item.kind {
-        case .film:
-            // Part-watches since the last finish already count towards this one.
-            let logs = item.sortedLogs
-            let lastFinish = logs.filter { $0.kind == .finished }.map(\.date).max() ?? .distantPast
-            let watched = logs.filter { $0.kind == .session && $0.date > lastFinish }.reduce(0) { $0 + $1.minutes }
-            if let runtime = item.runtimeMinutes { return (max(0, Double(runtime) - watched), .derived) }
-            return (max(0, item.kind.fallbackMinutes - watched), .estimated)
-        case .book, .comic:
-            guard let pageCount = item.pageCount, pageCount > 0 else {
-                return (item.kind.fallbackMinutes, .estimated)
-            }
-            let progress = item.progress
-            let remaining = max(0, pageCount - (progress.currentPage ?? 0))
-            return (ReadingSpeed.default(for: item.kind).minutes(forPages: remaining), .estimated)
-        case .tv, .podcast, .game:
-            // Finishing a show or game marks the end; the hours are already in
-            // the episode and session logs.
-            return (0, .derived)
+        if calendar.isDate(day, inSameDayAs: now()) || day > item.lastActivityAt {
+            item.lastActivityAt = max(item.lastActivityAt, timestamp(for: day))
         }
+        if item.status == .shelved || item.status == .planned { item.status = .active }
+        try refreshStatus(of: item)
     }
 
-    /// Re-derives status after a log is removed.
-    private func refreshStatus(of item: Item, removedFinish: Bool) throws {
+    /// The latest log decides: a finish means finished, anything else means
+    /// in progress. Shelved items stay shelved until you log them again, and
+    /// an item with no logs left keeps its status unless it was finished.
+    private func refreshStatus(of item: Item) throws {
         let logs = item.logs ?? []
-        if logs.isEmpty {
-            item.status = item.status == .shelved ? .shelved : .planned
-        } else if removedFinish, item.status == .finished,
-                  !logs.contains(where: { $0.kind == .finished }) {
-            item.status = .active
+        if item.status != .shelved {
+            if let latest = logs.max(by: { $0.date < $1.date }) {
+                item.status = latest.kind == .finished ? .finished : .active
+            } else if item.status == .finished {
+                item.status = .active
+            }
         }
         try context.save()
     }
@@ -298,14 +402,23 @@ struct Library {
     }
 
     /// Adds something you finished before you started logging. It goes in the
-    /// diary but adds no hours to this month or to any service.
+    /// log but adds no hours to this month or to any service.
     @discardableResult
     func recordPastFinish(_ item: Item) throws -> Log {
         let log = Log(item: item, kind: .finished, date: now(), minutes: 0, durationSource: .estimated)
-        if item.kind.isPaged { log.page = item.pageCount }
+        if item.kind.isPaged {
+            log.page = item.pageCount
+            log.percent = 100
+        }
+        if item.kind.isEpisodic { log.count = 0 }
         context.insert(log)
+        if item.logs?.contains(where: { $0.id == log.id }) != true {
+            item.logs = (item.logs ?? []) + [log]
+        }
         item.status = .finished
-        try touch(item)
+        item.updatedAt = now()
+        item.lastActivityAt = now()
+        try context.save()
         return log
     }
 

@@ -14,7 +14,7 @@ enum ServiceEditorTarget: Identifiable {
 }
 
 /// Adding or changing a subscription. Only the name is needed; a price makes
-/// the Money numbers work.
+/// the Value numbers work.
 struct ServiceEditor: View {
     let target: ServiceEditorTarget
 

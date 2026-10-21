@@ -28,6 +28,17 @@
 	<string>$(RAWG_API_KEY)</string>
 	<key>TMDBReadAccessToken</key>
 	<string>$(TMDB_READ_ACCESS_TOKEN)</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>BricolageText-Regular.ttf</string>
+		<string>BricolageText-Medium.ttf</string>
+		<string>BricolageText-SemiBold.ttf</string>
+		<string>BricolageText-Bold.ttf</string>
+		<string>BricolageText-ExtraBold.ttf</string>
+		<string>BricolageDisplay-SemiBold.ttf</string>
+		<string>BricolageDisplay-Bold.ttf</string>
+		<string>BricolageDisplay-ExtraBold.ttf</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -10,6 +10,9 @@ enum Theme {
     static let muted = dynamic(light: (0.420, 0.353, 0.388), dark: (0.682, 0.702, 0.800))
     static let line = dynamic(light: (0.890, 0.839, 0.749), dark: (0.173, 0.227, 0.431))
     static let idle = dynamic(light: (0.706, 0.663, 0.627), dark: (0.369, 0.404, 0.533))
+    /// Text on the ink-coloured hero card, which flips with the theme.
+    static let onInk = dynamic(light: (1.0, 0.980, 0.941), dark: (0.180, 0.122, 0.180))
+    static let onInkMuted = dynamic(light: (0.851, 0.800, 0.827), dark: (0.420, 0.353, 0.388))
 
     static func color(for kind: MediaKind) -> Color {
         switch kind {
@@ -22,8 +25,35 @@ enum Theme {
         }
     }
 
+    /// Bricolage Grotesque, bundled as static cuts: a "Text" optical size for
+    /// small type and a tighter "Display" cut for 24 pt and up. Sizes scale
+    /// with Dynamic Type relative to the nearest text style.
     static func display(_ size: CGFloat, weight: Font.Weight = .heavy) -> Font {
-        .system(size: size, weight: weight, design: .rounded)
+        .custom(BricolageCut.name(size: size, weight: weight), size: size, relativeTo: textStyle(for: size))
+    }
+
+    /// Body copy in the same family.
+    static func text(_ size: CGFloat = 17, weight: Font.Weight = .regular) -> Font {
+        display(size, weight: weight)
+    }
+
+    static let body = text(17)
+    static let subheadline = text(15)
+    static let footnote = text(13)
+    static let caption = text(12)
+
+    private static func textStyle(for size: CGFloat) -> Font.TextStyle {
+        switch size {
+        case ..<12: .caption2
+        case ..<13: .caption
+        case ..<15: .footnote
+        case ..<16: .subheadline
+        case ..<18: .body
+        case ..<21: .title3
+        case ..<26: .title2
+        case ..<32: .title
+        default: .largeTitle
+        }
     }
 
     /// Nonisolated on purpose: SwiftUI resolves colours on its render thread
@@ -56,31 +86,55 @@ extension View {
     func paperBackground() -> some View { modifier(PaperBackground()) }
 }
 
-/// Section labels: small, rounded, spaced capitals.
+/// The bundled font files. Display cuts only come in the heavier weights.
+nonisolated enum BricolageCut {
+    static func name(size: CGFloat, weight: Font.Weight) -> String {
+        let style: String
+        switch weight {
+        case .ultraLight, .thin, .light, .regular: style = "Regular"
+        case .medium: style = "Medium"
+        case .semibold: style = "SemiBold"
+        case .bold: style = "Bold"
+        default: style = "ExtraBold"
+        }
+        let usesDisplay = size >= 24 && ["SemiBold", "Bold", "ExtraBold"].contains(style)
+        return "Bricolage\(usesDisplay ? "Display" : "Text")-\(style)"
+    }
+
+    static let files = [
+        "BricolageText-Regular", "BricolageText-Medium", "BricolageText-SemiBold",
+        "BricolageText-Bold", "BricolageText-ExtraBold",
+        "BricolageDisplay-SemiBold", "BricolageDisplay-Bold", "BricolageDisplay-ExtraBold",
+    ]
+}
+
+/// Section labels: a short bold line, no shouting capitals.
 struct SectionLabel: View {
     let text: String
 
     var body: some View {
-        Text(text.uppercased())
-            .font(Theme.display(12, weight: .heavy))
-            .kerning(1.2)
+        Text(text)
+            .font(Theme.display(15, weight: .bold))
             .foregroundStyle(Theme.muted)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-extension Decimal {
+nonisolated extension Decimal {
     /// "S$1.38", using the home currency.
     func money(code: String = "SGD") -> String {
         formatted(.currency(code: code).presentation(.narrow).precision(.fractionLength(2)))
     }
 }
 
-extension Double {
-    /// "14.5 h", "45 min".
+nonisolated extension Double {
+    /// "45 min", "2h", "9h 30m". Rounded to the nearest 5 minutes past an hour.
     var hoursLabel: String {
-        if self < 60 { return "\(Int(self.rounded())) min" }
-        let hours = self / 60
-        return hours.formatted(.number.precision(.fractionLength(0...1))) + " h"
+        let total = Int(max(0, self).rounded())
+        if total < 60 { return "\(total) min" }
+        let rounded = Int((Double(total) / 5).rounded()) * 5
+        let hours = rounded / 60
+        let minutes = rounded % 60
+        return minutes == 0 ? "\(hours)h" : "\(hours)h \(minutes)m"
     }
 }

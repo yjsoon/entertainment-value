@@ -94,7 +94,7 @@ nonisolated enum ItemStatus: String, CaseIterable, Codable, Sendable {
     case shelved
 }
 
-/// How a log's minutes were known. Money shows a tilde when most of a
+/// How a log's minutes were known. Value shows a tilde when most of a
 /// service's hours were estimated.
 nonisolated enum DurationSource: String, CaseIterable, Codable, Sendable {
     /// The user picked or timed the length.

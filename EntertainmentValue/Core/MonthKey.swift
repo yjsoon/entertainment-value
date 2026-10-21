@@ -1,6 +1,6 @@
 import Foundation
 
-/// A calendar month. Everything in the app (the flower, Money, recaps and
+/// A calendar month. Everything in the app (Today, Value, recaps and
 /// nudges) rolls over on the first of the month.
 nonisolated struct MonthKey: Hashable, Comparable, Sendable, Codable, CustomStringConvertible {
     let year: Int
