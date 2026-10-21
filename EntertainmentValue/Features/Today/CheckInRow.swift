@@ -156,7 +156,8 @@ struct CheckInRow: View {
             }
             .foregroundStyle(on ? item.kind.onColor : Theme.ink)
             .padding(.horizontal, 14)
-            .frame(height: 44)
+            .padding(.vertical, 6)
+            .frame(minHeight: 44)
             .background {
                 let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
                 if on {
@@ -296,7 +297,7 @@ struct CheckInRow: View {
     /// "Last: Tuesday", "Last: yesterday", "Not started".
     private var lastLine: String {
         let start = Calendar.current.startOfDay(for: day)
-        guard let last = (item.logs ?? []).map(\.date).filter({ $0 < start }).max() else { return "Not started" }
+        guard let last = item.dayLogs.map(\.date).filter({ $0 < start }).max() else { return "Not started" }
         return "Last: " + RelativeDay.text(for: last, from: day)
     }
 }
@@ -329,7 +330,8 @@ private extension View {
             .font(Theme.text(15, weight: .semibold))
             .foregroundStyle(filled ? onColour : Theme.ink)
             .padding(.horizontal, 14)
-            .frame(height: 44)
+            .padding(.vertical, 6)
+            .frame(minHeight: 44)
             .background {
                 let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
                 if filled {

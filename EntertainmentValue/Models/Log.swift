@@ -24,6 +24,9 @@ final class Log {
     var note: String?
     var serviceID: UUID?
     var freeReasonRaw: String?
+    /// A finish recorded for something done before you started logging. It
+    /// carries no hours and stays out of the day-by-day views.
+    var backdated: Bool = false
     var item: Item?
 
     init(
@@ -81,7 +84,7 @@ final class Log {
     }
 
     var usage: UsageEntry? {
-        guard let item else { return nil }
+        guard let item, !backdated else { return nil }
         return UsageEntry(
             date: date,
             minutes: minutes,

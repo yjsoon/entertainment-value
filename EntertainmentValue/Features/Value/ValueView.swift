@@ -132,7 +132,7 @@ struct ValueView: View {
                     .font(Theme.text(16, weight: .semibold))
                     .foregroundStyle(Theme.paper)
                     .padding(.horizontal, 18)
-                    .frame(height: 44)
+                    .padding(.vertical, 6).frame(minHeight: 44)
                     .background(Theme.ink, in: Capsule())
             }
             .buttonStyle(.plain)

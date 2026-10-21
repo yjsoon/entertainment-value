@@ -16,6 +16,7 @@ struct RatingSheet: View {
 
     var body: some View {
         let kind = log.item?.kind ?? .film
+        ScrollView {
         VStack(spacing: 18) {
             VStack(spacing: 4) {
                 Text(log.kind == .finished ? "Finished." : "How was it?")
@@ -37,10 +38,10 @@ struct RatingSheet: View {
                 .padding(12)
                 .background(Theme.raised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             HStack {
-                if let onUndo {
+                if onUndo != nil {
                     Button("Undo finish", role: .destructive) {
-                        // The log is deleted once the sheet has gone, so
-                        // nothing on screen reads it after it is removed.
+                        // Undone once the sheet has gone, so nothing on
+                        // screen reads a log that may be removed.
                         undoRequested = true
                         dismiss()
                     }
@@ -50,7 +51,9 @@ struct RatingSheet: View {
                 Spacer()
                 Button("Skip") { dismiss() }
                     .buttonStyle(.bordered)
-                Button("Save") { save() }
+                Button { save() } label: {
+                    Text("Save").foregroundStyle(kind.onColor)
+                }
                     .buttonStyle(.borderedProminent)
                     .tint(kind.color)
                     .disabled(rating == nil && note.trimmingCharacters(in: .whitespaces).isEmpty
@@ -59,7 +62,9 @@ struct RatingSheet: View {
             .font(Theme.text(16, weight: .semibold))
         }
         .padding(20)
-        .presentationDetents([.height(420)])
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .presentationDetents([.height(440), .large])
         .presentationBackground(Theme.paper)
         .onAppear {
             rating = log.rating
@@ -73,7 +78,7 @@ struct RatingSheet: View {
     /// "47 hours across 3 months" for long things; nothing for a single sitting.
     private var finishSummary: String? {
         guard let item = log.item else { return nil }
-        let logs = item.logs ?? []
+        let logs = item.dayLogs
         guard logs.count > 2 else { return item.title }
         let minutes = item.totalMinutes
         let first = logs.map(\.date).min() ?? log.date

@@ -19,6 +19,8 @@ struct ItemEditor: View {
     @State private var lengthText = ""
     @State private var pageCountText = ""
     @State private var editingPurchase = false
+    /// A price typed in this visit, saved with everything else.
+    @State private var pendingPurchase: PurchaseDraft?
     @State private var confirmingDelete = false
     @State private var ratingTarget: Log?
     @State private var loaded = false
@@ -59,7 +61,7 @@ struct ItemEditor: View {
         .presentationBackground(Theme.paper)
         .onAppear(perform: load)
         .sheet(isPresented: $editingPurchase) {
-            PurchaseEditor(item: item, existing: purchases.last)
+            PurchaseEditor(existing: shownPurchase) { pendingPurchase = $0 }
         }
         .sheet(item: $ratingTarget) { log in
             RatingSheet(log: log)
@@ -90,7 +92,7 @@ struct ItemEditor: View {
             Button("Remove", role: .destructive) { remove(log) }
             Button("Keep", role: .cancel) {}
         } message: { log in
-            Text([dayLabel(log.date), detail(log)].filter { !$0.isEmpty }.joined(separator: ": ") + ". This can't be undone.")
+            Text([log.backdated ? "Finished before you started logging" : dayLabel(log.date), detail(log)].filter { !$0.isEmpty }.joined(separator: ": ") + ". This can't be undone.")
         }
         .onDisappear {
             if removalRequested { try? library.delete(item) }
@@ -119,7 +121,7 @@ struct ItemEditor: View {
                     .font(Theme.text(16, weight: .semibold))
                     .foregroundStyle(Theme.paper)
                     .padding(.horizontal, 16)
-                    .frame(height: 40)
+                    .padding(.vertical, 6).frame(minHeight: 40)
                     .background(Theme.ink, in: Capsule())
             }
             .buttonStyle(.plain)
@@ -140,7 +142,7 @@ struct ItemEditor: View {
                 TextField("Title", text: $title)
                     .font(Theme.text(18, weight: .semibold))
                     .padding(.horizontal, 12)
-                    .frame(height: 44)
+                    .padding(.vertical, 6).frame(minHeight: 44)
                     .background(Theme.raised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Theme.line, lineWidth: 1.5))
                 Text(byline)
@@ -220,14 +222,14 @@ struct ItemEditor: View {
                 }
                 chip("Bought it", selected: source == .bought) {
                     source = .bought
-                    if purchases.isEmpty { editingPurchase = true }
+                    if shownPurchase == nil { editingPurchase = true }
                 }
                 ForEach(FreeReason.allCases, id: \.self) { reason in
                     chip(reason.displayName, selected: source == .free(reason)) { source = .free(reason) }
                 }
             }
             if source == .bought {
-                if let purchase = purchases.last {
+                if let purchase = shownPurchase {
                     HStack {
                         Text(boughtLine(purchase))
                             .font(Theme.text(14))
@@ -274,7 +276,7 @@ struct ItemEditor: View {
                     HStack(spacing: 8) {
                         Button { ratingTarget = log } label: {
                             HStack(spacing: 8) {
-                                Text(dayLabel(log.date))
+                                Text(log.backdated ? "Before you started logging" : dayLabel(log.date))
                                     .font(Theme.text(15))
                                 Spacer()
                                 if let rating = log.rating {
@@ -337,7 +339,7 @@ struct ItemEditor: View {
                 .font(Theme.text(14, weight: selected ? .semibold : .regular))
                 .foregroundStyle(Theme.ink)
                 .padding(.horizontal, 12)
-                .frame(height: 38)
+                .padding(.vertical, 6).frame(minHeight: 44)
                 .background {
                     let shape = Capsule()
                     if selected {
@@ -351,7 +353,11 @@ struct ItemEditor: View {
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    private func boughtLine(_ purchase: Purchase) -> String {
+    private var shownPurchase: PurchaseDraft? {
+        pendingPurchase ?? purchases.last.map { PurchaseDraft($0) }
+    }
+
+    private func boughtLine(_ purchase: PurchaseDraft) -> String {
         var line = "Bought for \(purchase.homeAmount.money())"
         if let perHour = ValueMath.lifetimeCostPerHour(homeAmount: purchase.homeAmount, lifetimeMinutes: item.totalMinutes) {
             line += " \u{00B7} \(perHour.money())/h so far"
@@ -433,11 +439,13 @@ struct ItemEditor: View {
             let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty, trimmed != item.title { item.title = trimmed }
             if item.kind.isPaged {
-                item.pageCount = Int(pageCountText.trimmingCharacters(in: .whitespaces)).flatMap { $0 > 0 ? $0 : nil }
                 if mode != item.progressMode { try library.setProgressMode(mode, for: item) }
+                let pages = Int(pageCountText.trimmingCharacters(in: .whitespaces)).flatMap { $0 > 0 ? $0 : nil }
+                try library.setLengths(runtime: item.runtimeMinutes, pageCount: pages, for: item)
             }
             if item.kind == .film || item.kind.isEpisodic {
-                item.runtimeMinutes = Int(lengthText.trimmingCharacters(in: .whitespaces)).flatMap { $0 > 0 ? $0 : nil }
+                let runtime = Int(lengthText.trimmingCharacters(in: .whitespaces)).flatMap { $0 > 0 ? $0 : nil }
+                try library.setLengths(runtime: runtime, pageCount: item.pageCount, for: item)
             }
             switch source {
             case .none, .bought:
@@ -446,6 +454,9 @@ struct ItemEditor: View {
                 try library.setService(id, freeReason: nil, for: item)
             case let .free(reason):
                 try library.setService(nil, freeReason: reason, for: item)
+            }
+            if source == .bought, let pendingPurchase {
+                pendingPurchase.apply(to: purchases.last, itemID: item.id, in: context)
             }
             if removingPurchases {
                 for purchase in purchases { context.delete(purchase) }

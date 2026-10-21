@@ -91,9 +91,15 @@ final class Item {
         (logs ?? []).sorted { $0.date > $1.date }
     }
 
-    /// This item's log for a day, if there is one.
+    /// This item's log for a day, if there is one. A backdated finish isn't
+    /// a day's log.
     func log(on day: Date, calendar: Calendar = .current) -> Log? {
-        (logs ?? []).filter { calendar.isDate($0.date, inSameDayAs: day) }.max { $0.date < $1.date }
+        (logs ?? []).filter { !$0.backdated && calendar.isDate($0.date, inSameDayAs: day) }.max { $0.date < $1.date }
+    }
+
+    /// Logs you can see day by day, oldest first.
+    var dayLogs: [Log] {
+        (logs ?? []).filter { !$0.backdated }.sorted { $0.date < $1.date }
     }
 
     /// Where a log left a book or comic, as 0 to 100. Pages convert when the

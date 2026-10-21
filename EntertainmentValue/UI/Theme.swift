@@ -26,21 +26,20 @@ enum Theme {
         }
     }
 
-    /// Bricolage Grotesque, bundled as static cuts: a "Text" optical size for
-    /// small type and a tighter "Display" cut for 24 pt and up. Sizes scale
-    /// with Dynamic Type relative to the nearest text style.
-    /// White only where it reads clearly: on TV blue and book purple in light
-    /// mode. Everything else, and every colour in dark mode, takes a fixed
-    /// dark ink.
+    /// Text and icons on a solid fill of a medium's colour, at 4.5:1 or
+    /// better: white on TV blue in light mode, a deep ink everywhere else.
     static func onColor(for kind: MediaKind) -> Color {
-        let darkInk: (CGFloat, CGFloat, CGFloat) = (0.180, 0.122, 0.180)
+        let deepInk: (CGFloat, CGFloat, CGFloat) = (0.100, 0.060, 0.100)
         let white: (CGFloat, CGFloat, CGFloat) = (1, 1, 1)
         switch kind {
-        case .tv, .book: return dynamic(light: white, dark: darkInk)
-        case .comic, .film, .podcast, .game: return dynamic(light: darkInk, dark: darkInk)
+        case .tv: return dynamic(light: white, dark: deepInk)
+        case .book, .comic, .film, .podcast, .game: return dynamic(light: deepInk, dark: deepInk)
         }
     }
 
+    /// Bricolage Grotesque, bundled as static cuts: a "Text" optical size for
+    /// small type and a tighter "Display" cut for 24 pt and up. Sizes scale
+    /// with Dynamic Type relative to the nearest text style.
     static func display(_ size: CGFloat, weight: Font.Weight = .heavy) -> Font {
         .custom(BricolageCut.name(size: size, weight: weight), size: size, relativeTo: textStyle(for: size))
     }

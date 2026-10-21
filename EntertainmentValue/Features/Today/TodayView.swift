@@ -8,21 +8,28 @@ struct TodayView: View {
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var day = Calendar.current.startOfDay(for: .now)
+    /// True while a sheet or alert is open on the check-in. The day doesn't
+    /// turn over under it; it waits until that closes.
+    @State private var presenting = false
 
     var body: some View {
-        DayCheckIn(day: day, style: .tab, onAdd: onAdd)
-            .id(day)
-            .paperBackground()
-            .toolbar(.hidden, for: .navigationBar)
-            .onChange(of: scenePhase) { _, phase in
-                if phase == .active { refreshDay() }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
-                refreshDay()
-            }
+        DayCheckIn(day: day, style: .tab, onAdd: onAdd) { isPresenting in
+            presenting = isPresenting
+            if !isPresenting { refreshDay() }
+        }
+        .id(day)
+        .paperBackground()
+        .toolbar(.hidden, for: .navigationBar)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { refreshDay() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged).receive(on: RunLoop.main)) { _ in
+            refreshDay()
+        }
     }
 
     private func refreshDay() {
+        guard !presenting else { return }
         let today = Calendar.current.startOfDay(for: .now)
         if today != day { day = today }
     }
@@ -41,6 +48,8 @@ struct DayCheckIn: View {
     let day: Date
     let style: Style
     var onAdd: () -> Void = {}
+    /// Told when a sheet or alert opens or closes.
+    var onPresentingChange: (Bool) -> Void = { _ in }
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -60,16 +69,22 @@ struct DayCheckIn: View {
     @State private var errorMessage: String?
     @State private var tapCount = 0
 
-    init(day: Date, style: Style, onAdd: @escaping () -> Void = {}) {
+    init(
+        day: Date,
+        style: Style,
+        onAdd: @escaping () -> Void = {},
+        onPresentingChange: @escaping (Bool) -> Void = { _ in }
+    ) {
         self.day = day
         self.style = style
         self.onAdd = onAdd
+        self.onPresentingChange = onPresentingChange
         let calendar = Calendar.current
         let start = calendar.startOfDay(for: day)
         let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
         let yesterday = calendar.date(byAdding: .day, value: -1, to: start) ?? start.addingTimeInterval(-86_400)
-        _dayLogs = Query(filter: #Predicate<Log> { $0.date >= start && $0.date < end }, sort: \Log.date)
-        _yesterdayLogs = Query(filter: #Predicate<Log> { $0.date >= yesterday && $0.date < start }, sort: \Log.date)
+        _dayLogs = Query(filter: #Predicate<Log> { $0.date >= start && $0.date < end && $0.backdated == false }, sort: \Log.date)
+        _yesterdayLogs = Query(filter: #Predicate<Log> { $0.date >= yesterday && $0.date < start && $0.backdated == false }, sort: \Log.date)
     }
 
     private var library: Library { Library(context: context) }
@@ -77,18 +92,16 @@ struct DayCheckIn: View {
 
     /// What the day lists. Today: everything in progress, plus anything logged
     /// today (a film finished today stays put until tomorrow). An earlier day:
-    /// anything already added by then that is in progress now or was logged
-    /// on or after that day, so a show finished since can still be filled in.
+    /// anything in progress now or logged on or after that day, so a show
+    /// finished since can still be filled in, and something added today can
+    /// be filled in for last week.
     private var candidates: [Item] {
-        let calendar = Calendar.current
-        let start = calendar.startOfDay(for: day)
-        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start
+        let start = Calendar.current.startOfDay(for: day)
         let loggedToday = Set(dayLogs.compactMap { $0.item?.id })
         return allItems.filter { item in
             if loggedToday.contains(item.id) { return true }
             if isToday { return item.status == .active }
-            guard item.addedAt < end else { return false }
-            return item.status == .active || (item.logs ?? []).contains { $0.date >= start }
+            return item.status == .active || item.dayLogs.contains { $0.date >= start }
         }
     }
 
@@ -144,8 +157,9 @@ struct DayCheckIn: View {
         .scrollDismissesKeyboard(.interactively)
         .sensoryFeedback(.impact(weight: .light), trigger: tapCount)
         .onAppear { snapshotOrder() }
+        .onChange(of: isPresenting) { _, value in onPresentingChange(value) }
         .sheet(item: $ratingTarget) { target in
-            RatingSheet(log: target.log, onUndo: target.allowsUndo ? { undo(target.log) } : nil)
+            RatingSheet(log: target.log, onUndo: { undoFinish(target) })
         }
         .sheet(item: $editing) { item in
             ItemEditor(item: item)
@@ -168,7 +182,7 @@ struct DayCheckIn: View {
             titleVisibility: .visible,
             presenting: clearTarget
         ) { log in
-            Button("Remove", role: .destructive) { undo(log) }
+            Button("Remove", role: .destructive) { remove(log) }
             Button("Keep", role: .cancel) {}
         } message: { log in
             Text(clearMessage(log))
@@ -249,7 +263,7 @@ struct DayCheckIn: View {
                         .font(Theme.text(16, weight: .semibold))
                         .foregroundStyle(Theme.paper)
                         .padding(.horizontal, 18)
-                        .frame(height: 44)
+                        .padding(.vertical, 6).frame(minHeight: 44)
                         .background(Theme.ink, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -286,7 +300,13 @@ struct DayCheckIn: View {
 
     // MARK: Actions
 
+    private var isPresenting: Bool {
+        ratingTarget != nil || editing != nil || entryTarget != nil || clearTarget != nil || errorMessage != nil
+    }
+
     private func perform(_ action: CheckInAction, on item: Item) {
+        // How the day stood before this tap, so a finish can be undone to it.
+        let before = library.dayState(of: item, on: day)
         do {
             switch action {
             case let .episodes(delta):
@@ -295,7 +315,7 @@ struct DayCheckIn: View {
                 if let log = item.log(on: day), !Library.isPlainTap(log) {
                     // A day holding more than a tap is never wiped by one.
                     if log.kind == .finished {
-                        ratingTarget = RatingTarget(log: log, allowsUndo: true)
+                        ratingTarget = RatingTarget(log: log, before: nil)
                     } else {
                         clearTarget = log
                     }
@@ -305,23 +325,23 @@ struct DayCheckIn: View {
             case .step:
                 if item.progressMode == .pages {
                     let current = item.log(on: day)?.page ?? item.page(before: day) ?? 0
-                    finishIfNeeded(try library.setPage(current + ReadingMath.pageStep, on: item, day: day))
+                    finishIfNeeded(try library.setPage(current + ReadingMath.pageStep, on: item, day: day), before: before)
                 } else {
-                    finishIfNeeded(try library.addPercent(to: item, on: day))
+                    finishIfNeeded(try library.addPercent(to: item, on: day), before: before)
                 }
             case .enterPosition:
                 beginEntry(for: item)
                 return
             case .finish:
                 let log = try library.finish(item, on: day)
-                ratingTarget = RatingTarget(log: log, allowsUndo: false)
+                ratingTarget = RatingTarget(log: log, before: before)
             case .watched:
                 if let log = item.log(on: day), log.kind == .finished {
-                    ratingTarget = RatingTarget(log: log, allowsUndo: true)
+                    ratingTarget = RatingTarget(log: log, before: nil)
                     return
                 }
                 let log = try library.finish(item, on: day)
-                ratingTarget = RatingTarget(log: log, allowsUndo: false)
+                ratingTarget = RatingTarget(log: log, before: before)
             case let .session(minutes):
                 try library.logSession(on: item, minutes: minutes, on: day)
             case .shelve:
@@ -336,12 +356,16 @@ struct DayCheckIn: View {
         }
     }
 
-    private func finishIfNeeded(_ log: Log) {
-        if log.kind == .finished { ratingTarget = RatingTarget(log: log, allowsUndo: false) }
+    private func finishIfNeeded(_ log: Log, before: Library.DayState) {
+        if log.kind == .finished { ratingTarget = RatingTarget(log: log, before: before) }
     }
 
-    private func undo(_ log: Log) {
+    private func remove(_ log: Log) {
         do { try library.delete(log) } catch { errorMessage = error.localizedDescription }
+    }
+
+    private func undoFinish(_ target: RatingTarget) {
+        do { try library.undoFinish(target.log, restoring: target.before) } catch { errorMessage = error.localizedDescription }
     }
 
     private func beginEntry(for item: Item) {
@@ -360,6 +384,7 @@ struct DayCheckIn: View {
     }
 
     private func saveEntry(for item: Item) {
+        let before = library.dayState(of: item, on: day)
         let text = entryText.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "%", with: "")
         do {
             if item.progressMode == .pages {
@@ -367,13 +392,13 @@ struct DayCheckIn: View {
                     errorMessage = "Type a page number, like 120."
                     return
                 }
-                finishIfNeeded(try library.setPage(page, on: item, day: day))
+                finishIfNeeded(try library.setPage(page, on: item, day: day), before: before)
             } else {
                 guard let value = Double(text.replacingOccurrences(of: ",", with: ".")), (0...100).contains(value) else {
                     errorMessage = "Type a percentage from 0 to 100."
                     return
                 }
-                finishIfNeeded(try library.setPercent(value, on: item, day: day))
+                finishIfNeeded(try library.setPercent(value, on: item, day: day), before: before)
             }
             tapCount += 1
         } catch {
@@ -427,9 +452,11 @@ struct DayCheckIn: View {
     }
 }
 
+/// A finish to rate. `before` is the day as it stood before the tap that
+/// finished it, when that tap just happened.
 struct RatingTarget: Identifiable {
     let log: Log
-    let allowsUndo: Bool
+    let before: Library.DayState?
     var id: UUID { log.id }
 }
 

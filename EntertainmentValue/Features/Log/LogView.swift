@@ -70,7 +70,7 @@ struct MonthPicker: View {
             .font(Theme.text(14, weight: .semibold))
             .foregroundStyle(Theme.ink)
             .padding(.horizontal, 14)
-            .frame(height: 36)
+            .padding(.vertical, 6).frame(minHeight: 36)
             .background(Theme.raised, in: Capsule())
             .overlay(Capsule().stroke(Theme.line, lineWidth: 1.5))
             .frame(minHeight: 44)
@@ -93,7 +93,7 @@ struct LogMonth: View {
         self.month = month
         let start = month.start()
         let end = month.end()
-        _logs = Query(filter: #Predicate<Log> { $0.date >= start && $0.date < end }, sort: \Log.date, order: .reverse)
+        _logs = Query(filter: #Predicate<Log> { $0.date >= start && $0.date < end && $0.backdated == false }, sort: \Log.date, order: .reverse)
     }
 
     private var calendar: Calendar { .current }
@@ -416,7 +416,7 @@ private struct EmptyRun: View {
             .font(Theme.text(13, weight: .semibold))
             .foregroundStyle(Theme.ink)
             .padding(.horizontal, 12)
-            .frame(height: 32)
+            .padding(.vertical, 6).frame(minHeight: 32)
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Theme.line, lineWidth: 1.5))
             .frame(minHeight: 44)
             .contentShape(Rectangle())

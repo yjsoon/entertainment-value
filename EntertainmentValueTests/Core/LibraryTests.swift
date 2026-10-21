@@ -265,6 +265,118 @@ struct LibraryTests {
         _ = first
     }
 
+    @Test("Removing a plain reading day leaves the finish at one sitting")
+    func plainReadFinish() throws {
+        let book = insert(Item(kind: .book, title: "Piranesi", status: .active))
+        book.progressMode = .read
+        try library.toggleDay(book)
+        clock.nextDay()
+        let middle = clock.date
+        try library.toggleDay(book)
+        clock.nextDay()
+        try library.toggleDay(book)
+        clock.nextDay()
+        let finish = try library.finish(book)
+        #expect(finish.minutes == ReadingMath.plainReadMinutes)
+        if let log = book.log(on: middle) { try library.delete(log) }
+        #expect(finish.minutes == ReadingMath.plainReadMinutes)
+    }
+
+    @Test("Plain reading days after a position aren't counted twice by the finish")
+    func plainReadAfterPosition() throws {
+        let book = insert(Item(kind: .book, title: "Piranesi", pageCount: 300, status: .active))
+        try library.setPercent(40, on: book)
+        clock.nextDay()
+        book.progressMode = .read
+        try library.toggleDay(book)
+        clock.nextDay()
+        let finish = try library.finish(book)
+        #expect(finish.minutes == ReadingMath.plainReadMinutes)
+    }
+
+    @Test("Removing an old finish leaves the reread's days alone")
+    func rereadAfterRemovingFinish() throws {
+        let book = insert(Item(kind: .book, title: "Piranesi", pageCount: 300, status: .active))
+        try library.setPercent(90, on: book)
+        clock.nextDay()
+        let finish = try library.finish(book)
+        clock.nextDay()
+        let reread = try library.setPercent(30, on: book)
+        let minutes = reread.minutes
+        try library.delete(finish)
+        #expect(reread.minutes == minutes)
+    }
+
+    @Test("Undoing a finish puts the day back as it was")
+    func undoRestoresDay() throws {
+        let game = insert(Item(kind: .game, title: "Hades II", status: .active))
+        try library.logSession(on: game, minutes: 120)
+        let state = library.dayState(of: game)
+        let finish = try library.finish(game)
+        try library.undoFinish(finish, restoring: state)
+        #expect(game.logs?.count == 1)
+        #expect(finish.kind == .session)
+        #expect(finish.minutes == 120)
+        #expect(game.status == .active)
+
+        let book = insert(Item(kind: .book, title: "Piranesi", pageCount: 300, status: .active))
+        try library.setPercent(40, on: book)
+        clock.nextDay()
+        let day = try library.setPercent(45, on: book)
+        let before = library.dayState(of: book)
+        let minutes = day.minutes
+        let done = try library.finish(book)
+        try library.undoFinish(done, restoring: before)
+        #expect(day.percent == 45)
+        #expect(day.kind == .progress)
+        #expect(day.minutes == minutes)
+        #expect(done.id == day.id)
+    }
+
+    @Test("Undoing a stray Watched on a rewatch keeps it in progress")
+    func undoRewatch() throws {
+        let film = insert(Item(kind: .film, title: "Heat", runtimeMinutes: 170, status: .active))
+        try library.finish(film)
+        clock.nextDay()
+        try library.setStatus(.active, for: film)
+        let state = library.dayState(of: film)
+        let stray = try library.finish(film)
+        try library.undoFinish(stray, restoring: state)
+        #expect(film.status == .active)
+        #expect(film.logs?.count == 1)
+
+        // Without the earlier state, the stray tap is still taken back.
+        let again = try library.finish(film)
+        try library.undoFinish(again)
+        #expect(film.status == .active)
+        #expect(film.logs?.count == 1)
+    }
+
+    @Test("Changing the running time or page count works guessed days out again")
+    func lengthsRederive() throws {
+        let show = insert(Item(kind: .tv, title: "Andor", status: .active))
+        let log = try #require(try library.addEpisodes(2, to: show))
+        #expect(log.minutes == 2 * MediaKind.tv.fallbackMinutes)
+        try library.setLengths(runtime: 24, pageCount: nil, for: show)
+        #expect(log.minutes == 48)
+
+        let film = insert(Item(kind: .film, title: "Sinners", status: .active))
+        let watched = try library.finish(film)
+        try library.setLengths(runtime: 137, pageCount: nil, for: film)
+        #expect(watched.minutes == 137)
+
+        let book = insert(Item(kind: .book, title: "Piranesi", status: .active))
+        let day = try library.setPercent(10, on: book)
+        try library.setLengths(runtime: nil, pageCount: 600, for: book)
+        #expect(day.minutes == ReadingMath.minutes(fromPercent: nil, toPercent: 10, pageCount: 600, kind: .book))
+        #expect(day.page == 60)
+
+        let game = insert(Item(kind: .game, title: "Hades II", status: .active))
+        let session = try library.logSession(on: game, minutes: 95)
+        try library.setLengths(runtime: 30, pageCount: nil, for: game)
+        #expect(session.minutes == 95)
+    }
+
     // MARK: Status
 
     @Test("Logging a shelved or planned item starts it again")
@@ -287,7 +399,7 @@ struct LibraryTests {
         #expect(show.status == .shelved)
     }
 
-    @Test("Marking something finished from the edit screen adds no hours")
+    @Test("Marking something never logged finished adds no hours")
     func statusFinished() throws {
         let book = insert(Item(kind: .book, title: "Dune", pageCount: 600, status: .active))
         try library.setStatus(.finished, for: book)
@@ -296,13 +408,38 @@ struct LibraryTests {
         #expect(book.logs?.count == 1)
     }
 
-    @Test("Adding something already finished adds no hours")
+    @Test("Marking something part-way finished counts the rest today")
+    func statusFinishedCountsRest() throws {
+        let book = insert(Item(kind: .book, title: "Dune", pageCount: 600, status: .active))
+        try library.setPercent(40, on: book)
+        clock.nextDay()
+        try library.setStatus(.finished, for: book)
+        #expect(book.logs?.count == 2)
+        #expect(abs(book.totalMinutes - ReadingMath.minutes(fromPercent: nil, toPercent: 100, pageCount: 600, kind: .book)) < 0.01)
+
+        let film = insert(Item(kind: .film, title: "Sinners", runtimeMinutes: 137, status: .active))
+        try library.logSession(on: film, minutes: 45)
+        clock.nextDay()
+        try library.setStatus(.finished, for: film)
+        #expect(film.totalMinutes == 137)
+    }
+
+    @Test("Adding something already finished adds no hours and isn't today's activity")
     func pastFinish() throws {
         let book = insert(Item(kind: .book, title: "Dune", pageCount: 600, status: .active))
         let log = try library.recordPastFinish(book)
         #expect(log.minutes == 0)
         #expect(log.serviceID == nil)
+        #expect(log.backdated)
+        #expect(log.usage == nil)
+        #expect(book.log(on: clock.date) == nil)
         #expect(book.status == .finished)
+
+        // A reread after it starts from nothing.
+        clock.nextDay()
+        let step = try library.addPercent(to: book)
+        #expect(step.percent == 5)
+        #expect(book.status == .active)
     }
 
     // MARK: Services
@@ -348,6 +485,33 @@ struct LibraryTests {
         #expect(log.serviceID == nil)
         #expect(log.freeReason == .library)
         #expect(borrowed.serviceID == nil)
+    }
+
+    @Test("Changing the service moves the current watch with it")
+    func serviceRelinks() throws {
+        let netflix = Service(name: "Netflix")
+        let disney = Service(name: "Disney+")
+        container.mainContext.insert(netflix)
+        container.mainContext.insert(disney)
+        let older = insert(Item(kind: .film, title: "Heat", status: .active))
+        try library.setService(netflix.id, freeReason: nil, for: older)
+        try library.finish(older)
+
+        let film = insert(Item(kind: .film, title: "Sinners", status: .active))
+        let watched = try library.finish(film)
+        #expect(watched.serviceID == netflix.id)
+        try library.setService(disney.id, freeReason: nil, for: film)
+        #expect(watched.serviceID == disney.id)
+        try library.setService(nil, freeReason: .library, for: film)
+        #expect(watched.serviceID == nil)
+        #expect(watched.freeReason == .library)
+
+        // A rewatch moves; the first watch keeps its link.
+        clock.nextDay()
+        let second = try library.logSession(on: older, minutes: 30)
+        try library.setService(disney.id, freeReason: nil, for: older)
+        #expect(second.serviceID == disney.id)
+        #expect(older.dayLogs.first?.serviceID == netflix.id)
     }
 
     @Test("A deleted service is unlinked and a cancelled one is not reused")

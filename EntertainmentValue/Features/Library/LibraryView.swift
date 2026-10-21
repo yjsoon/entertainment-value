@@ -114,7 +114,7 @@ struct LibraryView: View {
                 .submitLabel(.search)
         }
         .padding(.horizontal, 12)
-        .frame(height: 44)
+        .padding(.vertical, 6).frame(minHeight: 44)
         .background(Theme.raised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .transition(.move(edge: .top).combined(with: .opacity))
     }
@@ -131,7 +131,7 @@ struct LibraryView: View {
                             .font(Theme.text(13, weight: selected ? .semibold : .regular))
                             .foregroundStyle(selected ? Theme.paper : Theme.ink)
                             .padding(.horizontal, 12)
-                            .frame(height: 34)
+                            .padding(.vertical, 6).frame(minHeight: 34)
                             .background {
                                 if selected {
                                     Capsule().fill(Theme.ink)
