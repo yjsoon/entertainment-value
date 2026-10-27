@@ -5,6 +5,31 @@ import Testing
 
 @Suite("EntertainmentValue archive formats")
 struct ArchiveRoundTripTests {
+    @Test("Portable imports count every reference to a shared artwork asset")
+    func expandedArtworkBudget() throws {
+        let image = Data(repeating: 0x41, count: 1024 * 1024)
+        var payload = ArchivePayload()
+        let template = try #require(ArchiveFixture.payload.artworks.first)
+        payload.artworks = (0..<128).map { _ in
+            var artwork = template
+            artwork.id = UUID()
+            artwork.archivePath = "assets/artwork/shared.bin"
+            artwork.imageData = image
+            return artwork
+        }
+        let allowed = try PortableArchiveBuilder.makePackage(payload: payload, generator: "test")
+        #expect(try PortableArchiveBuilder.decodePayload(from: allowed).artworks.count == 128)
+        var extra = template
+        extra.id = UUID()
+        extra.archivePath = "assets/artwork/shared.bin"
+        extra.imageData = image
+        payload.artworks.append(extra)
+        let oversized = try PortableArchiveBuilder.makePackage(payload: payload, generator: "test")
+        #expect(throws: (any Error).self) { try PortableArchiveBuilder.decodePayload(from: oversized) }
+        let envelope = FullFidelityArchiveEnvelope(exportedAt: .now, generator: "test", payload: payload)
+        #expect(throws: (any Error).self) { try FullFidelityArchiveCodec.encode(envelope) }
+    }
+
     @Test("ISO 8601 timestamps preserve submicrosecond semantic precision")
     func timestampPrecision() throws {
         let original = Date(timeIntervalSince1970: 1_742_000_000.1234567)

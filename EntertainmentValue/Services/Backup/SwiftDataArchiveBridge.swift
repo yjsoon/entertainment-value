@@ -1735,15 +1735,17 @@ private extension SwiftDataArchiveBridge {
 
     func validateParentCycles(_ units: [ArchiveUnitRecord]) throws {
         let parents = Dictionary(uniqueKeysWithValues: units.map { ($0.id, $0.parentUnitID) })
+        var completed: Set<UUID> = []
         for unit in units {
             var seen: Set<UUID> = []
             var current: UUID? = unit.id
-            while let id = current {
+            while let id = current, !completed.contains(id) {
                 guard seen.insert(id).inserted else {
                     throw DurabilityError.invalidArchive("unit parent hierarchy contains a cycle")
                 }
                 current = parents[id] ?? nil
             }
+            completed.formUnion(seen)
         }
     }
 

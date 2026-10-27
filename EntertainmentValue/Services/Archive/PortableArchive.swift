@@ -156,11 +156,14 @@ nonisolated enum PortableArchiveBuilder {
             let document = try CSVCodec.decode(data)
             try PortableArchiveTables.decode(document, table: table, into: &payload)
         }
+        var remainingArtworkBytes = ArchivePayload.maximumArtworkByteCount
         for index in payload.artworks.indices {
             guard let path = payload.artworks[index].archivePath else { continue }
             guard let data = package.files[path] else {
                 throw PortableArchiveError.missingFile(path)
             }
+            guard data.count <= remainingArtworkBytes else { throw ArchiveResourceError.artworkDataTooLarge }
+            remainingArtworkBytes -= data.count
             payload.artworks[index].imageData = data
         }
         return payload.stablySorted()

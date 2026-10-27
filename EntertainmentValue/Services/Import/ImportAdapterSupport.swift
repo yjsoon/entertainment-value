@@ -5,12 +5,12 @@ nonisolated struct ImportCSVRow {
     var raw: [String: String]
     private var canonical: [String: String]
 
-    init(sourceRowNumber: Int, raw: [String: String]) {
+    init(sourceRowNumber: Int, raw: [String: String], normalizedHeaders: [String: String]? = nil) {
         self.sourceRowNumber = sourceRowNumber
         self.raw = raw
         var canonical: [String: String] = [:]
         for (header, value) in raw {
-            let key = Self.normalizedHeader(header)
+            let key = normalizedHeaders?[header] ?? Self.normalizedHeader(header)
             if canonical[key, default: ""].isEmpty {
                 canonical[key] = value.trimmingCharacters(in: .whitespacesAndNewlines)
             }
@@ -26,7 +26,7 @@ nonisolated struct ImportCSVRow {
         return nil
     }
 
-    private static func normalizedHeader(_ value: String) -> String {
+    static func normalizedHeader(_ value: String) -> String {
         value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
             .unicodeScalars
             .filter(CharacterSet.alphanumerics.contains)
@@ -47,8 +47,11 @@ nonisolated enum ImportAdapterSupport {
         guard document.rows.count <= maxRows else {
             throw ImportStagingError.tooManyRows(limit: maxRows)
         }
+        let normalizedHeaders = Dictionary(uniqueKeysWithValues: document.headers.map {
+            ($0, ImportCSVRow.normalizedHeader($0))
+        })
         return document.rows.enumerated().map { offset, row in
-            ImportCSVRow(sourceRowNumber: offset + 2, raw: row)
+            ImportCSVRow(sourceRowNumber: offset + 2, raw: row, normalizedHeaders: normalizedHeaders)
         }
     }
 

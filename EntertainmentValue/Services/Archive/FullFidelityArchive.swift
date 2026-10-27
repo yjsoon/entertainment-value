@@ -152,6 +152,7 @@ nonisolated struct FullFidelityArchiveEnvelope: Codable, Equatable, Sendable {
         guard schemaVersion > 0, schemaVersion <= Self.currentSchemaVersion else {
             throw FullFidelityArchiveError.unsupportedSchemaVersion(schemaVersion)
         }
+        try payload.validateArtworkSize()
         if let unsafeReference = payload.externalReferences.first(where: { reference in
             guard reference.isPrivateFeed else { return false }
             return Self.looksLikeNetworkURL(reference.canonicalURL) ||

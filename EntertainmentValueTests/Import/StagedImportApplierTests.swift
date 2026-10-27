@@ -48,8 +48,9 @@ struct StagedImportApplierTests {
         #expect(sessions.map(\.note) == ["Matinee", "With friends"])
     }
 
-    @Test("Podcast subscriptions and Overcast episodes retain history without persisting private URLs")
-    func podcastImportsProtectPrivateFeed() async throws {
+    @Test("Podcast subscriptions and Overcast episodes retain history without persisting private URLs",
+          arguments: ["https://premium.example.com/member-secret/feed.xml", "not-a-url"])
+    func podcastImportsProtectPrivateFeed(episodeFeedURL: String) async throws {
         let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
         let context = container.mainContext
         let credentials = InMemoryCredentialStore()
@@ -99,16 +100,34 @@ struct StagedImportApplierTests {
         #expect(!publicReference.isPrivateFeed)
         #expect(publicReference.canonicalURLString == publicURL)
 
+        // An owner-marked private feed can carry credentials in a path that the
+        // URL heuristic cannot recognize. Neither import adapter may downgrade it.
+        let pathCredentialURL = "https://premium.example.com/member-secret/feed.xml"
+        let reimportRow = podcastSubscriptionRow(
+            rowNumber: 1, title: "Private Show", feedURL: pathCredentialURL
+        )
+        _ = try await service.apply(
+            StagedImportBatch(source: .opml, rows: [reimportRow]),
+            selection: ImportApplicationSelection(
+                acceptedRowIDs: [reimportRow.id],
+                targetItemIDsByRowID: [reimportRow.id: privateItem.id]
+            )
+        )
+        #expect(privateReference.isPrivateFeed)
+        #expect(privateReference.canonicalURLString == nil)
+        #expect(privateReference.credentialKeychainID == credentialKey)
+        #expect(await credentials.value(for: credentialKey) == pathCredentialURL)
+
         let playedAt = Date(timeIntervalSince1970: 1_725_000_000)
         let episodeRow = StagedImportRow(
             sourceRowNumber: 2,
             rawFields: ["Played At": ISO8601DateFormatter().string(from: playedAt)],
             proposal: .podcastEpisode(PodcastEpisodeImportProposal(
                 podcastTitle: "Private Show",
-                feedURL: privateURL,
+                feedURL: episodeFeedURL,
                 episodeTitle: "A Notable Episode",
-                episodeURL: "https://premium.example.com/episode?token=top-secret",
-                enclosureURL: "https://premium.example.com/audio?token=top-secret",
+                episodeURL: "https://premium.example.com/member-secret/episode",
+                enclosureURL: "https://premium.example.com/member-secret/audio",
                 publishedAt: Date(timeIntervalSince1970: 1_700_000_000),
                 durationMinutes: 60,
                 elapsedMinutes: 60,
@@ -149,6 +168,10 @@ struct StagedImportApplierTests {
         #expect(session.source == .overcast)
         #expect(completion.effectiveAt == playedAt)
         #expect(completion.source == .overcast)
+        #expect(privateReference.isPrivateFeed)
+        #expect(await credentials.value(for: credentialKey) == pathCredentialURL)
+        let snapshot = try await SwiftDataArchiveBridge(context: context, credentials: credentials).snapshot()
+        #expect(!String(decoding: try JSONEncoder().encode(snapshot.payload), as: UTF8.self).contains("member-secret"))
     }
 
     @Test("Rows the user rejects do not mutate SwiftData")
@@ -176,6 +199,51 @@ struct StagedImportApplierTests {
         #expect(report.skippedRows == 1)
         #expect(try context.fetchCount(FetchDescriptor<LibraryItem>()) == 0)
         #expect(try context.fetchCount(FetchDescriptor<ExternalReference>()) == 0)
+    }
+
+    @Test("Batched episode projections isolate siblings and preserve repeat cycles")
+    func episodeBatchProjections() async throws {
+        let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let data = Data("Podcast,Episode,Played,Progress\nShow,First,true,100%\nShow,Second,false,25%\n".utf8)
+        var batch = try OvercastAllDataImporter().stage(data)
+        var repeated = batch.rows[0]
+        repeated.id = UUID()
+        batch.rows.append(repeated)
+        let service = StagedImportApplier(context: context, credentials: InMemoryCredentialStore())
+        _ = try await service.apply(batch, selection: ImportApplicationSelection(acceptedRowIDs: Set(batch.rows.map(\.id))))
+        let item = try #require(try context.fetch(FetchDescriptor<LibraryItem>()).first)
+        let first = try #require(item.units?.first { $0.title == "First" })
+        let second = try #require(item.units?.first { $0.title == "Second" })
+        #expect(item.sessionCount == 3)
+        #expect(item.cycleCount == 3)
+        #expect(item.repeatCount == 1)
+        #expect(first.status == .completed)
+        #expect(first.sessionCount == 2)
+        #expect(second.status == .inProgress)
+        #expect(second.sessionCount == 1)
+        #expect(second.progressFraction == 0.25)
+    }
+
+    @Test("Already cancelled imports preserve unrelated pending edits")
+    func cancelledImport() async throws {
+        let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let sentinel = LibraryItem(mediaKind: .book, title: "Saved")
+        context.insert(sentinel)
+        try context.save()
+        sentinel.title = "Unsaved edit"
+        let row = podcastSubscriptionRow(rowNumber: 1, title: "Cancelled", feedURL: "https://example.com/rss")
+        let batch = StagedImportBatch(source: .opml, rows: [row])
+        let service = StagedImportApplier(context: context, credentials: InMemoryCredentialStore())
+        let task = Task {
+            try await service.apply(batch, selection: ImportApplicationSelection(acceptedRowIDs: [row.id]))
+        }
+        task.cancel()
+        await #expect(throws: CancellationError.self) { try await task.value }
+        #expect(try context.fetch(FetchDescriptor<LibraryItem>()).map(\.id) == [sentinel.id])
+        #expect(sentinel.title == "Unsaved edit")
+        #expect(context.hasChanges)
     }
 
     private func mediaRow(

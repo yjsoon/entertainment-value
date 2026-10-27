@@ -19,6 +19,9 @@ nonisolated struct OPMLPodcastImporter: Sendable {
         if delegate.exceededLimit {
             throw ImportStagingError.tooManyRows(limit: maximumSubscriptions)
         }
+        if delegate.exceededCategoryBudget {
+            throw ImportStagingError.parserFailure("OPML category paths exceed the 4 KB per-path or 8 MB expanded safety limit.")
+        }
         guard succeeded else {
             throw ImportStagingError.parserFailure(
                 parser.parserError?.localizedDescription ?? "The OPML document could not be parsed.",
@@ -42,8 +45,11 @@ private final nonisolated class OPMLDelegate: NSObject, XMLParserDelegate {
     var rows: [StagedImportRow] = []
     var batchWarnings: [ImportWarning] = []
     var exceededLimit = false
+    var exceededCategoryBudget = false
 
     private var categoryPath: [String] = []
+    private var categoryPathBytes = 0
+    private var expandedCategoryBytes = 0
     private var outlineCategoryStack: [Bool] = []
     private var seenFeedURLs: Set<String> = []
 
@@ -70,6 +76,12 @@ private final nonisolated class OPMLDelegate: NSObject, XMLParserDelegate {
                 parser.abortParsing()
                 return
             }
+            expandedCategoryBytes += categoryPathBytes
+            guard expandedCategoryBytes <= 8 * 1024 * 1024 else {
+                exceededCategoryBudget = true
+                parser.abortParsing()
+                return
+            }
             stageFeed(
                 rawTitle: rawTitle,
                 feedURL: feedURL,
@@ -77,10 +89,22 @@ private final nonisolated class OPMLDelegate: NSObject, XMLParserDelegate {
                 author: attributes["author"],
             )
         } else {
+            guard (rawTitle?.utf8.count ?? 0) <= 4096 else {
+                exceededCategoryBudget = true
+                parser.abortParsing()
+                return
+            }
             let isCategory = rawTitle?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
             outlineCategoryStack.append(isCategory)
             if isCategory, let rawTitle {
-                categoryPath.append(rawTitle.trimmingCharacters(in: .whitespacesAndNewlines))
+                let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                categoryPathBytes += title.utf8.count + (categoryPath.isEmpty ? 0 : 3)
+                guard categoryPathBytes <= 4096 else {
+                    exceededCategoryBudget = true
+                    parser.abortParsing()
+                    return
+                }
+                categoryPath.append(title)
             }
         }
     }
@@ -93,7 +117,9 @@ private final nonisolated class OPMLDelegate: NSObject, XMLParserDelegate {
     ) {
         guard elementName.caseInsensitiveCompare("outline") == .orderedSame,
               let wasCategory = outlineCategoryStack.popLast() else { return }
-        if wasCategory { _ = categoryPath.popLast() }
+        if wasCategory, let title = categoryPath.popLast() {
+            categoryPathBytes -= title.utf8.count + (categoryPath.isEmpty ? 0 : 3)
+        }
     }
 
     private func stageFeed(rawTitle: String?, feedURL: String, websiteURL: String?, author: String?) {

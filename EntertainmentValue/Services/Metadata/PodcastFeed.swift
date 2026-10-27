@@ -397,10 +397,35 @@ private final nonisolated class PodcastXMLDelegate: NSObject, XMLParserDelegate 
     }
 
     private func cleanHTML(_ value: String) -> String {
-        value
+        let text = value
             .replacingOccurrences(of: "<br\\s*/?>", with: "\n", options: [.regularExpression, .caseInsensitive])
             .replacingOccurrences(of: "</p>", with: "\n", options: .caseInsensitive)
-            .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+        // Scan each scalar once: an unclosed run of '<' must not restart a
+        // regex search over every remaining suffix. Preserve unmatched text.
+        let scalars = text.unicodeScalars
+        var cleaned = String.UnicodeScalarView()
+        var tagStart: String.Index?
+        var index = scalars.startIndex
+        while index < scalars.endIndex {
+            let scalar = scalars[index]
+            if let start = tagStart {
+                if scalar == ">" {
+                    if scalars.index(after: start) == index {
+                        cleaned.append(contentsOf: scalars[start...index])
+                    } else {
+                        cleaned.append(" ")
+                    }
+                    tagStart = nil
+                }
+            } else if scalar == "<" {
+                tagStart = index
+            } else {
+                cleaned.append(scalar)
+            }
+            scalars.formIndex(after: &index)
+        }
+        if let tagStart { cleaned.append(contentsOf: scalars[tagStart...]) }
+        return String(cleaned)
             .replacingOccurrences(of: "&nbsp;", with: " ")
             .replacingOccurrences(of: "&amp;", with: "&")
             .replacingOccurrences(of: "&lt;", with: "<")
