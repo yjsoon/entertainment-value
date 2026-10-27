@@ -20,6 +20,10 @@ final class StagedImportApplier {
         _ batch: StagedImportBatch,
         selection: ImportApplicationSelection
     ) async throws -> ImportApplicationReport {
+        // Reject before entering rollback handling: this is the caller's context
+        // and may contain unrelated pending edits. Mid-import cancellation needs
+        // an isolated transaction rather than additional suspension points here.
+        try Task.checkCancellation()
         let selectedRows = batch.rows.filter { selection.acceptedRowIDs.contains($0.id) }
         var report = ImportApplicationReport()
         report.acceptedRows = selectedRows.count
@@ -33,21 +37,16 @@ final class StagedImportApplier {
         var importedItemsByIdentity: [String: LibraryItem] = [:]
         var touchedItems: [UUID: LibraryItem] = [:]
         var credentialMutations: [CredentialMutation] = []
+        let lists = try context.fetch(FetchDescriptor<UserList>())
+        var nextListSortOrder = lists.count
         var listsByName: [String: UserList] = [:]
-        for list in try context.fetch(FetchDescriptor<UserList>()) where list.kind == .manual && list.trashedAt == nil {
+        for list in lists where list.kind == .manual && list.trashedAt == nil {
             let name = LibraryItem.normalize(list.name)
             if listsByName[name] == nil { listsByName[name] = list }
         }
-        let autosaveEnabled = context.autosaveEnabled
-        context.autosaveEnabled = false
-        defer { context.autosaveEnabled = autosaveEnabled }
 
         do {
-            for (offset, row) in selectedRows.enumerated() {
-                if offset.isMultiple(of: 100) {
-                    await Task.yield()
-                    try Task.checkCancellation()
-                }
+            for row in selectedRows {
                 let wasApplied: Bool
                 switch row.proposal {
                 case let .mediaItem(proposal):
@@ -60,6 +59,7 @@ final class StagedImportApplier {
                         importedItemsByIdentity: &importedItemsByIdentity,
                         touchedItems: &touchedItems,
                         listsByName: &listsByName,
+                        nextListSortOrder: &nextListSortOrder,
                         report: &report
                     )
 
@@ -74,6 +74,7 @@ final class StagedImportApplier {
                         touchedItems: &touchedItems,
                         credentialMutations: &credentialMutations,
                         listsByName: &listsByName,
+                        nextListSortOrder: &nextListSortOrder,
                         report: &report
                     )
 
@@ -104,7 +105,6 @@ final class StagedImportApplier {
             }
 
             for item in touchedItems.values {
-                try Task.checkCancellation()
                 ActivityProjection.rebuild(item)
             }
             report.skippedRows = batch.rows.count - report.appliedRows
@@ -126,6 +126,7 @@ final class StagedImportApplier {
         importedItemsByIdentity: inout [String: LibraryItem],
         touchedItems: inout [UUID: LibraryItem],
         listsByName: inout [String: UserList],
+        nextListSortOrder: inout Int,
         report: inout ImportApplicationReport
     ) throws -> Bool {
         guard let archiveKind = proposal.mediaKind else {
@@ -156,7 +157,7 @@ final class StagedImportApplier {
         attachCreators(proposal.creators, to: item)
         attachExternalIdentifiers(proposal.externalIdentifiers, to: item, source: source)
         try attachTags(proposal.tags, to: item, source: source, report: &report)
-        try attachLists(proposal.listNames, to: item, listsByName: &listsByName, report: &report)
+        attachLists(proposal.listNames, to: item, listsByName: &listsByName, nextSortOrder: &nextListSortOrder, report: &report)
 
         let targetUnit = unit(
             for: proposal.history?.progress,
@@ -267,6 +268,7 @@ final class StagedImportApplier {
         touchedItems: inout [UUID: LibraryItem],
         credentialMutations: inout [CredentialMutation],
         listsByName: inout [String: UserList],
+        nextListSortOrder: inout Int,
         report: inout ImportApplicationReport
     ) async throws -> Bool {
         let source = recordSource(batch.source)
@@ -308,10 +310,11 @@ final class StagedImportApplier {
             )
         }
         if !proposal.categoryPath.isEmpty {
-            try attachLists(
+            attachLists(
                 [proposal.categoryPath.joined(separator: " / ")],
                 to: item,
                 listsByName: &listsByName,
+                nextSortOrder: &nextListSortOrder,
                 report: &report
             )
         }
@@ -353,13 +356,14 @@ final class StagedImportApplier {
             $0.providerRaw == "rss" && $0.isActiveFeed && $0.isPrivateFeed
         }
         if let feedURL = proposal.feedURL {
-            feedIsPrivate = try await attachFeed(
+            let importedFeedIsPrivate = try await attachFeed(
                 feedURL,
                 to: item,
                 rowID: row.id,
                 credentialMutations: &credentialMutations,
                 report: &report
             )
+            feedIsPrivate = feedIsPrivate || importedFeedIsPrivate
         }
 
         let sourceIdentifier = proposal.enclosureURL
@@ -936,8 +940,9 @@ final class StagedImportApplier {
         _ names: [String],
         to item: LibraryItem,
         listsByName: inout [String: UserList],
+        nextSortOrder: inout Int,
         report: inout ImportApplicationReport
-    ) throws {
+    ) {
         guard !names.isEmpty else { return }
         for name in names {
             let normalized = LibraryItem.normalize(name)
@@ -946,7 +951,8 @@ final class StagedImportApplier {
             if let existing = listsByName[normalized] {
                 list = existing
             } else {
-                list = UserList(name: name, sortOrder: try context.fetch(FetchDescriptor<UserList>()).count)
+                list = UserList(name: name, sortOrder: nextSortOrder)
+                nextSortOrder += 1
                 context.insert(list)
                 listsByName[normalized] = list
                 report.createdLists += 1

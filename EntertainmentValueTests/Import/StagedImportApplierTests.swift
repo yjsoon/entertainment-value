@@ -48,8 +48,9 @@ struct StagedImportApplierTests {
         #expect(sessions.map(\.note) == ["Matinee", "With friends"])
     }
 
-    @Test("Podcast subscriptions and Overcast episodes retain history without persisting private URLs")
-    func podcastImportsProtectPrivateFeed() async throws {
+    @Test("Podcast subscriptions and Overcast episodes retain history without persisting private URLs",
+          arguments: ["https://premium.example.com/member-secret/feed.xml", "not-a-url"])
+    func podcastImportsProtectPrivateFeed(episodeFeedURL: String) async throws {
         let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
         let context = container.mainContext
         let credentials = InMemoryCredentialStore()
@@ -123,10 +124,10 @@ struct StagedImportApplierTests {
             rawFields: ["Played At": ISO8601DateFormatter().string(from: playedAt)],
             proposal: .podcastEpisode(PodcastEpisodeImportProposal(
                 podcastTitle: "Private Show",
-                feedURL: pathCredentialURL,
+                feedURL: episodeFeedURL,
                 episodeTitle: "A Notable Episode",
-                episodeURL: "https://premium.example.com/episode?token=top-secret",
-                enclosureURL: "https://premium.example.com/audio?token=top-secret",
+                episodeURL: "https://premium.example.com/member-secret/episode",
+                enclosureURL: "https://premium.example.com/member-secret/audio",
                 publishedAt: Date(timeIntervalSince1970: 1_700_000_000),
                 durationMinutes: 60,
                 elapsedMinutes: 60,
@@ -224,11 +225,14 @@ struct StagedImportApplierTests {
         #expect(second.progressFraction == 0.25)
     }
 
-    @Test("Cancelled imports leave no partial graph and restore autosave")
+    @Test("Already cancelled imports preserve unrelated pending edits")
     func cancelledImport() async throws {
         let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
         let context = container.mainContext
-        context.autosaveEnabled = true
+        let sentinel = LibraryItem(mediaKind: .book, title: "Saved")
+        context.insert(sentinel)
+        try context.save()
+        sentinel.title = "Unsaved edit"
         let row = podcastSubscriptionRow(rowNumber: 1, title: "Cancelled", feedURL: "https://example.com/rss")
         let batch = StagedImportBatch(source: .opml, rows: [row])
         let service = StagedImportApplier(context: context, credentials: InMemoryCredentialStore())
@@ -237,8 +241,9 @@ struct StagedImportApplierTests {
         }
         task.cancel()
         await #expect(throws: CancellationError.self) { try await task.value }
-        #expect(try context.fetchCount(FetchDescriptor<LibraryItem>()) == 0)
-        #expect(context.autosaveEnabled)
+        #expect(try context.fetch(FetchDescriptor<LibraryItem>()).map(\.id) == [sentinel.id])
+        #expect(sentinel.title == "Unsaved edit")
+        #expect(context.hasChanges)
     }
 
     private func mediaRow(
