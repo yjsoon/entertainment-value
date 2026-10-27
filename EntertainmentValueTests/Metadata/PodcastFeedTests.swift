@@ -4,6 +4,23 @@ import Testing
 
 @Suite("Podcast RSS")
 struct PodcastFeedTests {
+    @Test("Summary cleanup preserves malformed text and handles unmatched brackets linearly")
+    func summaryCleanup() throws {
+        let malformed = String(repeating: "<", count: 40_000)
+        let cases = [
+            ("<p>Hello<br />world</p>&lt;literal&gt; &amp; end", "Hello\nworld\n<literal> & end"),
+            ("before <> after <unfinished", "before <> after <unfinished"),
+            ("before <<tag>after", "before after"),
+            (malformed, malformed),
+        ]
+        for (input, expected) in cases {
+            let xml = "<rss><channel><title>Show</title><description><![CDATA[\(input)]]></description><item><guid>1</guid><title>Episode</title><description><![CDATA[\(input)]]></description></item></channel></rss>"
+            let feed = try PodcastFeedParser().parse(Data(xml.utf8))
+            #expect(feed.summary == expected)
+            #expect(feed.episodes.first?.summary == expected)
+        }
+    }
+
     @Test("RSS parser maps episode progress metadata")
     func parseRSS() throws {
         let data = try podcastFixture(named: "podcast-feed", extension: "xml")

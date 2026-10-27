@@ -99,13 +99,31 @@ struct StagedImportApplierTests {
         #expect(!publicReference.isPrivateFeed)
         #expect(publicReference.canonicalURLString == publicURL)
 
+        // An owner-marked private feed can carry credentials in a path that the
+        // URL heuristic cannot recognize. Neither import adapter may downgrade it.
+        let pathCredentialURL = "https://premium.example.com/member-secret/feed.xml"
+        let reimportRow = podcastSubscriptionRow(
+            rowNumber: 1, title: "Private Show", feedURL: pathCredentialURL
+        )
+        _ = try await service.apply(
+            StagedImportBatch(source: .opml, rows: [reimportRow]),
+            selection: ImportApplicationSelection(
+                acceptedRowIDs: [reimportRow.id],
+                targetItemIDsByRowID: [reimportRow.id: privateItem.id]
+            )
+        )
+        #expect(privateReference.isPrivateFeed)
+        #expect(privateReference.canonicalURLString == nil)
+        #expect(privateReference.credentialKeychainID == credentialKey)
+        #expect(await credentials.value(for: credentialKey) == pathCredentialURL)
+
         let playedAt = Date(timeIntervalSince1970: 1_725_000_000)
         let episodeRow = StagedImportRow(
             sourceRowNumber: 2,
             rawFields: ["Played At": ISO8601DateFormatter().string(from: playedAt)],
             proposal: .podcastEpisode(PodcastEpisodeImportProposal(
                 podcastTitle: "Private Show",
-                feedURL: privateURL,
+                feedURL: pathCredentialURL,
                 episodeTitle: "A Notable Episode",
                 episodeURL: "https://premium.example.com/episode?token=top-secret",
                 enclosureURL: "https://premium.example.com/audio?token=top-secret",
@@ -149,6 +167,10 @@ struct StagedImportApplierTests {
         #expect(session.source == .overcast)
         #expect(completion.effectiveAt == playedAt)
         #expect(completion.source == .overcast)
+        #expect(privateReference.isPrivateFeed)
+        #expect(await credentials.value(for: credentialKey) == pathCredentialURL)
+        let snapshot = try await SwiftDataArchiveBridge(context: context, credentials: credentials).snapshot()
+        #expect(!String(decoding: try JSONEncoder().encode(snapshot.payload), as: UTF8.self).contains("member-secret"))
     }
 
     @Test("Rows the user rejects do not mutate SwiftData")

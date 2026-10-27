@@ -4,6 +4,33 @@ import Testing
 
 @Suite("Podcast and legacy import staging")
 struct ImportAdapterTests {
+    @Test("OPML rejects oversized inherited category paths before expanding subscriptions")
+    func boundedOPMLCategories() throws {
+        for length in [4096, 4097] {
+            let category = String(repeating: "a", count: length)
+            let data = Data("<opml><body><outline text=\"\(category)\"><outline text=\"Show\" xmlUrl=\"https://example.com/rss\"/></outline></body></opml>".utf8)
+            if length == 4096 {
+                #expect(try OPMLPodcastImporter().stage(data).rows.count == 1)
+            } else {
+                #expect(throws: ImportStagingError.self) { try OPMLPodcastImporter().stage(data) }
+            }
+        }
+    }
+
+    @Test("CSV staging bounds headers and preserves normalized aliases")
+    func boundedCSVHeaders() throws {
+        let data = Data("Títle,Media Type,\(String(repeating: "x", count: 1024))\nArrival,Movie,ignored\n".utf8)
+        let batch = try SofaCSVImporter().stage(data)
+        guard case let .mediaItem(item) = batch.rows.first?.proposal else {
+            Issue.record("Expected a media item")
+            return
+        }
+        #expect(item.title == "Arrival")
+        #expect(item.mediaKind == .movie)
+        let oversized = Data("Title,\(String(repeating: "x", count: 1025))\nArrival,ignored\n".utf8)
+        #expect(throws: ImportStagingError.self) { try SofaCSVImporter().stage(oversized) }
+    }
+
     @Test("OPML preserves categories, ignores duplicates, and stages invalid feeds for review")
     func opmlStaging() throws {
         let data = try ImportFixture.data(named: "subscriptions.opml")
