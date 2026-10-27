@@ -13,7 +13,7 @@ struct ArchiveRoundTripTests {
         payload.artworks = (0..<128).map { _ in
             var artwork = template
             artwork.id = UUID()
-            artwork.archivePath = "assets/shared.bin"
+            artwork.archivePath = "assets/artwork/shared.bin"
             artwork.imageData = image
             return artwork
         }
@@ -21,7 +21,7 @@ struct ArchiveRoundTripTests {
         #expect(try PortableArchiveBuilder.decodePayload(from: allowed).artworks.count == 128)
         var extra = template
         extra.id = UUID()
-        extra.archivePath = "assets/shared.bin"
+        extra.archivePath = "assets/artwork/shared.bin"
         extra.imageData = image
         payload.artworks.append(extra)
         let oversized = try PortableArchiveBuilder.makePackage(payload: payload, generator: "test")
