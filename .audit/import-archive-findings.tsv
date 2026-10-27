@@ -1,0 +1,8 @@
+source_row	uuid	root	disposition	change	regression_contract
+1	e6a31f4a-0bc4-4a10-8a60-b4709e1ed450	OPML inherited-category amplification	current; fixed	4 KiB category path and 8 MiB expanded category budgets; existing list names indexed once per application	ImportAdapterTests.boundedOPMLCategories
+2	bf548081-b30b-4456-8e79-620984d8c897	Per-episode whole-item projection	current; fixed	Rebuild only the changed cycle per episode and each touched item at the end; group events by cycle/unit; cancellation between batches	StagedImportApplierTests.episodeBatchProjections and cancelledImport
+3	7063deee-4a56-4281-8ee4-77d3261b8db6	Imported URL overrides owner privacy	current; fixed	Preserve private reference classification and Keychain storage regardless of incoming URL syntax	StagedImportApplierTests.podcastImportsProtectPrivateFeed
+4	6d34c41d-7c26-4938-bb7e-206200ea2319	Repeated ancestor validation	current; fixed	Retain completed traversal nodes; each parent edge visited once	SwiftDataArchiveBridgeTests.parentGraphValidation
+5	6ab90719-1e9a-4469-8c35-e306f3035080	Shared CSV header amplification	current; fixed	1 KiB header limit before per-row dictionaries; normalize document headers once	ImportAdapterTests.boundedCSVHeaders
+6	13745f2b-86a0-47b2-8b85-9d77ceb05ada	Quadratic unmatched-tag regex	current; fixed	Linear scalar scan preserves malformed text and existing entity/newline cleanup	PodcastFeedTests.summaryCleanup; native Foundation before/after timings
+7	1172a06e-1d2e-4d71-a7f1-9ecb978604f9	Artwork reference expansion	current; fixed	128 MiB expanded image budget counts every reference on portable decode and before full-backup encode	ArchiveRoundTripTests.expandedArtworkBudget

@@ -441,7 +441,19 @@ nonisolated struct ArchiveMediaAccessAssignmentRecord: Codable, Equatable, Senda
     }
 }
 
+nonisolated enum ArchiveResourceError: Error, Equatable, Sendable, LocalizedError {
+    case artworkDataTooLarge
+
+    var errorDescription: String? {
+        "The archive exceeds the 128 MB expanded artwork safety limit."
+    }
+}
+
 nonisolated struct ArchivePayload: Codable, Equatable, Sendable {
+    // Count every record, even when Data shares storage or an archive asset path.
+    // JSON backups encode each image separately, expanding bytes further as base64.
+    static let maximumArtworkByteCount = 128 * 1024 * 1024
+
     var items: [ArchiveItemRecord] = []
     var units: [ArchiveUnitRecord] = []
     var cycles: [ArchiveCycleRecord] = []
@@ -460,6 +472,15 @@ nonisolated struct ArchivePayload: Codable, Equatable, Sendable {
     var externalReferences: [ArchiveExternalReferenceRecord] = []
     var mediaSubscriptions: [ArchiveMediaSubscriptionRecord] = []
     var mediaAccessAssignments: [ArchiveMediaAccessAssignmentRecord] = []
+
+    func validateArtworkSize() throws {
+        var remaining = Self.maximumArtworkByteCount
+        for artwork in artworks {
+            let count = artwork.imageData?.count ?? 0
+            guard count <= remaining else { throw ArchiveResourceError.artworkDataTooLarge }
+            remaining -= count
+        }
+    }
 
     /// Stable ordering makes checksums and source-control diffs reproducible.
     func stablySorted() -> ArchivePayload {

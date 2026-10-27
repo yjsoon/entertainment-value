@@ -9,6 +9,42 @@ import Testing
 struct SwiftDataArchiveBridgeTests {
     private let timestamp = Date(timeIntervalSince1970: 1_750_000_000)
 
+    @Test("Restore accepts shared ancestor chains and rejects cycles before replacing data")
+    func parentGraphValidation() async throws {
+        let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let bridge = SwiftDataArchiveBridge(context: context, credentials: InMemoryCredentialStore())
+        var payload = ArchivePayload()
+        payload.items = [try #require(ArchiveFixture.payload.items.first)]
+        let template = try #require(ArchiveFixture.payload.units.first)
+        let ids = (0..<64).map { _ in UUID() }
+        payload.units = ids.enumerated().map { index, id in
+            var unit = template
+            unit.id = id
+            unit.itemID = payload.items[0].id
+            unit.parentUnitID = index + 1 < ids.count ? ids[index + 1] : nil
+            return unit
+        }
+        var sibling = payload.units[0]
+        sibling.id = UUID()
+        payload.units.append(sibling)
+        _ = try await bridge.restore(payload: payload, mode: .replaceAll)
+        #expect(try context.fetchCount(FetchDescriptor<ContentUnit>()) == 65)
+        let originalIDs = Set(try context.fetch(FetchDescriptor<ContentUnit>()).map(\.id))
+        // The traversal reaches an already completed tail from the sibling,
+        // but must still detect a separate cycle encountered afterwards.
+        var cycle = template
+        cycle.id = UUID()
+        cycle.itemID = payload.items[0].id
+        cycle.parentUnitID = cycle.id
+        payload.units.append(cycle)
+        await #expect(throws: DurabilityError.self) { try await bridge.restore(payload: payload, mode: .replaceAll) }
+        #expect(Set(try context.fetch(FetchDescriptor<ContentUnit>()).map(\.id)) == originalIDs)
+        payload.units.removeLast()
+        payload.units[63].parentUnitID = ids[0]
+        await #expect(throws: DurabilityError.self) { try await bridge.restore(payload: payload, mode: .replaceAll) }
+    }
+
     @Test("A semantic graph restores stable IDs, history, and encrypted private feeds")
     func semanticRoundTrip() async throws {
         let sourceContainer = try AppModelContainer.make(isStoredInMemoryOnly: true)

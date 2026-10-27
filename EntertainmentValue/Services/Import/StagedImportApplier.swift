@@ -33,9 +33,21 @@ final class StagedImportApplier {
         var importedItemsByIdentity: [String: LibraryItem] = [:]
         var touchedItems: [UUID: LibraryItem] = [:]
         var credentialMutations: [CredentialMutation] = []
+        var listsByName: [String: UserList] = [:]
+        for list in try context.fetch(FetchDescriptor<UserList>()) where list.kind == .manual && list.trashedAt == nil {
+            let name = LibraryItem.normalize(list.name)
+            if listsByName[name] == nil { listsByName[name] = list }
+        }
+        let autosaveEnabled = context.autosaveEnabled
+        context.autosaveEnabled = false
+        defer { context.autosaveEnabled = autosaveEnabled }
 
         do {
-            for row in selectedRows {
+            for (offset, row) in selectedRows.enumerated() {
+                if offset.isMultiple(of: 100) {
+                    await Task.yield()
+                    try Task.checkCancellation()
+                }
                 let wasApplied: Bool
                 switch row.proposal {
                 case let .mediaItem(proposal):
@@ -47,6 +59,7 @@ final class StagedImportApplier {
                         itemsByID: &itemsByID,
                         importedItemsByIdentity: &importedItemsByIdentity,
                         touchedItems: &touchedItems,
+                        listsByName: &listsByName,
                         report: &report
                     )
 
@@ -60,6 +73,7 @@ final class StagedImportApplier {
                         importedItemsByIdentity: &importedItemsByIdentity,
                         touchedItems: &touchedItems,
                         credentialMutations: &credentialMutations,
+                        listsByName: &listsByName,
                         report: &report
                     )
 
@@ -90,6 +104,7 @@ final class StagedImportApplier {
             }
 
             for item in touchedItems.values {
+                try Task.checkCancellation()
                 ActivityProjection.rebuild(item)
             }
             report.skippedRows = batch.rows.count - report.appliedRows
@@ -110,6 +125,7 @@ final class StagedImportApplier {
         itemsByID: inout [UUID: LibraryItem],
         importedItemsByIdentity: inout [String: LibraryItem],
         touchedItems: inout [UUID: LibraryItem],
+        listsByName: inout [String: UserList],
         report: inout ImportApplicationReport
     ) throws -> Bool {
         guard let archiveKind = proposal.mediaKind else {
@@ -140,7 +156,7 @@ final class StagedImportApplier {
         attachCreators(proposal.creators, to: item)
         attachExternalIdentifiers(proposal.externalIdentifiers, to: item, source: source)
         try attachTags(proposal.tags, to: item, source: source, report: &report)
-        try attachLists(proposal.listNames, to: item, report: &report)
+        try attachLists(proposal.listNames, to: item, listsByName: &listsByName, report: &report)
 
         let targetUnit = unit(
             for: proposal.history?.progress,
@@ -250,6 +266,7 @@ final class StagedImportApplier {
         importedItemsByIdentity: inout [String: LibraryItem],
         touchedItems: inout [UUID: LibraryItem],
         credentialMutations: inout [CredentialMutation],
+        listsByName: inout [String: UserList],
         report: inout ImportApplicationReport
     ) async throws -> Bool {
         let source = recordSource(batch.source)
@@ -294,6 +311,7 @@ final class StagedImportApplier {
             try attachLists(
                 [proposal.categoryPath.joined(separator: " / ")],
                 to: item,
+                listsByName: &listsByName,
                 report: &report
             )
         }
@@ -445,9 +463,11 @@ final class StagedImportApplier {
                 )
                 report.createdEvents += 1
             }
+            // Later rows for this same episode must see its completed cycle,
+            // but rebuilding every other episode per row makes imports cubic.
+            ActivityProjection.rebuild(cycle, events: cycle.activityEvents ?? [])
         }
 
-        ActivityProjection.rebuild(item)
         return true
     }
 
@@ -915,22 +935,20 @@ final class StagedImportApplier {
     private func attachLists(
         _ names: [String],
         to item: LibraryItem,
+        listsByName: inout [String: UserList],
         report: inout ImportApplicationReport
     ) throws {
         guard !names.isEmpty else { return }
-        var lists = try context.fetch(FetchDescriptor<UserList>())
         for name in names {
             let normalized = LibraryItem.normalize(name)
             guard !normalized.isEmpty else { continue }
             let list: UserList
-            if let existing = lists.first(where: {
-                $0.kind == .manual && LibraryItem.normalize($0.name) == normalized && $0.trashedAt == nil
-            }) {
+            if let existing = listsByName[normalized] {
                 list = existing
             } else {
-                list = UserList(name: name, sortOrder: lists.count)
+                list = UserList(name: name, sortOrder: try context.fetch(FetchDescriptor<UserList>()).count)
                 context.insert(list)
-                lists.append(list)
+                listsByName[normalized] = list
                 report.createdLists += 1
             }
             guard !(item.listMemberships ?? []).contains(where: { $0.listID == list.id }) else { continue }
@@ -981,9 +999,9 @@ final class StagedImportApplier {
         }
 
         reference.isActiveFeed = true
-        reference.isPrivateFeed = isPrivate
+        reference.isPrivateFeed = reference.isPrivateFeed || isPrivate
         reference.updatedAt = .now
-        if isPrivate {
+        if reference.isPrivateFeed {
             let key = reference.credentialKeychainID
                 ?? "podcast-feed.import.\(UUID().uuidString.lowercased())"
             let previousValue = try await credentials.value(for: key)
@@ -1004,7 +1022,7 @@ final class StagedImportApplier {
             reference.credentialKeychainID = nil
             reference.canonicalURLString = rawValue
         }
-        return isPrivate
+        return reference.isPrivateFeed
     }
 
     private func restoreCredentials(after mutations: [CredentialMutation]) async {

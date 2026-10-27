@@ -51,14 +51,16 @@ enum ActivityProjection {
         let units = (item.units ?? []).filter { $0.deletedAt == nil }
         let cycles = (item.cycles ?? []).filter { $0.deletedAt == nil }
         let events = item.activityEvents ?? []
+        let eventsByCycle = Dictionary(grouping: events, by: \.cycleID)
+        let eventsByUnit = Dictionary(grouping: events, by: \.targetUnitID)
 
         for cycle in cycles {
-            rebuild(cycle, events: events, touchUpdatedAt: touchUpdatedAt)
+            rebuild(cycle, events: eventsByCycle[cycle.id] ?? [], touchUpdatedAt: touchUpdatedAt)
         }
 
         // Direct episode/issue state first, then aggregate seasons/volumes.
         for unit in units {
-            rebuild(unit, events: events, touchUpdatedAt: touchUpdatedAt)
+            rebuild(unit, events: eventsByUnit[unit.id] ?? [], touchUpdatedAt: touchUpdatedAt)
         }
         for unit in units where !(unit.children ?? []).isEmpty {
             aggregateChildren(into: unit, now: now)

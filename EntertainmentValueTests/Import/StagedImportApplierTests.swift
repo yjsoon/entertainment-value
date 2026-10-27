@@ -200,6 +200,47 @@ struct StagedImportApplierTests {
         #expect(try context.fetchCount(FetchDescriptor<ExternalReference>()) == 0)
     }
 
+    @Test("Batched episode projections isolate siblings and preserve repeat cycles")
+    func episodeBatchProjections() async throws {
+        let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let data = Data("Podcast,Episode,Played,Progress\nShow,First,true,100%\nShow,Second,false,25%\n".utf8)
+        var batch = try OvercastAllDataImporter().stage(data)
+        var repeated = batch.rows[0]
+        repeated.id = UUID()
+        batch.rows.append(repeated)
+        let service = StagedImportApplier(context: context, credentials: InMemoryCredentialStore())
+        _ = try await service.apply(batch, selection: ImportApplicationSelection(acceptedRowIDs: Set(batch.rows.map(\.id))))
+        let item = try #require(try context.fetch(FetchDescriptor<LibraryItem>()).first)
+        let first = try #require(item.units?.first { $0.title == "First" })
+        let second = try #require(item.units?.first { $0.title == "Second" })
+        #expect(item.sessionCount == 3)
+        #expect(item.cycleCount == 3)
+        #expect(item.repeatCount == 1)
+        #expect(first.status == .completed)
+        #expect(first.sessionCount == 2)
+        #expect(second.status == .inProgress)
+        #expect(second.sessionCount == 1)
+        #expect(second.progressFraction == 0.25)
+    }
+
+    @Test("Cancelled imports leave no partial graph and restore autosave")
+    func cancelledImport() async throws {
+        let container = try AppModelContainer.make(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        context.autosaveEnabled = true
+        let row = podcastSubscriptionRow(rowNumber: 1, title: "Cancelled", feedURL: "https://example.com/rss")
+        let batch = StagedImportBatch(source: .opml, rows: [row])
+        let service = StagedImportApplier(context: context, credentials: InMemoryCredentialStore())
+        let task = Task {
+            try await service.apply(batch, selection: ImportApplicationSelection(acceptedRowIDs: [row.id]))
+        }
+        task.cancel()
+        await #expect(throws: CancellationError.self) { try await task.value }
+        #expect(try context.fetchCount(FetchDescriptor<LibraryItem>()) == 0)
+        #expect(context.autosaveEnabled)
+    }
+
     private func mediaRow(
         rowNumber: Int,
         consumedAt: Date,

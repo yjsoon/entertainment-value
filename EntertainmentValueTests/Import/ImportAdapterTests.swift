@@ -15,6 +15,15 @@ struct ImportAdapterTests {
                 #expect(throws: ImportStagingError.self) { try OPMLPodcastImporter().stage(data) }
             }
         }
+        let category = String(repeating: "a", count: 4096)
+        let feeds = (0..<2048).map {
+            "<outline text=\"Show \($0)\" xmlUrl=\"https://example.com/\($0)\"/>"
+        }.joined()
+        let prefix = "<opml><body><outline text=\"\(category)\">\(feeds)"
+        let suffix = "</outline></body></opml>"
+        #expect(try OPMLPodcastImporter().stage(Data((prefix + suffix).utf8)).rows.count == 2048)
+        let overBudget = prefix + "<outline text=\"Extra\" xmlUrl=\"https://example.com/extra\"/>" + suffix
+        #expect(throws: ImportStagingError.self) { try OPMLPodcastImporter().stage(Data(overBudget.utf8)) }
     }
 
     @Test("CSV staging bounds headers and preserves normalized aliases")

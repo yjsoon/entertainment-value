@@ -14,6 +14,7 @@ nonisolated enum CSVCodecError: Error, Equatable, Sendable, LocalizedError {
     case invalidUTF8
     case emptyDocument
     case emptyHeader(column: Int)
+    case headerTooLong(column: Int)
     case duplicateHeader(String)
     case unexpectedQuote(row: Int, column: Int)
     case charactersAfterClosingQuote(row: Int, column: Int)
@@ -29,6 +30,8 @@ nonisolated enum CSVCodecError: Error, Equatable, Sendable, LocalizedError {
             "The CSV file does not contain a header row."
         case let .emptyHeader(column):
             "CSV header column \(column) is empty."
+        case let .headerTooLong(column):
+            "CSV header column \(column) exceeds the 1024-byte safety limit."
         case let .duplicateHeader(header):
             "CSV header \(header) appears more than once."
         case let .unexpectedQuote(row, column):
@@ -112,6 +115,9 @@ nonisolated enum CSVCodec {
         for (offset, header) in headers.enumerated() {
             guard !header.isEmpty else {
                 throw CSVCodecError.emptyHeader(column: offset + 1)
+            }
+            guard header.utf8.count <= 1024 else {
+                throw CSVCodecError.headerTooLong(column: offset + 1)
             }
             guard seen.insert(header).inserted else {
                 throw CSVCodecError.duplicateHeader(header)
